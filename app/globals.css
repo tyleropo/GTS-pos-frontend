@@ -119,3 +119,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+  .fc {
+    --fc-border-color: rgb(231 229 228); /* stone-200 */
+    --fc-button-bg-color: var( --color-sidebar-primary); /* stone-800 */
+    --fc-button-border-color: rgb(231 229 228); /* stone-200 */
+    --fc-button-hover-bg-color: rgb(41 37 36); /* stone-800 */
+    --fc-button-hover-border-color: rgb(214 211 209); /* stone-300 */
+    --fc-button-active-bg-color: rgb(87 83 78); /* stone-600 */
+    --fc-button-active-border-color: rgb(168 162 158); /* stone-400 */
+    --fc-event-bg-color: rgb(87 83 78); /* stone-600 */
+    --fc-event-border-color: rgb(87 83 78); /* stone-600 */
+    --fc-today-bg-color: rgb(245 245 244); /* stone-100 */
+  }
