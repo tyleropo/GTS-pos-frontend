@@ -37,44 +37,44 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
       title: "POS",
-      url: "#",
+      url: "/pos",
       icon: IconShoppingCart,
     },
     {
       title: "Inventory",
-      url: "#",
+      url: "/inventory",
       icon: IconPackage,
     },
     {
       title: "Transactions",
-      url: "#",
+      url: "/transactions",
       icon: IconHistory,
     },
     {
       title: "Customers",
-      url: "#",
+      url: "/customers",
       icon: IconUsers,
     },
     {
       title: "Purchase Orders",
-      url: "#",
+      url: "/purchase-orders",
       icon: IconFileText,
     },
     {
       title: "Repairs",
-      url: "#",
+      url: "/repairs",
       icon: IconDeviceImacCog,
     },
   ],
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: IconSettings,
     },
   ],

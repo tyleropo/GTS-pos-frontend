@@ -54,7 +54,7 @@ export function RegisterForm({
                 <div className="flex items-center">
                   <Label htmlFor="password">Confirm Password</Label>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password_confirmation" type="password" required />
               </div>
               <Button type="submit" className="w-full">
                 Sign up
