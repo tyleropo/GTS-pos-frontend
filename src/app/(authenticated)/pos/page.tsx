@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { T_Product } from "@/src/models/product"
+import { T_Brand, T_Category, T_Product } from "@/src/models/product"
 import { T_CartItem } from "@/src/models/cartItem"
 import { useProductProvider } from "@/src/hooks/dto/products/products-provider"
 import { Search, 
@@ -24,33 +24,32 @@ import { SiteHeader } from "@/src/components/site-header"
 
 export default function POSPage() {
   const [products, setProducts] = useState<T_Product[]>([])
+  const [categories, setCategories] = useState<T_Category[]>([])
+  const [brands, setBrands] = useState<T_Brand[]>([]);
   const [cart, setCart] = useState<T_CartItem[]>([])
 
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryQuery, setCategoryQuery] = useState("");
 
   const {
-    getAllProducts
+    getAllProducts,
+    getCategoriesAndBrands,
   } = useProductProvider();
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await getAllProducts();
-        setProducts(data);
+        const response = await getAllProducts();
+        setProducts(response);
+        const data = await getCategoriesAndBrands();
+        setCategories(data.categories);
+        setBrands(data.brands);
       } catch (err) {
         console.error("Failed to fetch products:", err);
       }
     };
     fetchProducts();
   },[])
-
-  // // Filter products based on search query
-  // const filteredProducts = products.filter(
-  //   (product) =>
-  //     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     product.category.toLowerCase().includes(searchQuery.toLowerCase()),
-  // )
 
   // Add product to cart
   const addToCart = (product: (typeof products)[0]) => {
@@ -123,12 +122,13 @@ export default function POSPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Tabs defaultValue="all" className="w-auto">
+            <Tabs defaultValue="All" className="w-auto">
               <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="electronics">Electronics</TabsTrigger>
-                <TabsTrigger value="computers">Computers</TabsTrigger>
-                <TabsTrigger value="accessories">Accessories</TabsTrigger>
+                {categories.map((category) => (
+                  <TabsTrigger key={category.id} value={category.name}>
+                    {category.name}
+                  </TabsTrigger>
+                ))}
               </TabsList>
             </Tabs>
           </div>
@@ -142,6 +142,9 @@ export default function POSPage() {
                     <span className="text-sm font-bold">${product.price}</span>
                     <Badge variant="outline" className="text-xs">
                       {product.product_category}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {product.product_brand}
                     </Badge>
                   </div>
                 </CardContent>
