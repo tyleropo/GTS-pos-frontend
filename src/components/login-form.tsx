@@ -28,7 +28,7 @@ export function LoginForm({
       const data = await response.json()
 
       if (!response.ok) throw new Error(data.message || "Login Failed")
-      localStorage.setItem("token",data.token)
+      localStorage.setItem("token", data.token)
       alert("Login Successful!")
       router.push("/dashboard")
     }
