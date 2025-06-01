@@ -1,4 +1,5 @@
-import { InventoryItem } from "../types/inventory"
+import { InventoryItem } from "@/src/types/inventory"
+
 const inventoryItems: InventoryItem[] = [ {
     id: 1,
     name: "Smartphone X",
