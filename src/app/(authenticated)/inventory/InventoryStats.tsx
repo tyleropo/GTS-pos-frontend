@@ -1,5 +1,5 @@
 import React from "react";
-import { InventoryItem } from "../../../types/inventory";
+import { InventoryItem } from "@/src/types/inventory";
 import {
   Card,
   CardContent,

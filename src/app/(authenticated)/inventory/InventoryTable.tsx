@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { InventoryItem } from '../../../types/inventory'
+import { InventoryItem } from '@/src/types/inventory'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
