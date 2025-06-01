@@ -95,7 +95,7 @@ export default function POSPage() {
 
   // Process payment (placeholder)
   const processPayment = (paymentMethod: string) => {
-    alert(`Processing ${paymentMethod} payment for $${total.toFixed(2)}`)
+    alert(`Processing ${paymentMethod} payment for $${total}`)
     clearCart()
   }
 
@@ -141,10 +141,10 @@ export default function POSPage() {
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-sm font-bold">${product.price}</span>
                     <Badge variant="outline" className="text-xs">
-                      {product.product_category}
+                      {product.category}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      {product.product_brand}
+                      {product.brand}
                     </Badge>
                   </div>
                 </CardContent>
@@ -202,7 +202,7 @@ export default function POSPage() {
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-medium truncate">{item.name}</h4>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-sm">${item.price.toFixed(2)}</span>
+                        <span className="text-sm">${item.price}</span>
                         <div className="flex items-center">
                           <Button
                             variant="outline"
@@ -243,16 +243,16 @@ export default function POSPage() {
             <div className="space-y-1.5 w-full">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Subtotal</span>
-                <span className="text-sm font-medium">${subtotal.toFixed(2)}</span>
+                <span className="text-sm font-medium">${subtotal}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Tax (8%)</span>
-                <span className="text-sm font-medium">${tax.toFixed(2)}</span>
+                <span className="text-sm font-medium">${tax}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex items-center justify-between">
                 <span className="text-base font-medium">Total</span>
-                <span className="text-base font-bold">${total.toFixed(2)}</span>
+                <span className="text-base font-bold">${total}</span>
               </div>
             </div>
 

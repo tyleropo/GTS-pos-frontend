@@ -11,8 +11,8 @@ export type T_Brand = {
 export type T_Product = {
   id: number;
   name: string;
-  product_category: string;
-  product_brand: string;
+  category: string;
+  brand: string;
   description: string;
   specs: string;
   price: number;
