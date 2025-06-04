@@ -12,9 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
-import { Button } from "@/src/components/ui/button";
 
-const transactionPage = () => {
+const Page = () => {
   const [transactions, setTransactions] =
     useState<Transaction[]>(mockTransactions);
   return (
@@ -40,4 +39,4 @@ const transactionPage = () => {
   );
 };
 
-export default transactionPage;
+export default Page;
