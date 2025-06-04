@@ -16,7 +16,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
 
-const InventoryPage = () => {
+const Page = () => {
   const [items, setItems] = useState<InventoryItem[]>(mockInventory);
   const [showModal, setShowModal] = useState(false);
 
@@ -62,4 +62,4 @@ const InventoryPage = () => {
   );
 };
 
-export default InventoryPage;
+export default Page;
