@@ -1,3 +1,5 @@
+import { T_Supplier } from "./supplier";
+
 export type T_Category = {
   id: number;
   name: string;
@@ -13,7 +15,11 @@ export type T_Product = {
   name: string;
   category: string;
   brand: string;
+  image: string;
   description: string;
-  specs: string;
+  barcode: string;
+  stock_keeping_unit: string;
+  supplier: T_Supplier;
+  stocks: number;
   price: number;
 }
