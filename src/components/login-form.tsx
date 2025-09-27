@@ -4,7 +4,7 @@ import { Button } from "@/src/components/ui/button"
 import { Card, CardContent } from "@/src/components/ui/card"
 import { Input } from "@/src/components/ui/input"
 import { Label } from "@/src/components/ui/label"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 export function LoginForm({
@@ -15,6 +15,13 @@ export function LoginForm({
   const [email,setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_SKIP_AUTH === 'true' && process.env.NODE_ENV === 'development') {
+      localStorage.setItem('token', 'fake-token');
+      router.push('/dashboard');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
