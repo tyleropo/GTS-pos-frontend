@@ -1,173 +1,256 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { CardMetric } from "@/src/components/card-metrics";
 import Calendar from "@/src/components/calendar";
-import { SectionCards } from "@/src/components/section-cards";
+import { ActivityFeed } from "@/src/components/acitivity-feed";
+import { LowStockList } from "@/src/components/low-stock-list";
+import { TopSellingList } from "@/src/components/top-selling-list";
+import { PendingRepairs } from "@/src/components/pending-repairs";
 import { SiteHeader } from "@/src/components/site-header";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/src/components/ui/card";
-import { Wrench } from "lucide-react";
+  fetchDashboardActivity,
+  fetchDashboardLowStock,
+  fetchDashboardMetrics,
+  fetchDashboardPendingRepairs,
+  fetchDashboardTopSelling,
+} from "@/src/lib/api/dashboard";
+import { Product } from "@/src/lib/api/products";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { Badge } from "@/src/components/ui/badge";
+import { useAuth } from "@/src/providers/auth-provider";
 
-export default function Page() {
+type DashboardError = {
+  context: string;
+  message: string;
+};
+
+const messageFrom = (reason: unknown, fallback: string) =>
+  reason instanceof Error ? reason.message : fallback;
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [errors, setErrors] = useState<DashboardError[]>([]);
+  const [metrics, setMetrics] = useState<
+    Awaited<ReturnType<typeof fetchDashboardMetrics>>
+  >([]);
+  const [activity, setActivity] = useState<
+    Awaited<ReturnType<typeof fetchDashboardActivity>>
+  >([]);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [topSellingProducts, setTopSellingProducts] = useState<Product[]>([]);
+  const [pendingRepairs, setPendingRepairs] = useState<
+    Awaited<ReturnType<typeof fetchDashboardPendingRepairs>>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setErrors([]);
+
+    async function loadDashboardData() {
+      const [
+        metricsResult,
+        activityResult,
+        lowStockResult,
+        topSellingResult,
+        pendingRepairsResult,
+      ] = await Promise.allSettled([
+        fetchDashboardMetrics(),
+        fetchDashboardActivity(),
+        fetchDashboardLowStock(),
+        fetchDashboardTopSelling(),
+        fetchDashboardPendingRepairs(),
+      ]);
+
+      if (cancelled) return;
+
+      const nextErrors: DashboardError[] = [];
+
+      if (metricsResult.status === "fulfilled") {
+        setMetrics(metricsResult.value);
+      } else {
+        nextErrors.push({
+          context: "metrics",
+          message: messageFrom(metricsResult.reason, "Unable to load metrics."),
+        });
+      }
+
+      if (activityResult.status === "fulfilled") {
+        setActivity(activityResult.value);
+      } else {
+        nextErrors.push({
+          context: "activity",
+          message: messageFrom(
+            activityResult.reason,
+            "Unable to load recent activity feed.",
+          ),
+        });
+      }
+
+      if (lowStockResult.status === "fulfilled") {
+        setLowStockProducts(lowStockResult.value);
+      } else {
+        nextErrors.push({
+          context: "inventory",
+          message: messageFrom(
+            lowStockResult.reason,
+            "Unable to load low-stock information.",
+          ),
+        });
+      }
+
+      if (topSellingResult.status === "fulfilled") {
+        setTopSellingProducts(topSellingResult.value);
+      } else {
+        nextErrors.push({
+          context: "sales",
+          message: messageFrom(
+            topSellingResult.reason,
+            "Unable to load top-selling products.",
+          ),
+        });
+      }
+
+      if (pendingRepairsResult.status === "fulfilled") {
+        setPendingRepairs(pendingRepairsResult.value);
+      } else {
+        nextErrors.push({
+          context: "repairs",
+          message: messageFrom(
+            pendingRepairsResult.reason,
+            "Unable to load repair tickets.",
+          ),
+        });
+      }
+
+      setErrors(nextErrors);
+      setIsLoading(false);
+    }
+
+    loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const lowStockList = useMemo(
+    () =>
+      lowStockProducts.slice(0, 5).map((product) => ({
+        name: product.name,
+        sku: product.sku,
+        stock: product.stock_quantity,
+      })),
+    [lowStockProducts]
+  );
+
+  const topSellingList = useMemo(
+    () =>
+      topSellingProducts.slice(0, 5).map((product) => ({
+        name: product.name,
+        sku: product.sku,
+        sold: product.total_sold ?? 0,
+      })),
+    [topSellingProducts]
+  );
+
+  const repairsList = useMemo(
+    () =>
+      pendingRepairs.slice(0, 5).map((repair) => ({
+        id: repair.id,
+        customer: repair.customer,
+        status: repair.status,
+      })),
+    [pendingRepairs]
+  );
+
+  const hasBlockingError =
+    !metrics.length && errors.length === 5 && !isLoading;
+
+  const headerActions = user ? (
+    <div className="flex items-center gap-2 text-xs sm:text-sm">
+      <Badge variant="secondary" className="rounded-full">
+        {user.first_name} {user.last_name}
+      </Badge>
+      <Badge variant="outline" className="rounded-full capitalize">
+        {user.role}
+      </Badge>
+    </div>
+  ) : (
+    <Badge variant="outline" className="rounded-full">
+      Not authenticated
+    </Badge>
+  );
+
   return (
-    <div className="flex flex-1 flex-col">
-      <SiteHeader title="Dashboard" />
-      <div className="@container/main flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <SectionCards />
-          <div className="px-4 lg:px-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Sales Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 ml-2">
-                  <Calendar />
-                </CardContent>
-              </Card>
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>
-                    Latest transactions and inventory changes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="flex items-center gap-4">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            i % 2 === 0 ? "bg-emerald-500" : "bg-sky-500"
-                          }`}
-                        ></div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {i % 2 === 0
-                              ? "New sale completed"
-                              : "Inventory updated"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {i % 2 === 0
-                              ? "Customer purchased 3 items"
-                              : "5 items restocked"}
-                          </p>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {i * 10} min ago
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+    <div className="flex flex-col">
+      <SiteHeader
+        title="Operations overview"
+        subtitle="Monitor sales performance, inventory health, and service commitments."
+        actions={headerActions}
+      />
 
-            <div className="grid gap-4 my-5 md:grid-cols-3 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle> Low Stock Items</CardTitle>
-                  <CardDescription>
-                    {" "}
-                    Items that needs to be restocked again
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded bg-muted"></div>
-                          <div>
-                            <p className="text-sm font-medium">Product {i}</p>
-                            <p className="text-xs text-muted-foreground">
-                              SKU-00{i}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm font-medium text-rose-500">
-                          {i} left
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle> Top Selling Products</CardTitle>
-                  <CardDescription>
-                    {" "}
-                    Products with highest sales this month
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded bg-muted"></div>
-                          <div>
-                            <p className="text-sm font-medium">
-                              Top Product {i}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              SKU-10{i}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm font-medium">
-                          {100 - i * 20} sold
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle> Pending Repairs</CardTitle>
-                  <CardDescription>Repairs that need attention</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Wrench className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">
-                              Repair #{1000 + i}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Customer: John D.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">
-                          In Progress
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+      <div className="space-y-6 p-4 lg:p-6">
+        {errors.length > 0 && !isLoading ? (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            Some dashboard widgets failed to load. Please refresh the page or
+            try again later.
           </div>
-        </div>
+        ) : null}
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-32 rounded-xl" />
+              ))
+            : metrics.slice(0, 4).map((metric) => (
+                <CardMetric
+                  key={metric.id}
+                  title={metric.title}
+                  value={metric.value}
+                  percentage={metric.percentage}
+                  trend={metric.trend}
+                  hint={metric.hint}
+                />
+              ))}
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Calendar />
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-80 rounded-xl" />
+          ) : (
+            <ActivityFeed activity={activity} />
+          )}
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-60 rounded-xl" />
+              <Skeleton className="h-60 rounded-xl" />
+              <Skeleton className="h-60 rounded-xl" />
+            </>
+          ) : (
+            <>
+              <LowStockList items={lowStockList} />
+              <TopSellingList products={topSellingList} />
+              <PendingRepairs repairs={repairsList} />
+            </>
+          )}
+        </section>
+
+        {hasBlockingError ? (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+            The dashboard could not retrieve any data from the API. Verify that
+            the Laravel backend is reachable at the configured
+            `NEXT_PUBLIC_API_URL`.
+          </div>
+        ) : null}
       </div>
     </div>
   );

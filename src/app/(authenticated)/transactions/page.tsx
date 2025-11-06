@@ -14,8 +14,7 @@ import {
 } from "@/src/components/ui/card";
 
 const Page = () => {
-  const [transactions, setTransactions] =
-    useState<Transaction[]>(mockTransactions);
+  const [transactions] = useState<Transaction[]>(mockTransactions);
   return (
     <div>
       <SiteHeader title="Transactions" />

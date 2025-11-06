@@ -15,6 +15,7 @@ import { purchaseOrders } from '@/src/data/mockPurchaseOrders';
 import PurchaseOrderStats from './PurchaseOrderStats';
 import PurchaseOrderTable from './PurchaseOrderTable';
 const Page = () => {
+  // TODO Add a component for the New purchase order button
   return (
     <div>
       <SiteHeader title="Inventory Management" />
