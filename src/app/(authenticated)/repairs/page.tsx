@@ -13,7 +13,7 @@ import { Plus } from "lucide-react";
 import RepairsTable from './RepairsTable';
 import RepairsStats from './RepairsStats';
 import { repairs } from '@/src/data/mockRepairs';
-
+// TODO add a component for the New Repair button 
 const Page = () => {
   return (
  <div className="p-4 flex flex-col gap-5">

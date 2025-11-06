@@ -19,7 +19,7 @@ import type { InventoryItem, NewInventoryItem } from "@/src/types/inventory";
 import type { Category } from "@/src/lib/api/products";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { toast } from "sonner";
-
+// TODO Add a component for the new product button
 export default function InventoryPage() {
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

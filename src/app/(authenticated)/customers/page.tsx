@@ -12,7 +12,7 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
-
+// TODO add a component for the add customer button
 const Page = () => {
   return (
     <div>
