@@ -1,18 +1,67 @@
+import type { Product } from "@/src/lib/api/products";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
+import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
+import { ShoppingCart } from "lucide-react";
 
-export function ProductCard({ product, onAdd }: {
-  product: { id: string; name: string; price: number };
-  onAdd: (productId: string) => void;
-}) {
+type ProductCardProps = {
+  product: Product;
+  onAdd: (product: Product) => void;
+};
+
+const currency = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+});
+
+export function ProductCard({ product, onAdd }: ProductCardProps) {
+  const inStock = product.stock_quantity > 0;
+  const badgeVariant = inStock ? "outline" : "destructive";
+  const badgeLabel = inStock
+    ? `${product.stock_quantity} on hand`
+    : "Out of stock";
+
   return (
-    <div className="border p-4 rounded-md shadow-sm flex flex-col justify-between">
-      <div>
-        <h4 className="font-medium">{product.name}</h4>
-        <p className="text-muted-foreground">${product.price.toFixed(2)}</p>
-      </div>
-      <Button className="mt-4 bg-green-500" onClick={() => onAdd(product.id)}>
-        Add to Cart
-      </Button>
-    </div>
+    <Card className="flex h-full flex-col justify-between">
+      <CardHeader className="space-y-2">
+        <div className="flex items-start justify-between">
+          <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+          {product.brand ? (
+            <Badge variant="secondary">{product.brand}</Badge>
+          ) : null}
+        </div>
+        <CardTitle className="line-clamp-2 text-base font-semibold leading-snug">
+          {product.name}
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          SKU {product.sku}
+          {product.barcode ? ` · Barcode ${product.barcode}` : ""}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="text-lg font-semibold tracking-tight text-primary">
+          {currency.format(product.selling_price)}
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {product.description ?? "Ready for checkout"}
+        </p>
+      </CardContent>
+      <CardFooter>
+        <Button
+          className="w-full"
+          onClick={() => onAdd(product)}
+          disabled={!inStock}
+        >
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          Add to cart
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

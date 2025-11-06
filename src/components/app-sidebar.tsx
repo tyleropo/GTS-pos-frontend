@@ -27,13 +27,10 @@ import {
   SidebarMenuItem,
 } from "@/src/components/ui/sidebar"
 import Link from "next/link"
+import { useAuth } from "@/src/providers/auth-provider"
+import { APP_NAME } from "@/src/lib/config"
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -82,6 +79,19 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, logout } = useAuth()
+  const sidebarUser = React.useMemo(
+    () =>
+      user
+        ? {
+            name: `${user.first_name} ${user.last_name}`,
+            email: user.email,
+            avatar: null as string | null,
+          }
+        : undefined,
+    [user]
+  )
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -91,9 +101,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href="/">
+              <Link href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">GTS Mktg.</span>
+                <span className="text-base font-semibold">{APP_NAME}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -104,7 +114,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={sidebarUser} onLogout={logout} />
       </SidebarFooter>
     </Sidebar>
   )

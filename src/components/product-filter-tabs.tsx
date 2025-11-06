@@ -1,16 +1,28 @@
+import type { Category } from "@/src/lib/api/products";
 import { Tabs, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 
-export function ProductFilterTabs({ categories, selected, onSelect }: {
-  categories: string[];
-  selected: string;
-  onSelect: (category: string) => void;
-}) {
+type ProductFilterTabsProps = {
+  categories: Category[];
+  selectedCategoryId: string;
+  onSelect: (categoryId: string) => void;
+};
+
+export function ProductFilterTabs({
+  categories,
+  selectedCategoryId,
+  onSelect,
+}: ProductFilterTabsProps) {
   return (
-    <Tabs defaultValue={selected} onValueChange={onSelect}>
-      <TabsList className="overflow-x-auto whitespace-nowrap">
-        {categories.map((cat) => (
-          <TabsTrigger key={cat} value={cat}>
-            {cat}
+    <Tabs
+      value={selectedCategoryId}
+      onValueChange={onSelect}
+      className="w-full"
+    >
+      <TabsList className="w-full justify-start overflow-x-auto">
+        <TabsTrigger value="all">All products</TabsTrigger>
+        {categories.map((category) => (
+          <TabsTrigger key={category.id} value={category.id}>
+            {category.name}
           </TabsTrigger>
         ))}
       </TabsList>
