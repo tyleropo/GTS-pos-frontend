@@ -18,6 +18,18 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Development Authentication Bypass
+
+For development purposes, you can bypass authentication to access protected routes like the dashboard.
+
+Set the environment variable `NEXT_PUBLIC_SKIP_AUTH=true` in your `.env.local` file:
+
+```bash
+NEXT_PUBLIC_SKIP_AUTH=true
+```
+
+This will automatically log you in as a mock admin user in development mode. Remove or set to `false` to disable the bypass.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

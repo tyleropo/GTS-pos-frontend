@@ -8,4 +8,6 @@ export const AUTH_TOKEN_STORAGE_KEY =
   process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || "pos.accessToken";
 
 export const AUTH_REFRESH_TOKEN_STORAGE_KEY =
-  process.env.NEXT_PUBLIC_REFRESH_TOKEN_KEY || "pos.refreshToken";
+   process.env.NEXT_PUBLIC_REFRESH_TOKEN_KEY || "pos.refreshToken";
+
+export const BYPASS_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";

@@ -3,9 +3,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthResponse, AuthUser, fetchCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest, RegisterPayload, LoginPayload } from "@/src/lib/api/auth";
 import { clearAuthStorage, getAccessToken, setAccessToken, setRefreshToken, clearAccessToken, clearRefreshToken } from "@/src/lib/auth/token-storage";
+import { BYPASS_AUTH } from "@/src/lib/config";
 import { toast } from "sonner";
 
 type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
+
+const mockUser: AuthUser = {
+  id: "00000000-0000-0000-0000-000000000000",
+  email: "dev@example.com",
+  first_name: "Dev",
+  last_name: "User",
+  role: "admin",
+  is_active: true,
+  last_login_at: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -129,6 +142,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (BYPASS_AUTH && process.env.NODE_ENV === "development") {
+        setUser(mockUser);
+        setStatus("authenticated");
+        setIsLoading(false);
+        return;
+      }
+
       const token = getAccessToken();
       if (!token) {
         setStatus("unauthenticated");
