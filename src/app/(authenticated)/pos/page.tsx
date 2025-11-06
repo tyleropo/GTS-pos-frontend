@@ -1,88 +1,203 @@
-'use client';
+"use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProductFilterTabs } from "@/src/components/product-filter-tabs";
 import { ProductCard } from "@/src/components/product-card";
-import { CartPanel } from "@/src/components/cart-panel";
+import { CartPanel, CartLineItem } from "@/src/components/cart-panel";
 import { BarcodeInput } from "@/src/components/barcode-input";
 import { SiteHeader } from "@/src/components/site-header";
-
-const sampleProducts = [
-  { id: '1', name: 'Samsung Galaxy S23 Ultra', price: 1199.99, category: 'All-in-One PCs' },
-  { id: '2', name: 'ASUS ROG Zephyrus G14 Laptop', price: 1599.99, category: 'All-in-One PCs' },
-  { id: '3', name: 'Sony WH-1000XM5 Headphones', price: 349.99, category: 'Audio Equipment' },
-  { id: '4', name: 'Logitech MX Master 3S Mouse', price: 99.99, category: 'Audio Equipment' },
-];
-
-const categories = [
-  'All-in-One PCs',
-  'Anti-Static Equipment',
-  'Audio Equipment',
-  'Bags & Sleeves',
-  'Bluetooth & Smart Accessories',
-  'Cable Management Tools',
-  'Cameras & Camcorders',
-  'Chargers & Adapters',
-];
+import {
+  fetchProductByBarcode,
+  fetchProductCategories,
+  fetchProducts,
+  type Product,
+  type Category,
+} from "@/src/lib/api/products";
+import { Input } from "@/src/components/ui/input";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { toast } from "sonner";
+import { Button } from "@/src/components/ui/button";
+import { RefreshCcw } from "lucide-react";
+import { useDebounce } from "@/src/hooks/use-debounce";
 
 export default function POSPage() {
-  const [selectedCat, setSelectedCat] = useState(categories[0]);
-  const [cart, setCart] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cartItems, setCartItems] = useState<CartLineItem[]>([]);
+  const [isCatalogueReady, setIsCatalogueReady] = useState(false);
+  const debouncedSearch = useDebounce(searchQuery, 350);
 
-  const filtered = selectedCat === categories[0]
-    ? sampleProducts
-    : sampleProducts.filter((p) => p.category === selectedCat);
+  const loadProducts = useCallback(
+    async (categoryId: string, search?: string) => {
+      setIsLoadingProducts(true);
+      try {
+        const { data } = await fetchProducts({
+          per_page: 24,
+          category_id: categoryId === "all" ? undefined : categoryId,
+          search: search?.trim() ? search.trim() : undefined,
+        });
+        setProducts(data);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to load product catalogue.";
+        toast.error(message);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    },
+    []
+  );
 
-  const addToCart = (id: string) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === id);
+  useEffect(() => {
+    async function bootstrap() {
+      try {
+        const categoriesPayload = await fetchProductCategories();
+        setCategories(categoriesPayload);
+        setIsCatalogueReady(true);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to initialize POS catalogue.";
+        toast.error(message);
+        setIsCatalogueReady(false);
+        setIsLoadingProducts(false);
+      }
+    }
+
+    void bootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (!isCatalogueReady) return;
+    void loadProducts(selectedCategoryId, debouncedSearch);
+  }, [debouncedSearch, isCatalogueReady, loadProducts, selectedCategoryId]);
+
+  const handleScan = async (barcode: string) => {
+    if (!barcode) return;
+    try {
+      const product = await fetchProductByBarcode(barcode);
+      addProductToCart(product);
+      toast.success(`Added ${product.name} via barcode scan.`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Product not found.";
+      toast.error(message);
+    }
+  };
+
+  const addProductToCart = (product: Product) => {
+    setCartItems((current) => {
+      const existing = current.find((item) => item.id === product.id);
       if (existing) {
-        return prev.map((item) =>
-          item.id === id ? { ...item, qty: item.qty + 1 } : item
+        return current.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       }
-      const product = sampleProducts.find((p) => p.id === id)!;
-      return [...prev, { ...product, qty: 1 }];
+      return [
+        ...current,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.selling_price,
+          quantity: 1,
+        },
+      ];
     });
   };
 
+  const handleCheckout = (method: "cash" | "card" | "gcash") => {
+    if (cartItems.length === 0) {
+      toast.error("Cart is empty.");
+      return;
+    }
+    toast.success(`Checkout initiated via ${method.toUpperCase()}.`);
+    setCartItems([]);
+  };
+
+  const filteredProducts = useMemo(() => products, [products]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadProducts(selectedCategoryId, debouncedSearch);
+    setIsRefreshing(false);
+  };
+
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-[100dvh]">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-        <SiteHeader title="Point of Sales" />
-        <span className="text-sm text-muted-foreground sm:text-right">Cashier: Admin User</span>
-      </div>
+    <div className="flex flex-col">
+      <SiteHeader
+        title="Point of sale"
+        subtitle="Add products to the cart, scan barcodes, and complete transactions."
+        actions={
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh catalogue"
+          >
+            <RefreshCcw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
+        }
+      />
 
-      {/* Barcode Scanner */}
-      <div>
-        <BarcodeInput onScan={(code) => alert(`Scanned: ${code}`)} />
-      </div>
+      <div className="space-y-6 p-4 lg:p-6">
+        <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+          <div className="space-y-4">
+            <BarcodeInput onScan={handleScan} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search products or scan a barcode…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full sm:max-w-xs"
+              />
+              <ProductFilterTabs
+                categories={categories}
+                selectedCategoryId={selectedCategoryId}
+                onSelect={setSelectedCategoryId}
+              />
+            </div>
 
-      {/* Category Tabs */}
-      <div className="overflow-x-auto -mx-1">
-        <ProductFilterTabs
-          categories={categories}
-          selected={selectedCat}
-          onSelect={setSelectedCat}
-        />
-      </div>
+            {isLoadingProducts ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <Skeleton key={index} className="h-48 rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                {filteredProducts.length === 0 ? (
+                  <div className="col-span-full rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                    No products match the selected filters.
+                  </div>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAdd={addProductToCart}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
-      {/* Product + Cart Panel (mobile first: vertical, then grid on sm+) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-        {/* Products */}
-        <div className="lg:col-span-8 xl:col-span-9 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} onAdd={addToCart} />
-          ))}
-        </div>
-
-        {/* Cart */}
-        <div className="lg:col-span-4 xl:col-span-3">
           <CartPanel
-            cart={cart}
-            onClear={() => setCart([])}
-            onCheckout={(method) => alert(`Paid by ${method}`)}
+            items={cartItems}
+            onClear={() => setCartItems([])}
+            onCheckout={handleCheckout}
           />
         </div>
       </div>

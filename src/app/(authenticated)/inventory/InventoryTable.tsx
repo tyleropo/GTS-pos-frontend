@@ -1,61 +1,130 @@
-import React, { useState } from 'react'
-import { InventoryItem } from '@/src/types/inventory'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
-import { Button } from '@/src/components/ui/button'
-import { Input } from '@/src/components/ui/input'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Plus, Trash2 } from 'lucide-react'
-import { Badge } from '@/src/components/ui/badge'
+import { useMemo, useState } from "react";
+import type { InventoryItem } from "@/src/types/inventory";
+import type { Category } from "@/src/lib/api/products";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuItem,
+} from "@/src/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/src/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import {
+  Search,
+  Filter,
+  AlertCircle,
+  MoreHorizontal,
+  Edit,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "@/src/components/ui/badge";
+import { Skeleton } from "@/src/components/ui/skeleton";
 
+type InventoryTableProps = {
+  items: InventoryItem[];
+  categories: Category[];
+  isLoading?: boolean;
+};
 
-const InventoryTable = ({items}: {items:InventoryItem[]}) => {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
+const deriveStatus = (item: InventoryItem) => {
+  if (item.stock_quantity <= 0) return "out-of-stock";
+  if (item.stock_quantity <= item.reorder_level) return "low-stock";
+  return "in-stock";
+};
 
-    // Apply filters
-  const filteredItems = items.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchQuery.toLowerCase())
+const statusLabel: Record<string, string> = {
+  "in-stock": "In Stock",
+  "low-stock": "Low Stock",
+  "out-of-stock": "Out of Stock",
+};
 
-    const matchesCategory =
-      categoryFilter === "all" || item.category.toLowerCase() === categoryFilter.toLowerCase()
+export function InventoryTable({
+  items,
+  categories,
+  isLoading,
+}: InventoryTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-    const matchesStatus =
-      statusFilter === "all" || item.status.toLowerCase().replace(" ", "-") === statusFilter.toLowerCase()
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const normalizedStatus = deriveStatus(item);
 
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+      const matchesStatus =
+        statusFilter === "all" || normalizedStatus === statusFilter;
+
+      const matchesCategory =
+        categoryFilter === "all" ||
+        item.category_id === categoryFilter ||
+        item.category?.id === categoryFilter;
+
+      const searchTerm = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !searchTerm ||
+        [item.name, item.sku, item.barcode, item.category?.name, item.supplier?.company_name]
+          .filter(Boolean)
+          .some((value) => value?.toLowerCase().includes(searchTerm));
+
+      return matchesStatus && matchesCategory && matchesSearch;
+    });
+  }, [categoryFilter, items, searchQuery, statusFilter]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Tabs */}
-      <Tabs defaultValue="all">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <TabsList>
+      <Tabs
+        defaultValue="all"
+        value={statusFilter}
+        onValueChange={setStatusFilter}
+        className="space-y-4"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="w-full max-w-xl justify-start">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
             <TabsTrigger value="out-of-stock">Out of Stock</TabsTrigger>
           </TabsList>
 
-          {/* Search + Filter */}
-          <div className="flex flex-1 items-center gap-2 max-w-md ml-auto">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex w-full max-w-md items-center gap-2 sm:w-auto">
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search name, SKU, or supplier..."
+                placeholder="Search by name, SKU, or supplier..."
                 className="pl-8"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
 
-            {/* Filter Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -63,37 +132,47 @@ const InventoryTable = ({items}: {items:InventoryItem[]}) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-64" align="end">
-                <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+                <DropdownMenuLabel>Filter inventory</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-
-                {/* Category Filter */}
-                <div className="p-2">
-                  <p className="text-sm font-medium mb-1">Category</p>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-full">
+                <div className="space-y-2 p-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Category
+                  </p>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={setCategoryFilter}
+                  >
+                    <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="computers">Computers</SelectItem>
-                      <SelectItem value="accessories">Accessories</SelectItem>
+                      <SelectItem value="all">All categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Status Filter */}
-                <div className="p-2">
-                  <p className="text-sm font-medium mb-1">Status</p>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full">
+                <div className="space-y-2 p-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Availability
+                  </p>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="all">Show all</SelectItem>
                       <SelectItem value="in-stock">In Stock</SelectItem>
                       <SelectItem value="low-stock">Low Stock</SelectItem>
-                      <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                      <SelectItem value="out-of-stock">
+                        Out of Stock
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -102,16 +181,16 @@ const InventoryTable = ({items}: {items:InventoryItem[]}) => {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="rounded-md border">
+        <div className="overflow-hidden rounded-xl border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
+                <TableHead>SKU / Barcode</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">On Hand</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Supplier</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -120,70 +199,86 @@ const InventoryTable = ({items}: {items:InventoryItem[]}) => {
             <TableBody>
               {filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    No products found.
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    No products match the current filters.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.sku}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      {item.stock}
-                      {item.stock <= item.reorderLevel && (
-                        <AlertCircle className="inline h-4 w-4 text-amber-500 ml-1" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          item.status === "In Stock"
-                            ? "outline"
-                            : item.status === "Low Stock"
-                              ? "secondary"
-                              : "destructive"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{item.supplier}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Adjust Stock
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredItems.map((item) => {
+                  const status = deriveStatus(item);
+                  const stockBadgeVariant =
+                    status === "in-stock"
+                      ? "outline"
+                      : status === "low-stock"
+                        ? "secondary"
+                        : "destructive";
+
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span>{item.sku}</span>
+                          {item.barcode ? (
+                            <span className="text-xs text-muted-foreground">
+                              {item.barcode}
+                            </span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.category?.name ?? "—"}</TableCell>
+                      <TableCell className="text-right">
+                        ₱{item.cost_price.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₱{item.selling_price.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.stock_quantity}
+                        {status !== "in-stock" ? (
+                          <AlertCircle className="ml-1 inline h-4 w-4 text-amber-500" />
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={stockBadgeVariant}>
+                          {statusLabel[status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {item.supplier?.company_name ?? "Unassigned"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Adjust stock
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Archive product
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
       </Tabs>
     </div>
-  )
+  );
 }
-
-export default InventoryTable
