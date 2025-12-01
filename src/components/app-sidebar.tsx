@@ -11,6 +11,7 @@ import {
   IconUsers,
   IconFileText,
   IconDeviceImacCog,
+  IconReceipt,
 } from "@tabler/icons-react"
 
 
@@ -58,6 +59,11 @@ const data = {
       icon: IconUsers,
     },
     {
+      title: "Billing",
+      url: "/billing",
+      icon: IconReceipt,
+    },
+    {
       title: "Purchase Orders",
       url: "/purchase-orders",
       icon: IconFileText,
@@ -75,7 +81,7 @@ const data = {
       icon: IconSettings,
     },
   ],
-  
+
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -84,10 +90,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     () =>
       user
         ? {
-            name: `${user.first_name} ${user.last_name}`,
-            email: user.email,
-            avatar: null as string | null,
-          }
+          name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          avatar: null as string | null,
+        }
         : undefined,
     [user]
   )
