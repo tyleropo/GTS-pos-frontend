@@ -389,6 +389,399 @@ These endpoints power the mock tables currently displayed on `/repairs`, `/custo
 
 ---
 
+## 4. Controllers – Detailed Guide
+
+This section shows the concrete controller structure, route definitions, and resource responses the frontend expects.
+
+> Tip: Namespace your API controllers under `App\Http\Controllers\Api` to keep them separate from server-rendered routes.
+
+### 4.1 ProductController
+
+```php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
+use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+class ProductController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Product::with(['category', 'supplier'])
+            ->when($request->search, function ($q, $term) {
+                $q->where(function ($inner) use ($term) {
+                    $inner->where('name', 'like', "%{$term}%")
+                        ->orWhere('sku', 'like', "%{$term}%")
+                        ->orWhere('barcode', 'like', "%{$term}%");
+                });
+            })
+            ->when($request->category_id, fn ($q, $categoryId) => $q->where('category_id', $categoryId))
+            ->when($request->boolean('low_stock'), fn ($q) => $q->whereColumn('stock_quantity', '<=', 'reorder_level'));
+
+        $products = $query->paginate($request->integer('per_page', 24));
+
+        return ProductResource::collection($products);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $this->validatePayload($request);
+        $product = Product::create($validated);
+
+        return new ProductResource($product->load(['category', 'supplier']));
+    }
+
+    public function show(Product $product)
+    {
+        return new ProductResource($product->load(['category', 'supplier']));
+    }
+
+    public function update(Request $request, Product $product)
+    {
+        $validated = $this->validatePayload($request, $product->id);
+        $product->update($validated);
+
+        return new ProductResource($product->refresh()->load(['category', 'supplier']));
+    }
+
+    public function destroy(Product $product): Response
+    {
+        $product->delete();
+
+        return response()->noContent();
+    }
+
+    protected function validatePayload(Request $request, string $productId = null): array
+    {
+        return $request->validate([
+            'sku' => ['required', 'string', 'max:100', 'unique:products,sku,' . $productId],
+            'barcode' => ['nullable', 'string', 'max:150', 'unique:products,barcode,' . $productId],
+            'name' => ['required', 'string'],
+            'description' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'brand' => ['nullable', 'string'],
+            'model' => ['nullable', 'string'],
+            'cost_price' => ['required', 'numeric'],
+            'selling_price' => ['required', 'numeric'],
+            'stock_quantity' => ['required', 'integer'],
+            'reorder_level' => ['required', 'integer'],
+            'markup_percentage' => ['nullable', 'numeric'],
+            'tax_rate' => ['nullable', 'numeric'],
+            'unit_of_measure' => ['nullable', 'string'],
+            'weight' => ['nullable', 'numeric'],
+            'dimensions' => ['nullable', 'string'],
+            'image_url' => ['nullable', 'string'],
+            'is_active' => ['sometimes', 'boolean'],
+            'is_serialized' => ['sometimes', 'boolean'],
+            'warranty_period' => ['nullable', 'integer'],
+        ]);
+    }
+}
+```
+
+**Routes**
+
+```php
+Route::prefix('products')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/low-stock', [LowStockController::class, '__invoke']);
+    Route::get('/top-selling', [TopSellingController::class, '__invoke']);
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/barcode/{code}', BarcodeLookupController::class);
+    Route::post('/', [ProductController::class, 'store']);
+    Route::get('/{product}', [ProductController::class, 'show']);
+    Route::put('/{product}', [ProductController::class, 'update']);
+    Route::delete('/{product}', [ProductController::class, 'destroy']);
+});
+```
+
+### 4.2 DashboardController
+
+```php
+class DashboardController extends Controller
+{
+    public function metrics()
+    {
+        return [
+            ['title' => 'Revenue', 'value' => '₱120k', 'trend' => 'up', 'percentage' => '12.5'],
+            // ...compute from Transactions table
+        ];
+    }
+
+    public function recentActivity()
+    {
+        return ActivityLog::latest()->take(10)->get()->map(fn ($log) => [
+            'id' => $log->id,
+            'title' => $log->summary,
+            'description' => $log->details,
+            'time' => $log->created_at->toIso8601String(),
+        ]);
+    }
+
+    public function lowStock()
+    {
+        return ProductResource::collection(
+            Product::whereColumn('stock_quantity', '<=', 'reorder_level')
+                ->orderBy('stock_quantity')
+                ->take(10)
+                ->get()
+        );
+    }
+
+    public function topSelling()
+    {
+        return ProductResource::collection(
+            Product::withSum('transactions as total_sold', 'quantity')
+                ->orderByDesc('total_sold')
+                ->take(10)
+                ->get()
+        );
+    }
+
+    public function pendingRepairs()
+    {
+        return RepairResource::collection(
+            Repair::where('status', 'pending')
+                ->orderBy('promised_at')
+                ->take(10)
+                ->get()
+        );
+    }
+}
+```
+
+### 4.3 RepairController, CustomerController, TransactionController, PurchaseOrderController
+
+These can all be standard API resources. Example for repairs:
+
+```php
+class RepairController extends Controller
+{
+    public function index()
+    {
+        return RepairResource::collection(
+            Repair::with('customer')->paginate()
+        );
+    }
+
+    public function store(StoreRepairRequest $request)
+    {
+        $repair = Repair::create($request->validated());
+        return new RepairResource($repair->load('customer'));
+    }
+
+    public function update(UpdateRepairRequest $request, Repair $repair)
+    {
+        $repair->update($request->validated());
+        return new RepairResource($repair->refresh()->load('customer'));
+    }
+
+    public function destroy(Repair $repair)
+    {
+        $repair->delete();
+        return response()->noContent();
+    }
+}
+```
+
+**Requests:** use form request classes (`StoreRepairRequest`, `UpdateRepairRequest`) to validate fields (`ticket_number`, `customer_id`, `status`, etc.).
+
+The same pattern applies to:
+
+- `CustomerController` (CRUD for customer records, plus search endpoints).
+- `TransactionController` (create transactions, list by date, show receipt).
+- `PurchaseOrderController` (manage PO lifecycle: draft → submitted → received).
+
+---
+
+### 4.4 CustomerController
+
+```php
+class CustomerController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Customer::query()
+            ->when($request->search, function ($q, $term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")
+                    ->orWhere('phone', 'like', "%{$term}%");
+            });
+
+        return CustomerResource::collection(
+            $query->orderBy('name')->paginate($request->integer('per_page', 25))
+        );
+    }
+
+    public function store(StoreCustomerRequest $request)
+    {
+        $customer = Customer::create($request->validated());
+        return new CustomerResource($customer);
+    }
+
+    public function show(Customer $customer)
+    {
+        return new CustomerResource($customer);
+    }
+
+    public function update(UpdateCustomerRequest $request, Customer $customer)
+    {
+        $customer->update($request->validated());
+        return new CustomerResource($customer->refresh());
+    }
+
+    public function destroy(Customer $customer)
+    {
+        $customer->delete();
+        return response()->noContent();
+    }
+}
+```
+
+Routes: `Route::apiResource('customers', CustomerController::class);`
+
+### 4.5 TransactionController
+
+```php
+class TransactionController extends Controller
+{
+    public function index(Request $request)
+    {
+        return TransactionResource::collection(
+            Transaction::with('customer')
+                ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+                ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
+                ->orderByDesc('created_at')
+                ->paginate($request->integer('per_page', 50))
+        );
+    }
+
+    public function store(StoreTransactionRequest $request)
+    {
+        $transaction = DB::transaction(function () use ($request) {
+            $payload = $request->validated();
+            $items = collect($payload['items'] ?? []);
+
+            $transaction = Transaction::create([
+                'invoice_number' => Str::uuid(),
+                'customer_id' => $payload['customer_id'] ?? null,
+                'subtotal' => $payload['subtotal'],
+                'tax' => $payload['tax'],
+                'total' => $payload['total'],
+                'payment_method' => $payload['payment_method'],
+                'items' => $items,
+                'meta' => $payload['meta'] ?? [],
+            ]);
+
+            foreach ($items as $item) {
+                $transaction->products()->attach($item['product_id'], [
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'line_total' => $item['line_total'],
+                ]);
+
+                Product::where('id', $item['product_id'])->decrement('stock_quantity', $item['quantity']);
+            }
+
+            return $transaction;
+        });
+
+        return new TransactionResource($transaction->load('customer'));
+    }
+}
+```
+
+Routes: `Route::apiResource('transactions', TransactionController::class)->except(['update']);`
+
+### 4.6 PurchaseOrderController
+
+```php
+class PurchaseOrderController extends Controller
+{
+    public function index(Request $request)
+    {
+        return PurchaseOrderResource::collection(
+            PurchaseOrder::with('supplier')
+                ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+                ->orderByDesc('created_at')
+                ->paginate()
+        );
+    }
+
+    public function store(StorePurchaseOrderRequest $request)
+    {
+        $po = PurchaseOrder::create($request->validated());
+        return new PurchaseOrderResource($po->load('supplier'));
+    }
+
+    public function update(UpdatePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->update($request->validated());
+        return new PurchaseOrderResource($purchaseOrder->refresh()->load('supplier'));
+    }
+
+    public function receive(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->update(['status' => 'received']);
+
+        foreach ($purchaseOrder->items as $item) {
+            Product::where('id', $item['product_id'])->increment('stock_quantity', $item['quantity']);
+        }
+
+        return new PurchaseOrderResource($purchaseOrder->refresh());
+    }
+}
+```
+
+Routes:
+
+```php
+Route::apiResource('purchase-orders', PurchaseOrderController::class);
+Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
+```
+
+### 4.7 RepairController (extended)
+
+Add filtering for status/date ranges and attachments:
+
+```php
+class RepairController extends Controller
+{
+    public function index(Request $request)
+    {
+        return RepairResource::collection(
+            Repair::with('customer')
+                ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+                ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+                ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
+                ->orderByDesc('created_at')
+                ->paginate($request->integer('per_page', 25))
+        );
+    }
+
+    public function addAttachment(Repair $repair, Request $request)
+    {
+        $path = $request->file('attachment')->store('repairs');
+        $repair->attachments()->create(['path' => $path, 'uploaded_by' => $request->user()->id]);
+
+        return response()->json(['path' => $path]);
+    }
+}
+```
+
+Routes:
+
+```php
+Route::apiResource('repairs', RepairController::class);
+Route::post('repairs/{repair}/attachments', [RepairController::class, 'addAttachment']);
+```
+
+---
+
 ## 5. Authentication
 
 The frontend expects token-based auth with refresh support:

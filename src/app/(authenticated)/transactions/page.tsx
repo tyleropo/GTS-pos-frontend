@@ -2,7 +2,6 @@
 
 import { SiteHeader } from "@/src/components/site-header";
 import TransactionStats from "./TransactionStats";
-import mockTransactions from "@/src/data/mockTransactions";
 import TransactionsTable from "./TransactionsTable";
 import {
   Card,
@@ -11,8 +10,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { fetchTransactions } from "@/src/lib/api/transactions";
+import { useEffect, useState } from "react";
+import type { Transaction } from "@/src/types/transactions";
+import { adaptTransaction } from "@/src/lib/adapters";
 
 function TransactionsPage() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchTransactions();
+        const adapted = response.data.map(adaptTransaction);
+        setTransactions(adapted);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load transactions");
+        console.error("Error loading transactions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Transactions"
+          subtitle="Audit historical sales activity and reconcile tender sources."
+        />
+        <div className="p-4">
+          <p className="text-muted-foreground">Loading transactions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Transactions"
+          subtitle="Audit historical sales activity and reconcile tender sources."
+        />
+        <div className="p-4">
+          <p className="text-destructive">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       <SiteHeader
@@ -20,7 +74,7 @@ function TransactionsPage() {
         subtitle="Audit historical sales activity and reconcile tender sources."
       />
       <div className="p-4">
-        <TransactionStats transactions={mockTransactions} />
+        <TransactionStats transactions={transactions} />
         <div className="mt-6">
           <Card>
             <CardHeader>
@@ -32,7 +86,7 @@ function TransactionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TransactionsTable transactions={mockTransactions} />
+              <TransactionsTable transactions={transactions} />
             </CardContent>
           </Card>
         </div>

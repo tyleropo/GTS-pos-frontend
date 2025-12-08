@@ -1,7 +1,6 @@
 "use client";
 
 import { SiteHeader } from "@/src/components/site-header";
-import { customers } from "@/src/data/mockCustomers";
 import { CustomerTable } from "./CustomerTable";
 import CustomerStats from "./CustomerStats";
 import {
@@ -13,8 +12,63 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
+import { fetchCustomers } from "@/src/lib/api/customers";
+import { useEffect, useState } from "react";
+import type { Customer } from "@/src/types/customer";
+import { adaptCustomer } from "@/src/lib/adapters";
 
 function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchCustomers();
+        const adapted = response.data.map(adaptCustomer);
+        setCustomers(adapted);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load customers");
+        console.error("Error loading customers:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCustomers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Customers"
+          subtitle="Review customer health, lifetime value, and relationship status."
+        />
+        <div className="p-4">
+          <p className="text-muted-foreground">Loading customers...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Customers"
+          subtitle="Review customer health, lifetime value, and relationship status."
+        />
+        <div className="p-4">
+          <p className="text-destructive">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       <SiteHeader
