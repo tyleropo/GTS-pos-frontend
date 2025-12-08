@@ -1,9 +1,8 @@
 "use client";
+
 import { SiteHeader } from "@/src/components/site-header";
-import React, { useState } from "react";
 import TransactionStats from "./TransactionStats";
 import mockTransactions from "@/src/data/mockTransactions";
-import type { Transaction } from "@/src/types/transactions";
 import TransactionsTable from "./TransactionsTable";
 import {
   Card,
@@ -13,29 +12,33 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 
-const Page = () => {
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+function TransactionsPage() {
   return (
-    <div>
-      <SiteHeader title="Transactions" />
+    <div className="flex flex-col">
+      <SiteHeader
+        title="Transactions"
+        subtitle="Audit historical sales activity and reconcile tender sources."
+      />
       <div className="p-4">
-        <TransactionStats transactions={transactions} />
+        <TransactionStats transactions={mockTransactions} />
         <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold flex justify-between">Transaction List
-            </CardTitle>
-            <CardDescription>View and Manage all sales transactions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-          <TransactionsTable transactions={transactions} />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex justify-between text-2xl font-bold">
+                Transaction list
+              </CardTitle>
+              <CardDescription>
+                View and manage all sales transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TransactionsTable transactions={mockTransactions} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default Page;
+export default TransactionsPage;

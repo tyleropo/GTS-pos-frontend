@@ -3,15 +3,10 @@
 import { apiClient } from "@/src/lib/api-client";
 import { z } from "zod";
 
-const userRoleSchema = z.enum([
-  "admin",
-  "manager",
-  "cashier",
-  "technician",
-]);
+const userRoleSchema = z.enum(["admin", "manager", "cashier", "technician"]);
 
 export const userSchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([z.string(), z.number()]),
   email: z.string().email(),
   first_name: z.string(),
   last_name: z.string(),
@@ -67,20 +62,20 @@ export type RegisterPayload = {
 };
 
 export async function login(payload: LoginPayload) {
-  const { data } = await apiClient.post("/auth/login", payload);
+  const { data } = await apiClient.post("/login", payload);
   return authResponseSchema.parse(data);
 }
 
 export async function register(payload: RegisterPayload) {
-  const { data } = await apiClient.post("/auth/register", payload);
+  const { data } = await apiClient.post("/register", payload);
   return authResponseSchema.parse(data);
 }
 
 export async function logout() {
-  await apiClient.post("/auth/logout");
+  await apiClient.post("/logout");
 }
 
 export async function fetchCurrentUser() {
-  const { data } = await apiClient.get("/auth/me");
+  const { data } = await apiClient.get("/me");
   return userSchema.parse(data);
 }

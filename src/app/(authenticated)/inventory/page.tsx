@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/src/components/site-header";
 import { InventoryStats } from "@/src/app/(authenticated)/inventory/InventoryStats";
 import { InventoryTable } from "@/src/app/(authenticated)/inventory/InventoryTable";
@@ -13,99 +13,147 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { Plus } from "lucide-react";
-import { fetchProductCategories, fetchProducts, createProduct } from "@/src/lib/api/products";
-import type { InventoryItem, NewInventoryItem } from "@/src/types/inventory";
-import type { Category } from "@/src/lib/api/products";
+import { Plus, RefreshCcw } from "lucide-react";
+import { createProduct } from "@/src/lib/api/products";
+import type { NewInventoryItem } from "@/src/types/inventory";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { toast } from "sonner";
-// TODO Add a component for the new product button
+import {
+  useProductCategoriesList,
+  useProductsQuery,
+} from "@/src/hooks/use-products-data";
+
 export default function InventoryPage() {
-  const [products, setProducts] = useState<InventoryItem[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
 
-  const loadInventory = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        fetchProducts({ per_page: 100 }),
-        fetchProductCategories(),
-      ]);
-      setProducts(productsResponse.data);
-      setCategories(categoriesResponse);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to load inventory data.";
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    error: categoriesError,
+    refresh: refreshCategories,
+  } = useProductCategoriesList();
+
+  const productQuery = useMemo(
+    () => ({
+      per_page: 100,
+    }),
+    []
+  );
+
+  const {
+    products,
+    isLoading: isLoadingProducts,
+    error: productsError,
+    refresh: refreshProducts,
+    setProducts: setFetchedProducts,
+  } = useProductsQuery(productQuery, { enabled: true });
 
   useEffect(() => {
-    void loadInventory();
-  }, [loadInventory]);
-
-  const handleCreateProduct = async (payload: NewInventoryItem) => {
-    setIsSaving(true);
-    try {
-      const product = await createProduct(payload);
-      setProducts((prev) => [product, ...prev]);
-      toast.success(`Added ${product.name} to inventory.`);
-      setIsModalOpen(false);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to create product. Please try again.";
-      toast.error(message);
-    } finally {
-      setIsSaving(false);
+    if (productsError) {
+      toast.error(productsError.message);
     }
-  };
+  }, [productsError]);
+
+  useEffect(() => {
+    if (categoriesError) {
+      toast.error(categoriesError.message);
+    }
+  }, [categoriesError]);
+
+  const isLoading = isLoadingProducts || isLoadingCategories;
+
+  const handleSyncInventory = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      await Promise.all([refreshProducts(), refreshCategories()]);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refreshCategories, refreshProducts]);
+
+  const handleCreateProduct = useCallback(
+    async (payload: NewInventoryItem) => {
+      setIsSaving(true);
+      try {
+        const product = await createProduct(payload);
+        setFetchedProducts((prev) => [product, ...prev]);
+        toast.success(`Added ${product.name} to inventory.`);
+        setIsModalOpen(false);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to create product. Please try again.";
+        toast.error(message);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [setFetchedProducts]
+  );
+
+  const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
+
+  const headerActions = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleSyncInventory}
+          disabled={isSyncing}
+          aria-label="Refresh inventory"
+        >
+          <RefreshCcw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+        </Button>
+        <Button size="sm" onClick={handleOpenModal}>
+          <Plus className="mr-2 h-4 w-4" />
+          New product
+        </Button>
+      </div>
+    ),
+    [handleOpenModal, handleSyncInventory, isSyncing]
+  );
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-svh flex-col bg-background">
       <SiteHeader
         title="Inventory management"
         subtitle="Track product availability, valuation, and stocking actions."
-        actions={
-          <Button size="sm" onClick={() => setIsModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New product
-          </Button>
-        }
+        actions={headerActions}
       />
 
-      <div className="space-y-6 p-4 lg:p-6">
-        {isLoading ? (
-          <Skeleton className="h-32 rounded-xl" />
-        ) : (
-          <InventoryStats items={products} />
-        )}
+      <div className="flex-1 space-y-6 px-4 py-4 lg:p-6">
+        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          {isLoading ? (
+            <Skeleton className="h-32 rounded-xl" />
+          ) : (
+        <InventoryStats items={products} />
+          )}
+        </section>
 
-        <Card>
-          <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="border-none shadow-none lg:border lg:shadow-sm">
+          <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <CardTitle className="text-2xl font-semibold">
+              <CardTitle className="text-xl font-semibold">
                 Inventory catalogue
               </CardTitle>
               <CardDescription>
-                Manage stock levels, pricing, and category assignments for all
-                products synced from Laravel.
+                Manage stock levels, pricing, and category assignments for every
+                listed product.
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add product
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" onClick={handleOpenModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add product
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             <InventoryTable
               items={products}
               categories={categories}
@@ -117,7 +165,7 @@ export default function InventoryPage() {
 
       <AddProductModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onCreate={handleCreateProduct}
         categories={categories}
         isSaving={isSaving}

@@ -35,9 +35,11 @@ import {
   Edit,
   Plus,
   Trash2,
+  QrCode,
 } from "lucide-react";
 import { Badge } from "@/src/components/ui/badge";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
 
 type InventoryTableProps = {
   items: InventoryItem[];
@@ -65,6 +67,7 @@ export function InventoryTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -113,8 +116,8 @@ export function InventoryTable({
             <TabsTrigger value="out-of-stock">Out of Stock</TabsTrigger>
           </TabsList>
 
-          <div className="flex w-full max-w-md items-center gap-2 sm:w-auto">
-            <div className="relative w-full">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
@@ -124,6 +127,14 @@ export function InventoryTable({
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => setIsScannerOpen(true)}
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              Scan SKU
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -279,6 +290,16 @@ export function InventoryTable({
           </Table>
         </div>
       </Tabs>
+      <CameraBarcodeScanner
+        open={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onDetected={(code) => {
+          setSearchQuery(code);
+          setIsScannerOpen(false);
+        }}
+        title="Scan SKU or barcode"
+        description="Use your camera to locate products instantly."
+      />
     </div>
   );
 }

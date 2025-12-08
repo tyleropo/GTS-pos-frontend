@@ -2,6 +2,7 @@
 
 import { apiClient } from "@/src/lib/api-client";
 import { z } from "zod";
+import type { AxiosRequestConfig } from "axios";
 
 const paginationMetaSchema = z
   .object({
@@ -13,14 +14,14 @@ const paginationMetaSchema = z
   .passthrough();
 
 export const categorySchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([z.string(), z.number()]),
   name: z.string(),
   description: z.string().nullable().optional(),
   parent_id: z.string().nullable().optional(),
 });
 
 export const supplierSchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([z.string(), z.number()]),
   supplier_code: z.string().optional(),
   company_name: z.string().optional(),
   contact_person: z.string().nullable().optional(),
@@ -35,7 +36,7 @@ const priceNumber = z.union([z.number(), z.string()]).transform((val) => {
 });
 
 export const productSchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([z.string(), z.number()]),
   sku: z.string(),
   barcode: z.string().nullable(),
   name: z.string(),
@@ -83,8 +84,15 @@ export type FetchProductsParams = {
   low_stock?: boolean;
 };
 
-export async function fetchProducts(params?: FetchProductsParams) {
-  const { data } = await apiClient.get("/products", { params });
+export async function fetchProducts(
+  params?: FetchProductsParams,
+  config?: AxiosRequestConfig
+) {
+  const requestConfig: AxiosRequestConfig = {
+    params,
+    ...config,
+  };
+  const { data } = await apiClient.get("/products", requestConfig);
   return paginatedProductSchema.parse(data);
 }
 
@@ -93,13 +101,16 @@ export async function fetchLowStockProducts() {
   return z.array(productSchema).parse(data);
 }
 
-export async function fetchProductCategories() {
-  const { data } = await apiClient.get("/products/categories");
+export async function fetchProductCategories(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/products/categories", config);
   return z.array(categorySchema).parse(data);
 }
 
-export async function fetchProductByBarcode(barcode: string) {
-  const { data } = await apiClient.get(`/products/barcode/${barcode}`);
+export async function fetchProductByBarcode(
+  barcode: string,
+  config?: AxiosRequestConfig
+) {
+  const { data } = await apiClient.get(`/products/barcode/${barcode}`, config);
   return productSchema.parse(data);
 }
 
