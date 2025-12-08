@@ -201,73 +201,77 @@ export default function POSPage() {
         }
       />
 
-      <div className="flex-1 space-y-6 px-4 py-4 lg:p-6">
-        <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm lg:shadow-none">
-          <div className="space-y-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex-1">
-                <BarcodeInput
-                  onScan={handleScan}
-                  placeholder="Enter or paste a barcode, then press Enter"
+      <div className="flex-1 px-4 py-4 lg:p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex-1 space-y-6">
+            <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm lg:shadow-none">
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex-1">
+                    <BarcodeInput
+                      onScan={handleScan}
+                      placeholder="Enter or paste a barcode, then press Enter"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                    onClick={() => setIsScannerOpen(true)}
+                  >
+                    <QrCode className="mr-2 h-4 w-4" />
+                    Scan with camera
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Search by name, SKU, or keyword"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full"
+                  aria-label="Search products"
                 />
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full sm:w-auto"
-                onClick={() => setIsScannerOpen(true)}
-              >
-                <QrCode className="mr-2 h-4 w-4" />
-                Scan with camera
-              </Button>
-            </div>
-            <Input
-              placeholder="Search by name, SKU, or keyword"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-full"
-              aria-label="Search products"
-            />
-          </div>
-          <div className="overflow-x-auto">
-            <ProductFilterTabs
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelect={setSelectedCategoryId}
-            />
-          </div>
-        </section>
-
-        <section className="rounded-2xl border bg-card p-4 shadow-sm lg:p-6">
-          {isLoadingProducts ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <Skeleton key={index} className="h-48 rounded-xl" />
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-              No products match the selected filters.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAdd={addProductToCart}
+              <div className="overflow-x-auto">
+                <ProductFilterTabs
+                  categories={categories}
+                  selectedCategoryId={selectedCategoryId}
+                  onSelect={setSelectedCategoryId}
                 />
-              ))}
-            </div>
-          )}
-        </section>
+              </div>
+            </section>
 
-        <div className="hidden lg:block">
-          <CartPanel
-            items={cartItems}
-            onClear={handleClearCart}
-            onCheckout={handleCheckout}
-          />
+            <section className="rounded-2xl border bg-card p-4 shadow-sm lg:p-6">
+              {isLoadingProducts ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <Skeleton key={index} className="h-48 rounded-xl" />
+                  ))}
+                </div>
+              ) : products.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                  No products match the selected filters.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAdd={addProductToCart}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          <div className="hidden lg:block lg:w-[360px] xl:w-[420px]">
+            <CartPanel
+              items={cartItems}
+              onClear={handleClearCart}
+              onCheckout={handleCheckout}
+            />
+          </div>
         </div>
       </div>
 

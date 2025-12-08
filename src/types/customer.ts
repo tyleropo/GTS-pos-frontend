@@ -1,12 +1,17 @@
 export type Customer = {
-  id: number
-  name: string
-  email: string
-  phone: string
-  address: string
-  totalSpent: number
-  orders: number
-  lastPurchase: string // could be Date, but string is fine for now
-  status: "Active" | "Inactive"
-  type: "Regular" | "VIP"
-}
+  id: number | string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  company?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  // Computed from backend
+  totalSpent?: number;
+  orders?: number;
+  // For UI compatibility - optional fields
+  lastPurchase?: string;
+  status?: "Active" | "Inactive";
+  type?: "Regular" | "VIP";
+};

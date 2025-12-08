@@ -23,15 +23,21 @@ export function adaptCustomer(apiCustomer: APICustomer): Customer {
         ? apiCustomer.id
         : parseInt(apiCustomer.id as string, 10) || 0,
     name: apiCustomer.name,
-    email: apiCustomer.email || "",
-    phone: apiCustomer.phone || "",
-    address: apiCustomer.address || "",
+    email: apiCustomer.email || null,
+    phone: apiCustomer.phone || null,
+    address: apiCustomer.address || null,
+    company: apiCustomer.company || null,
+    created_at: apiCustomer.created_at,
+    updated_at: apiCustomer.updated_at,
     totalSpent: apiCustomer.total_spent || 0,
     orders: apiCustomer.transaction_count || 0,
     lastPurchase:
       apiCustomer.created_at || new Date().toISOString().split("T")[0],
     status: "Active", // Default to Active, can be enhanced based on business logic
-    type: "Regular", // Default to Regular, can be enhanced (e.g., VIP if totalSpent > threshold)
+    type:
+      apiCustomer.total_spent && apiCustomer.total_spent > 100000
+        ? "VIP"
+        : "Regular",
   };
 }
 

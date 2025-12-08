@@ -3,6 +3,8 @@
 import { SiteHeader } from "@/src/components/site-header";
 import { CustomerTable } from "./CustomerTable";
 import CustomerStats from "./CustomerStats";
+import { CustomerFormModal } from "./CustomerFormModal";
+import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 import {
   Card,
   CardDescription,
@@ -22,24 +24,54 @@ function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetchCustomers();
-        const adapted = response.data.map(adaptCustomer);
-        setCustomers(adapted);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load customers");
-        console.error("Error loading customers:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Modal states
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
 
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetchCustomers();
+      const adapted = response.data.map(adaptCustomer);
+      setCustomers(adapted);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load customers");
+      console.error("Error loading customers:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadCustomers();
   }, []);
+
+  const handleAddCustomer = () => {
+    setSelectedCustomer(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsFormModalOpen(true);
+  };
+
+  const handleDeleteCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    loadCustomers();
+  };
+
+  const handleDeleteSuccess = () => {
+    loadCustomers();
+  };
 
   if (loading) {
     return (
@@ -64,6 +96,9 @@ function CustomersPage() {
         />
         <div className="p-4">
           <p className="text-destructive">Error: {error}</p>
+          <Button onClick={loadCustomers} className="mt-4">
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -81,7 +116,7 @@ function CustomersPage() {
           <CardHeader>
             <CardTitle className="flex justify-between text-2xl font-bold">
               Customer database
-              <Button>
+              <Button onClick={handleAddCustomer}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add customer
               </Button>
@@ -91,10 +126,29 @@ function CustomersPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CustomerTable customers={customers} />
+            <CustomerTable
+              customers={customers}
+              onEdit={handleEditCustomer}
+              onDelete={handleDeleteCustomer}
+            />
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <CustomerFormModal
+        open={isFormModalOpen}
+        onOpenChange={setIsFormModalOpen}
+        customer={selectedCustomer || undefined}
+        onSuccess={handleFormSuccess}
+      />
+
+      <DeleteCustomerDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        customer={selectedCustomer}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 }
