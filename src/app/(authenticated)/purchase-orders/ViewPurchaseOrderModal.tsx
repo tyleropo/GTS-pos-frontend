@@ -1,0 +1,212 @@
+"use client";
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Separator } from "@/src/components/ui/separator";
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableHead, 
+    TableHeader, 
+    TableRow 
+} from "@/src/components/ui/table";
+import { Calendar, Package, User, FileText, Download } from "lucide-react";
+import { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
+
+interface ViewPurchaseOrderModalProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    purchaseOrder: APIPurchaseOrder | null;
+    onEdit?: () => void;
+    onDownloadPDF?: () => void;
+}
+
+export function ViewPurchaseOrderModal({
+    open,
+    onOpenChange,
+    purchaseOrder,
+    onEdit,
+    onDownloadPDF,
+}: ViewPurchaseOrderModalProps) {
+    if (!purchaseOrder) return null;
+
+    const getStatusColor = (status: string) => {
+        switch (status.toLowerCase()) {
+            case "received":
+                return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
+            case "submitted":
+                return "bg-blue-100 text-blue-700 hover:bg-blue-100";
+            case "draft":
+                return "bg-amber-100 text-amber-700 hover:bg-amber-100";
+            case "cancelled":
+                return "bg-rose-100 text-rose-700 hover:bg-rose-100";
+            default:
+                return "bg-gray-100 text-gray-700 hover:bg-gray-100";
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center justify-between">
+                        <span>Customer Order Details</span>
+                        <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
+                            {purchaseOrder.status === "draft" ? "Pending" :
+                             purchaseOrder.status === "submitted" ? "Processing" :
+                             purchaseOrder.status === "received" ? "Delivered" :
+                             purchaseOrder.status.charAt(0).toUpperCase() +
+                                purchaseOrder.status.slice(1)}
+                        </Badge>
+                    </DialogTitle>
+                    <DialogDescription>
+                        PO Number: {purchaseOrder.po_number}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                    {/* Order Information */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                                <User className="h-4 w-4 mr-2" />
+                                Customer
+                            </div>
+                            <p className="font-medium">
+                                {purchaseOrder.supplier?.company_name ||
+                                    purchaseOrder.supplier?.supplier_code ||
+                                    "Unknown Supplier"}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Delivery Date
+                            </div>
+                            <p className="font-medium">
+                                {purchaseOrder.expected_at
+                                    ? new Date(purchaseOrder.expected_at).toLocaleDateString()
+                                    : "Not specified"}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Created Date
+                            </div>
+                            <p className="font-medium">
+                                {purchaseOrder.created_at
+                                    ? new Date(purchaseOrder.created_at).toLocaleDateString()
+                                    : "N/A"}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                                <Package className="h-4 w-4 mr-2" />
+                                Total Items
+                            </div>
+                            <p className="font-medium">{purchaseOrder.items?.length || 0}</p>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Line Items */}
+                    <div>
+                        <h3 className="font-semibold mb-3">Order Items</h3>
+                        <div className="border rounded-lg">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Product</TableHead>
+                                        <TableHead className="text-right">Qty Ordered</TableHead>
+                                        <TableHead className="text-right">Qty Shipped</TableHead>
+                                        <TableHead className="text-right">Unit Cost</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+                                        purchaseOrder.items.map((item, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">
+                                                    {item.product_name || item.product_id}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {item.quantity_ordered}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {item.quantity_received || 0}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    ${item.unit_cost.toFixed(2)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    ${item.line_total.toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                No items
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Order Totals */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span className="font-medium">${purchaseOrder.subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tax:</span>
+                            <span className="font-medium">${purchaseOrder.tax.toFixed(2)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between text-base font-bold">
+                            <span>Total:</span>
+                            <span>${purchaseOrder.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Close
+                        </Button>
+                        {onDownloadPDF && (
+                            <Button variant="outline" onClick={onDownloadPDF}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download PDF
+                            </Button>
+                        )}
+                        {onEdit && purchaseOrder.status !== "received" && (
+                            <Button onClick={onEdit}>
+                                Edit Order
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}

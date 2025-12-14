@@ -76,14 +76,16 @@ export type CreatePurchaseOrderPayload = {
     unit_cost: number;
   }>;
   expected_at?: string;
-  status?: "draft" | "submitted";
+  status?: "draft" | "submitted" | "received" | "cancelled";
   subtotal: number;
   tax: number;
   total: number;
   meta?: Record<string, unknown>;
 };
 
-export type UpdatePurchaseOrderPayload = Partial<CreatePurchaseOrderPayload>;
+export type UpdatePurchaseOrderPayload = Partial<CreatePurchaseOrderPayload> & {
+  status?: "draft" | "submitted" | "received" | "cancelled";
+};
 
 export type ReceivePurchaseOrderPayload = {
   items: Array<{

@@ -10,12 +10,33 @@ import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { PurchaseOrder } from '@/src/types/purchaseOrder'
 
-const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]}) => {
+interface PurchaseOrderTableProps {
+  purchaseOrders: PurchaseOrder[];
+  onView?: (po: PurchaseOrder) => void;
+  onEdit?: (po: PurchaseOrder) => void;
+  onDelete?: (po: PurchaseOrder) => void;
+  onReceive?: (po: PurchaseOrder) => void;
+  onMarkAsCompleted?: (po: PurchaseOrder) => void;
+  onCancel?: (po: PurchaseOrder) => void;
+  onDownloadPDF?: (po: PurchaseOrder) => void;
+}
+
+const PurchaseOrderTable = ({
+  purchaseOrders,
+  onView,
+  onEdit,
+  onDelete,
+  onReceive,
+  onMarkAsCompleted,
+  onCancel,
+  onDownloadPDF,
+}: PurchaseOrderTableProps) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
+  const [activeTab, setActiveTab] = useState("all-orders")
 
-  // Filter purchase orders based on search query and filters
+  // Filter purchase orders based on search query, filters, and active tab
   const filteredPOs = purchaseOrders.filter((po) => {
     // Search filter
     const matchesSearch =
@@ -28,18 +49,29 @@ const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]})
     // Payment status filter
     const matchesPayment = paymentFilter === "all" || po.paymentStatus.toLowerCase() === paymentFilter.toLowerCase()
 
-    return matchesSearch && matchesStatus && matchesPayment
+    // Tab filter - filter by status based on active tab
+    let matchesTab = true
+    if (activeTab === "pending") {
+      matchesTab = po.status === "Pending" || po.status === "Draft"
+    } else if (activeTab === "processing") {
+      matchesTab = po.status === "Processing" || po.status === "Submitted"
+    } else if (activeTab === "completed") {
+      matchesTab = po.status === "Completed" || po.status === "Received" || po.status === "Delivered"
+    }
+    // activeTab === "all-orders" matches everything
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesTab
   })
   return (
     
    
-          <Tabs defaultValue="all-orders" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <TabsList>
                 <TabsTrigger value="all-orders">All Orders</TabsTrigger>
                 <TabsTrigger value="pending">Pending</TabsTrigger>
                 <TabsTrigger value="processing">Processing</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="completed">Delivered</TabsTrigger>
               </TabsList>
 
               <div className="flex flex-1 items-center gap-2 max-w-md ml-auto">
@@ -94,12 +126,12 @@ const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]})
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="icon">
+                {/* <Button variant="outline" size="icon">
                   <Calendar className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="icon">
                   <Download className="h-4 w-4" />
-                </Button>
+                </Button> */}
               </div>
             </div>
 
@@ -132,26 +164,29 @@ const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]})
                         <TableCell>{po.date}</TableCell>
                         <TableCell>{po.customer}</TableCell>
                         <TableCell className="text-right">{po.items}</TableCell>
-                        <TableCell className="text-right font-medium">${po.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">₱{po.total.toFixed(2)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
                             className={
-                              po.status === "Completed"
+                              po.status === "Completed" || po.status === "Received" || po.status === "Delivered"
                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : po.status === "Processing"
+                                : po.status === "Processing" || po.status === "Submitted"
                                   ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                                  : po.status === "Pending"
+                                  : po.status === "Pending" || po.status === "Draft"
                                     ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
                                     : "bg-rose-100 text-rose-700 hover:bg-rose-100"
                             }
                           >
                             <span className="flex items-center">
-                              {po.status === "Processing" && <Clock className="h-3.5 w-3.5 mr-1" />}
-                              {po.status === "Completed" && <CheckCircle className="h-3.5 w-3.5 mr-1" />}
-                              {po.status === "Pending" && <AlertCircle className="h-3.5 w-3.5 mr-1" />}
+                              {(po.status === "Processing" || po.status === "Submitted") && <Clock className="h-3.5 w-3.5 mr-1" />}
+                              {(po.status === "Completed" || po.status === "Received" || po.status === "Delivered") && <CheckCircle className="h-3.5 w-3.5 mr-1" />}
+                              {(po.status === "Pending" || po.status === "Draft") && <AlertCircle className="h-3.5 w-3.5 mr-1" />}
                               {po.status === "Cancelled" && <XCircle className="h-3.5 w-3.5 mr-1" />}
-                              {po.status}
+                              {po.status === "Draft" ? "Pending" :
+                               po.status === "Submitted" ? "Processing" :
+                               po.status === "Received" ? "Delivered" :
+                               po.status}
                             </span>
                           </Badge>
                         </TableCell>
@@ -171,7 +206,7 @@ const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]})
                         </TableCell>
                         <TableCell>{po.deliveryDate}</TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
@@ -180,29 +215,44 @@ const PurchaseOrderTable = ({purchaseOrders} : {purchaseOrders:PurchaseOrder[]})
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  onView?.(po);
+                                }}
+                                onSelect={(e) => e.preventDefault()}
+                              >
                                 <FileText className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  onEdit?.(po);
+                                }}
+                                onSelect={(e) => e.preventDefault()}
+                              >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Order
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onDownloadPDF?.(po)}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
                               </DropdownMenuItem>
-                              {po.status !== "Completed" && po.status !== "Cancelled" && (
+                              {po.status !== "Completed" && po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Delivered" && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onMarkAsCompleted?.(po)}>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Mark as Completed
+                                    Mark as Delivered
                                   </DropdownMenuItem>
                                 </>
                               )}
                               {po.status !== "Cancelled" && (
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => onCancel?.(po)}
+                                >
                                   <XCircle className="h-4 w-4 mr-2" />
                                   Cancel Order
                                 </DropdownMenuItem>
