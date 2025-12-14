@@ -34,7 +34,9 @@ import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
 
 type CartAction =
   | { type: "add"; product: Product }
-  | { type: "clear" };
+  | { type: "clear" }
+  | { type: "updateQuantity"; id: string; quantity: number }
+  | { type: "removeItem"; id: string };
 
 function cartReducer(state: CartLineItem[], action: CartAction) {
   switch (action.type) {
@@ -57,6 +59,12 @@ function cartReducer(state: CartLineItem[], action: CartAction) {
         },
       ];
     }
+    case "updateQuantity":
+      return state.map((item) =>
+        item.id === action.id ? { ...item, quantity: action.quantity } : item
+      );
+    case "removeItem":
+      return state.filter((item) => item.id !== action.id);
     case "clear":
       return [];
     default:
@@ -167,6 +175,15 @@ export default function POSPage() {
     dispatchCart({ type: "clear" });
   }, []);
 
+  const handleUpdateQuantity = useCallback((id: string, quantity: number) => {
+    dispatchCart({ type: "updateQuantity", id, quantity });
+  }, []);
+
+  const handleRemoveItem = useCallback((id: string) => {
+    dispatchCart({ type: "removeItem", id });
+    toast.success("Item removed from cart");
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -270,6 +287,8 @@ export default function POSPage() {
               items={cartItems}
               onClear={handleClearCart}
               onCheckout={handleCheckout}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
             />
           </div>
         </div>
@@ -302,6 +321,8 @@ export default function POSPage() {
               items={cartItems}
               onClear={handleClearCart}
               onCheckout={handleCheckout}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
             />
           </div>
         </DrawerContent>
