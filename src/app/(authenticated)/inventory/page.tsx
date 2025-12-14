@@ -158,6 +158,7 @@ export default function InventoryPage() {
               items={products}
               categories={categories}
               isLoading={isLoading}
+              onProductUpdated={refreshProducts}
             />
           </CardContent>
         </Card>

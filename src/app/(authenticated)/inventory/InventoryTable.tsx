@@ -40,11 +40,13 @@ import {
 import { Badge } from "@/src/components/ui/badge";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
+import { ProductFormModal } from "./ProductFormModal";
 
 type InventoryTableProps = {
   items: InventoryItem[];
   categories: Category[];
   isLoading?: boolean;
+  onProductUpdated?: () => void;
 };
 
 const deriveStatus = (item: InventoryItem) => {
@@ -63,11 +65,14 @@ export function InventoryTable({
   items,
   categories,
   isLoading,
+  onProductUpdated,
 }: InventoryTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -78,8 +83,8 @@ export function InventoryTable({
 
       const matchesCategory =
         categoryFilter === "all" ||
-        item.category_id === categoryFilter ||
-        item.category?.id === categoryFilter;
+        String(item.category_id) === categoryFilter ||
+        String(item.category?.id) === categoryFilter;
 
       const searchTerm = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -91,6 +96,17 @@ export function InventoryTable({
       return matchesStatus && matchesCategory && matchesSearch;
     });
   }, [categoryFilter, items, searchQuery, statusFilter]);
+
+  const handleEditProduct = (product: InventoryItem) => {
+    setSelectedProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleProductUpdated = () => {
+    setIsEditModalOpen(false);
+    setSelectedProduct(null);
+    onProductUpdated?.();
+  };
 
   if (isLoading) {
     return (
@@ -159,7 +175,7 @@ export function InventoryTable({
                     <SelectContent>
                       <SelectItem value="all">All categories</SelectItem>
                       {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
+                        <SelectItem key={category.id} value={String(category.id)}>
                           {category.name}
                         </SelectItem>
                       ))}
@@ -266,7 +282,7 @@ export function InventoryTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditProduct(item)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit details
                             </DropdownMenuItem>
@@ -299,6 +315,13 @@ export function InventoryTable({
         }}
         title="Scan SKU or barcode"
         description="Use your camera to locate products instantly."
+      />
+      <ProductFormModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        product={selectedProduct || undefined}
+        categories={categories}
+        onSuccess={handleProductUpdated}
       />
     </div>
   );
