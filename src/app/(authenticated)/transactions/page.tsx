@@ -1,9 +1,7 @@
 "use client";
+
 import { SiteHeader } from "@/src/components/site-header";
-import React, { useState } from "react";
 import TransactionStats from "./TransactionStats";
-import mockTransactions from "@/src/data/mockTransactions";
-import type { Transaction } from "@/src/types/transactions";
 import TransactionsTable from "./TransactionsTable";
 import {
   Card,
@@ -12,30 +10,89 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { fetchTransactions } from "@/src/lib/api/transactions";
+import { useEffect, useState } from "react";
+import type { Transaction } from "@/src/types/transactions";
+import { adaptTransaction } from "@/src/lib/adapters";
 
-const Page = () => {
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+function TransactionsPage() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchTransactions();
+        const adapted = response.data.map(adaptTransaction);
+        setTransactions(adapted);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load transactions");
+        console.error("Error loading transactions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Transactions"
+          subtitle="Audit historical sales activity and reconcile tender sources."
+        />
+        <div className="p-4">
+          <p className="text-muted-foreground">Loading transactions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <SiteHeader
+          title="Transactions"
+          subtitle="Audit historical sales activity and reconcile tender sources."
+        />
+        <div className="p-4">
+          <p className="text-destructive">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <SiteHeader title="Transactions" />
+    <div className="flex flex-col">
+      <SiteHeader
+        title="Transactions"
+        subtitle="Audit historical sales activity and reconcile tender sources."
+      />
       <div className="p-4">
         <TransactionStats transactions={transactions} />
         <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold flex justify-between">Transaction List
-            </CardTitle>
-            <CardDescription>View and Manage all sales transactions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-          <TransactionsTable transactions={transactions} />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex justify-between text-2xl font-bold">
+                Transaction list
+              </CardTitle>
+              <CardDescription>
+                View and manage all sales transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TransactionsTable transactions={transactions} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default Page;
+export default TransactionsPage;

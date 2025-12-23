@@ -3,6 +3,7 @@
 import { apiClient } from "@/src/lib/api-client";
 import { productSchema } from "@/src/lib/api/products";
 import { z } from "zod";
+import type { AxiosRequestConfig } from "axios";
 
 const metricSchema = z
   .object({
@@ -75,27 +76,29 @@ const repairsSchema = z
 export type DashboardMetric = z.infer<typeof metricSchema>;
 export type DashboardActivityItem = z.infer<typeof activityItemSchema>;
 
-export async function fetchDashboardMetrics() {
-  const { data } = await apiClient.get("/dashboard/metrics");
+export async function fetchDashboardMetrics(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/dashboard/metrics", config);
   return metricsResponseSchema.parse(data);
 }
 
-export async function fetchDashboardActivity() {
-  const { data } = await apiClient.get("/dashboard/recent-activity");
+export async function fetchDashboardActivity(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/dashboard/recent-activity", config);
   return z.array(activityItemSchema).parse(data);
 }
 
-export async function fetchDashboardLowStock() {
-  const { data } = await apiClient.get("/dashboard/low-stock");
+export async function fetchDashboardLowStock(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/dashboard/low-stock", config);
   return z.array(productSchema).parse(data);
 }
 
-export async function fetchDashboardTopSelling() {
-  const { data } = await apiClient.get("/dashboard/top-selling");
+export async function fetchDashboardTopSelling(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/dashboard/top-selling", config);
   return z.array(productSchema).parse(data);
 }
 
-export async function fetchDashboardPendingRepairs() {
-  const { data } = await apiClient.get("/dashboard/pending-repairs");
+export async function fetchDashboardPendingRepairs(
+  config?: AxiosRequestConfig
+) {
+  const { data } = await apiClient.get("/dashboard/pending-repairs", config);
   return repairsSchema.parse(data);
 }

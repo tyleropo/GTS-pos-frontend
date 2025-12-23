@@ -35,14 +35,18 @@ import {
   Edit,
   Plus,
   Trash2,
+  QrCode,
 } from "lucide-react";
 import { Badge } from "@/src/components/ui/badge";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
+import { ProductFormModal } from "./ProductFormModal";
 
 type InventoryTableProps = {
   items: InventoryItem[];
   categories: Category[];
   isLoading?: boolean;
+  onProductUpdated?: () => void;
 };
 
 const deriveStatus = (item: InventoryItem) => {
@@ -61,10 +65,14 @@ export function InventoryTable({
   items,
   categories,
   isLoading,
+  onProductUpdated,
 }: InventoryTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -75,8 +83,8 @@ export function InventoryTable({
 
       const matchesCategory =
         categoryFilter === "all" ||
-        item.category_id === categoryFilter ||
-        item.category?.id === categoryFilter;
+        String(item.category_id) === categoryFilter ||
+        String(item.category?.id) === categoryFilter;
 
       const searchTerm = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -88,6 +96,17 @@ export function InventoryTable({
       return matchesStatus && matchesCategory && matchesSearch;
     });
   }, [categoryFilter, items, searchQuery, statusFilter]);
+
+  const handleEditProduct = (product: InventoryItem) => {
+    setSelectedProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleProductUpdated = () => {
+    setIsEditModalOpen(false);
+    setSelectedProduct(null);
+    onProductUpdated?.();
+  };
 
   if (isLoading) {
     return (
@@ -113,8 +132,8 @@ export function InventoryTable({
             <TabsTrigger value="out-of-stock">Out of Stock</TabsTrigger>
           </TabsList>
 
-          <div className="flex w-full max-w-md items-center gap-2 sm:w-auto">
-            <div className="relative w-full">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
@@ -124,6 +143,14 @@ export function InventoryTable({
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => setIsScannerOpen(true)}
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              Scan SKU
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -148,7 +175,7 @@ export function InventoryTable({
                     <SelectContent>
                       <SelectItem value="all">All categories</SelectItem>
                       {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
+                        <SelectItem key={category.id} value={String(category.id)}>
                           {category.name}
                         </SelectItem>
                       ))}
@@ -255,7 +282,7 @@ export function InventoryTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditProduct(item)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit details
                             </DropdownMenuItem>
@@ -279,6 +306,23 @@ export function InventoryTable({
           </Table>
         </div>
       </Tabs>
+      <CameraBarcodeScanner
+        open={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onDetected={(code) => {
+          setSearchQuery(code);
+          setIsScannerOpen(false);
+        }}
+        title="Scan SKU or barcode"
+        description="Use your camera to locate products instantly."
+      />
+      <ProductFormModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        product={selectedProduct || undefined}
+        categories={categories}
+        onSuccess={handleProductUpdated}
+      />
     </div>
   );
 }

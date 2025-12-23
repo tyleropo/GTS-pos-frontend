@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useCallback } from "react";
 import { SiteHeader } from "@/src/components/site-header";
 import {
     Card,
@@ -79,34 +79,38 @@ export default function BillingPage() {
         return result;
     }, [customerTabs, dateRange]);
 
-    const handleGenerateBilling = () => {
-        const newTabs: CustomerBillingTab[] = selectedCustomerIds.map((id) => {
-            const customer = customers.find((c) => c.id.toString() === id);
-            return {
-                customerId: id,
-                customerName: customer?.name || "Unknown",
-                isActive: false,
-            };
+    const handleGenerateBilling = useCallback(() => {
+        setCustomerTabs(() => {
+            const newTabs: CustomerBillingTab[] = selectedCustomerIds.map((id) => {
+                const customer = customers.find((c) => c.id.toString() === id);
+                return {
+                    customerId: id,
+                    customerName: customer?.name || "Unknown",
+                    isActive: false,
+                };
+            });
+
+            setActiveTab(newTabs[0]?.customerId ?? "");
+            return newTabs;
         });
+    }, [selectedCustomerIds]);
 
-        setCustomerTabs(newTabs);
-        if (newTabs.length > 0) {
-            setActiveTab(newTabs[0].customerId);
-        }
-    };
+    const handleCloseTab = useCallback(
+        (customerId: string) => {
+            setCustomerTabs((prevTabs) => {
+                const updatedTabs = prevTabs.filter((tab) => tab.customerId !== customerId);
 
-    const handleCloseTab = (customerId: string) => {
-        const newTabs = customerTabs.filter((tab) => tab.customerId !== customerId);
-        setCustomerTabs(newTabs);
+                if (activeTab === customerId) {
+                    setActiveTab(updatedTabs[0]?.customerId ?? "");
+                }
 
-        // If closing active tab, switch to another tab
-        if (activeTab === customerId && newTabs.length > 0) {
-            setActiveTab(newTabs[0].customerId);
-        }
+                return updatedTabs;
+            });
 
-        // Also remove from selected customers
-        setSelectedCustomerIds((prev) => prev.filter((id) => id !== customerId));
-    };
+            setSelectedCustomerIds((prev) => prev.filter((id) => id !== customerId));
+        },
+        [activeTab]
+    );
 
     return (
         <div>

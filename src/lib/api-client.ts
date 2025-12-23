@@ -1,9 +1,7 @@
 "use client";
 
 import axios from "axios";
-import {
-  API_BASE_URL,
-} from "@/src/lib/config";
+import { API_BASE_URL } from "@/src/lib/config";
 import {
   clearAuthStorage,
   getAccessToken,
@@ -64,6 +62,14 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401 && !originalRequest._retry) {
+      // Skip token refresh for login/register endpoints
+      if (
+        originalRequest.url?.includes("/login") ||
+        originalRequest.url?.includes("/register")
+      ) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
