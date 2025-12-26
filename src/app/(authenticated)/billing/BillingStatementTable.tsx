@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { BillingStatement } from "@/src/types/billing";
+import { BillingStatement, DocumentFormatSettings } from "@/src/types/billing";
 import { formatCurrency } from "@/src/lib/billing";
 import { format } from "date-fns";
 import {
@@ -17,10 +17,11 @@ import { Separator } from "@/src/components/ui/separator";
 
 interface BillingStatementTableProps {
     statement: BillingStatement | null;
+    settings?: DocumentFormatSettings;
 }
 
 const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTableProps>(
-    ({ statement }, ref) => {
+    ({ statement, settings }, ref) => {
         if (!statement) {
             return (
                 <Card>
@@ -30,6 +31,16 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                 </Card>
             );
         }
+
+        const showQuantity = settings?.showQuantity !== false;
+        const showUnitPrice = settings?.showUnitPrice !== false;
+        const showLineTotal = settings?.showLineTotal !== false;
+
+        // Calculate columns span for subtotal row
+        // Date + Ref + Desc + (Qty?) + (Price?) = 3 + ... 
+        let colSpan = 3;
+        if (showQuantity) colSpan++;
+        if (showUnitPrice) colSpan++;
 
         if (statement.lineItems.length === 0) {
             return (
@@ -82,6 +93,14 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                             <TableHead className="w-[100px]">Date</TableHead>
                                             <TableHead className="w-[120px]">Reference</TableHead>
                                             <TableHead>Description</TableHead>
+                                            {/* Repairs usually don't have qty/unit price in this context, just cost. 
+                                                But let's respect columns if we want consistency, 
+                                                though repair items might not have qty popualted. 
+                                                Let's keep repairs simple as just Amount? 
+                                                Or align columns? Aligning is better for visual consistency if mixed.
+                                                But for now, repairs are distinct. Let's keep repairs simple or check usage.
+                                                Repair item has 'cost'.
+                                            */}
                                             <TableHead className="text-right w-[120px]">Amount</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -119,7 +138,9 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                             <TableHead className="w-[100px]">Date</TableHead>
                                             <TableHead className="w-[120px]">Reference</TableHead>
                                             <TableHead>Description</TableHead>
-                                            <TableHead className="text-right w-[120px]">Amount</TableHead>
+                                            {showQuantity && <TableHead className="text-right w-[80px]">Qty</TableHead>}
+                                            {showUnitPrice && <TableHead className="text-right w-[100px]">Unit Price</TableHead>}
+                                            {showLineTotal && <TableHead className="text-right w-[120px]">Amount</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -128,19 +149,32 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                                 <TableCell>{format(new Date(item.date), "MM/dd/yyyy")}</TableCell>
                                                 <TableCell className="font-mono text-xs">{item.referenceId}</TableCell>
                                                 <TableCell>{item.description}</TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    {formatCurrency(item.amount)}
-                                                </TableCell>
+                                                {showQuantity && (
+                                                    <TableCell className="text-right">
+                                                        {item.quantity || 1}
+                                                    </TableCell>
+                                                )}
+                                                {showUnitPrice && (
+                                                    <TableCell className="text-right">
+                                                        {item.unitPrice ? formatCurrency(item.unitPrice) : "-"}
+                                                    </TableCell>
+                                                )}
+                                                {showLineTotal && (
+                                                    <TableCell className="text-right font-medium">
+                                                        {formatCurrency(item.amount)}
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                         <TableRow className="bg-muted/50">
-                                            <TableCell colSpan={3} className="text-right font-semibold">
+                                            <TableCell colSpan={colSpan} className="text-right font-semibold">
                                                 Subtotal (Products):
                                             </TableCell>
                                             <TableCell className="text-right font-semibold">
                                                 {formatCurrency(statement.productSubtotal)}
                                             </TableCell>
                                         </TableRow>
+
                                     </TableBody>
                                 </Table>
                             </div>

@@ -7,6 +7,8 @@ export interface BillingLineItem {
   description: string;
   referenceId: string;
   amount: number;
+  quantity?: number;
+  unitPrice?: number;
 }
 
 export interface BillingPeriod {

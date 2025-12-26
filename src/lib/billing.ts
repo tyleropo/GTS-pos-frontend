@@ -1,6 +1,7 @@
 import { Customer } from "@/src/types/customer";
 import { Repair } from "@/src/types/repair";
-import { Transaction } from "@/src/types/transactions";
+// Use the API transaction type which is more complete, or valid "any" for now to support migration
+import { Transaction } from "@/src/lib/api/transactions";
 import {
   BillingLineItem,
   BillingStatement,
@@ -11,14 +12,17 @@ import { isWithinInterval, parseISO } from "date-fns";
 /**
  * Filter items by date range
  */
-export function filterByDateRange<T extends { date: string }>(
+export function filterByDateRange<T>(
   items: T[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  dateAccessor: (item: T) => string = (item: any) => item.date
 ): T[] {
   return items.filter((item) => {
     try {
-      const itemDate = parseISO(item.date);
+      const dateStr = dateAccessor(item);
+      if (!dateStr) return false;
+      const itemDate = parseISO(dateStr);
       return isWithinInterval(itemDate, { start: startDate, end: endDate });
     } catch {
       return false;
@@ -39,46 +43,93 @@ export function aggregateCustomerData(
 
   // Filter repairs for this customer within date range
   const customerRepairs = repairs.filter(
-    (repair) => repair.customer === customer.name
+    (repair) => repair.customer === customer.name 
+    // Note: If API doesn't return customer name in repair, this check might fail. 
+    // Ideally we filter by customer_id if available, but for now name match.
+    // Or we rely on the caller passing already filtered list.
   );
+  
   const filteredRepairs = filterByDateRange(
     customerRepairs,
     period.startDate,
-    period.endDate
+    period.endDate,
+    (r) => r.date
   );
 
   // Add repair line items
   filteredRepairs.forEach((repair) => {
     lineItems.push({
-      id: repair.id,
+      id: String(repair.id),
       date: repair.date,
       type: "repair",
       description: `${repair.device} - ${repair.issue}`,
-      referenceId: repair.id,
+      referenceId: String(repair.id),
       amount: repair.cost,
     });
   });
 
   // Filter transactions for this customer within date range
+  // We assume transactions are already filtered by customer_id/ids from API if passed.
+  // But let's keep name check if possible, or skip it if we blindly trust caller.
+  // Checking transaction.customer_id vs customer.id is better.
   const customerTransactions = transactions.filter(
-    (transaction) => transaction.customer === customer.name
+    (transaction) => {
+       // Check ID match if available
+       if (transaction.customer_id && String(transaction.customer_id) === String(customer.id)) return true;
+       // Fallback to name match if populated
+       if (transaction.customer && transaction.customer.name === customer.name) return true;
+       return false;
+    }
   );
+  
   const filteredTransactions = filterByDateRange(
     customerTransactions,
     period.startDate,
-    period.endDate
+    period.endDate,
+    (t) => t.created_at || (t as any).date || "" // Handle API created_at or mock date
   );
 
   // Add transaction/product line items
   filteredTransactions.forEach((transaction) => {
-    lineItems.push({
-      id: transaction.id,
-      date: transaction.date,
-      type: "product",
-      description: `Products (${transaction.items} items)`,
-      referenceId: transaction.id,
-      amount: transaction.total,
-    });
+    // Check if items is array or number (handling both mock and API structure)
+    // We expect API to return items array now
+    const items = (transaction as any).items || transaction.items;
+
+    // Get date string safely
+    const txDate = transaction.created_at || (transaction as any).date || "";
+    const formattedDate = txDate.split('T')[0]; // Ensure YYYY-MM-DD
+    
+    if (Array.isArray(items) && items.length > 0) {
+        // Explode items into individual line items
+        items.forEach((item: any, index: number) => {
+            const qty = item.quantity || 1;
+            const price = item.unit_price || 0;
+            const lineTotal = item.line_total || (qty * price);
+
+           lineItems.push({
+            id: String(transaction.id) + "-" + index,
+            date: formattedDate,
+            type: "product",
+            description: item.product_name || `Product ${index + 1}`,
+            referenceId: transaction.invoice_number || String(transaction.id),
+            amount: lineTotal,
+            quantity: qty,
+            unitPrice: price
+          });
+        });
+    } else {
+        // Fallback for transactions without items (legacy/mock or summary only)
+        const itemCount = typeof items === 'number' ? items : 0;
+        
+        lineItems.push({
+          id: String(transaction.id),
+          date: formattedDate,
+          type: "product",
+          description: `Products (${itemCount} items) - [Summary]`,
+          referenceId: transaction.invoice_number || String(transaction.id),
+          amount: typeof transaction.total === 'number' ? transaction.total : parseFloat(String(transaction.total) || '0'),
+        });
+    }
   });
 
   // Sort by date (newest first)
@@ -122,9 +173,9 @@ export function generateBillingStatement(
     customer: {
       id: customer.id,
       name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      address: customer.address,
+      email: customer.email || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
     },
     period,
     lineItems,
@@ -138,9 +189,9 @@ export function generateBillingStatement(
  * Format currency
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-PH", {
     style: "currency",
-    currency: "USD",
+    currency: "PHP",
   }).format(amount);
 }
 

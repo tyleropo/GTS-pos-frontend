@@ -65,6 +65,8 @@ export type TransactionItem = z.infer<typeof transactionItemSchema>;
 
 export type FetchTransactionsParams = {
   search?: string;
+  customer_id?: string;
+  customer_ids?: string[];
   payment_method?: "cash" | "card" | "gcash";
   start_date?: string;
   end_date?: string;

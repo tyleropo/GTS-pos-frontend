@@ -179,6 +179,49 @@ export function FormatSettingsDialog({
                             Include Company Logo
                         </Label>
                     </div>
+
+                    <div className="space-y-2 border-t pt-4">
+                        <Label className="text-base font-semibold">Column Visibility</Label>
+                        <div className="grid grid-cols-1 gap-2">
+                             <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="showQuantity"
+                                    checked={localSettings.showQuantity ?? true}
+                                    onCheckedChange={(checked) =>
+                                        updateSetting("showQuantity", checked as boolean)
+                                    }
+                                />
+                                <Label
+                                    htmlFor="showQuantity"
+                                    className="text-sm font-normal cursor-pointer"
+                                >
+                                    Show Quantity
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="showUnitPrice"
+                                    checked={localSettings.showUnitPrice ?? true}
+                                    onCheckedChange={(checked) =>
+                                        updateSetting("showUnitPrice", checked as boolean)
+                                    }
+                                />
+                                <Label
+                                    htmlFor="showUnitPrice"
+                                    className="text-sm font-normal cursor-pointer"
+                                >
+                                    Show Unit Price
+                                </Label>
+                            </div>
+                           {/* Show Line Total can be redundant if we have Amount, but let's keep it as an option if user wants to hide the right-most column details - wait "Amount" is the line total. Maybe "showLineTotal" is redundant with "Amount", let's assume Amount is always shown, but maybe breakdown is what is toggled. 
+                           Actually, Amount column is usually required. Let's assume user wants to toggle details. 
+                           But user asked "allow to select which columns to be included". 
+                           Let's assume "Quantity" and "Unit Price" are the main optional ones. "Line Total" is the Amount column.
+                           Let's add Amount visibility too just in case? No, amount is critical.
+                           Let's stick to Quantity and Unit Price for now as distinct columns.
+                           */}
+                        </div>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={handleReset}>

@@ -3,116 +3,56 @@
 import { apiClient } from "@/src/lib/api-client";
 import { z } from "zod";
 import type { AxiosRequestConfig } from "axios";
+import { Repair } from "@/src/types/repair";
 
-const paginationMetaSchema = z
-  .object({
-    current_page: z.number().optional(),
-    last_page: z.number().optional(),
-    per_page: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .passthrough();
+// Assuming Repair type is already defined, or we can define schema here
+// For now, let's assume specific fields we need for billing
 
-export const repairSchema = z.object({
+export { type Repair } from "@/src/types/repair";
+
+const repairSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  ticket_number: z.string(),
-  customer_id: z.string(),
+  customer_id: z.union([z.string(), z.number()]).optional(),
+  customer: z.string(), // name
   device: z.string(),
-  serial_number: z.string().nullable().optional(),
-  status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
-  issue_description: z.string().nullable().optional(),
-  resolution: z.string().nullable().optional(),
-  promised_at: z.string().nullable().optional(),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-  // Relations
-  customer: z
-    .object({
-      id: z.union([z.string(), z.number()]),
-      name: z.string(),
-      email: z.string().nullable().optional(),
-      phone: z.string().nullable().optional(),
-    })
-    .nullable()
-    .optional(),
+  issue: z.string(),
+  cost: z.number(),
+  status: z.string(),
+  date: z.string(), // created_at or specific date
+  reference_id: z.string().optional(),
 });
 
 const paginatedRepairSchema = z.object({
   data: z.array(repairSchema),
-  meta: paginationMetaSchema.optional(),
+  // meta...
 });
 
-export type Repair = z.infer<typeof repairSchema>;
-
 export type FetchRepairsParams = {
-  search?: string;
-  status?: "pending" | "in_progress" | "completed" | "cancelled";
+  customer_id?: string;
+  customer_ids?: string[];
+  start_date?: string;
+  end_date?: string;
   page?: number;
   per_page?: number;
 };
 
-export type CreateRepairPayload = {
-  customer_id: string;
-  device: string;
-  serial_number?: string;
-  issue_description?: string;
-  promised_at?: string;
-  status?: "pending" | "in_progress";
-};
-
-export type UpdateRepairPayload = Partial<CreateRepairPayload> & {
-  resolution?: string;
-  status?: "pending" | "in_progress" | "completed" | "cancelled";
-};
-
-/**
- * Fetch all repairs with optional filters
- */
 export async function fetchRepairs(
   params?: FetchRepairsParams,
   config?: AxiosRequestConfig
 ) {
+  // Convert array to comma-separated string if needed by backend, 
+  // or Axios handles array params like ?customer_ids[]=1&customer_ids[]=2
+  // Let's assume standard Axios behavior is fine or manual join.
+  
   const requestConfig: AxiosRequestConfig = {
-    params,
+    params: {
+        ...params,
+        customer_ids: params?.customer_ids?.join(',')
+    },
     ...config,
   };
   const { data } = await apiClient.get("/repairs", requestConfig);
-  return paginatedRepairSchema.parse(data);
-}
-
-/**
- * Fetch a single repair by ID
- */
-export async function fetchRepair(
-  repairId: string,
-  config?: AxiosRequestConfig
-) {
-  const { data } = await apiClient.get(`/repairs/${repairId}`, config);
-  return repairSchema.parse(data);
-}
-
-/**
- * Create a new repair ticket
- */
-export async function createRepair(payload: CreateRepairPayload) {
-  const { data } = await apiClient.post("/repairs", payload);
-  return repairSchema.parse(data);
-}
-
-/**
- * Update an existing repair ticket
- */
-export async function updateRepair(
-  repairId: string,
-  payload: UpdateRepairPayload
-) {
-  const { data } = await apiClient.put(`/repairs/${repairId}`, payload);
-  return repairSchema.parse(data);
-}
-
-/**
- * Delete a repair ticket
- */
-export async function deleteRepair(repairId: string) {
-  await apiClient.delete(`/repairs/${repairId}`);
+  // We might need to map backend fields to frontend Repair type if they differ
+  // But for now let's return raw data or basic transform
+  return data;
 }

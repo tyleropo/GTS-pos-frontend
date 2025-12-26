@@ -25,6 +25,7 @@ interface CustomerBatchSelectorProps {
     selectedCustomerIds: string[];
     onSelectionChange: (customerIds: string[]) => void;
     onGenerateBilling: () => void;
+    isLoading?: boolean;
 }
 
 export function CustomerBatchSelector({
@@ -32,6 +33,7 @@ export function CustomerBatchSelector({
     selectedCustomerIds,
     onSelectionChange,
     onGenerateBilling,
+    isLoading = false,
 }: CustomerBatchSelectorProps) {
     const [open, setOpen] = useState(false);
 
@@ -67,7 +69,7 @@ export function CustomerBatchSelector({
                             variant="outline"
                             role="combobox"
                             aria-expanded={open}
-                            className="w-full justify-between"
+                            className="flex-1 justify-between min-w-0"
                         >
                             <span className="truncate">
                                 {selectedCustomerIds.length === 0
@@ -126,9 +128,10 @@ export function CustomerBatchSelector({
                 </Popover>
                 <Button
                     onClick={onGenerateBilling}
-                    disabled={selectedCustomerIds.length === 0}
+                    disabled={selectedCustomerIds.length === 0 || isLoading}
+                    className="shrink-0"
                 >
-                    Generate Billing
+                    {isLoading ? "Generating..." : "Generate Billing"}
                 </Button>
             </div>
 
