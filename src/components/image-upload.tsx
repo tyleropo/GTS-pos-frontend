@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import Webcam from "react-webcam";
 import { Button } from "@/src/components/ui/button";
@@ -30,6 +30,18 @@ export function ImageUpload({
   const [preview, setPreview] = useState<string | null>(
     typeof value === "string" ? value : value ? URL.createObjectURL(value) : null
   );
+
+  useEffect(() => {
+    if (typeof value === "string") {
+      setPreview(value);
+    } else if (value instanceof File) {
+      const objectUrl = URL.createObjectURL(value);
+      setPreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setPreview(null);
+    }
+  }, [value]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {

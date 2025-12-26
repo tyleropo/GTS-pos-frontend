@@ -8,7 +8,8 @@ import {
 } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Package } from "lucide-react";
+import Image from "next/image";
 
 type ProductCardProps = {
   product: Product;
@@ -28,7 +29,22 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
     : "Out of stock";
 
   return (
-    <Card className="flex h-full flex-col justify-between">
+    <Card className="flex h-full flex-col justify-between overflow-hidden">
+      <div className="relative aspect-video w-full bg-muted">
+        {product.image_url ? (
+          <Image
+            src={product.image_url}
+            alt={product.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <Package className="h-8 w-8 opacity-20" />
+          </div>
+        )}
+      </div>
       <CardHeader className="space-y-2">
         <div className="flex items-start justify-between">
           <Badge variant={badgeVariant}>{badgeLabel}</Badge>
