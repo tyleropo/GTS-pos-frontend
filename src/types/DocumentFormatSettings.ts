@@ -8,6 +8,10 @@ export interface DocumentFormatSettings {
   headerText?: string;
   footerText?: string;
   includeLogo: boolean;
+  // Column settings
+  showQuantity?: boolean;
+  showUnitPrice?: boolean;
+  showLineTotal?: boolean;
 }
 
 export interface CustomerBillingTab {
@@ -22,4 +26,7 @@ export const DEFAULT_FORMAT_SETTINGS: DocumentFormatSettings = {
   colorScheme: "default",
   pageOrientation: "portrait",
   includeLogo: false,
+  showQuantity: true,
+  showUnitPrice: true,
+  showLineTotal: true,
 };

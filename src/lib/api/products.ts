@@ -52,13 +52,8 @@ export const productSchema = z.object({
   stock_quantity: z.coerce.number(),
   reorder_level: z.coerce.number(),
   max_stock_level: z.coerce.number().nullish(),
-  unit_of_measure: z.string().nullable().optional(),
-  weight: priceNumber.nullable().optional(),
-  dimensions: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
-  is_serialized: z.boolean().default(false),
-  warranty_period: z.coerce.number().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   category: categorySchema.nullable().optional(),
@@ -106,6 +101,11 @@ export async function fetchProductCategories(config?: AxiosRequestConfig) {
   return z.array(categorySchema).parse(data);
 }
 
+export async function fetchSuppliers(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/suppliers", config);
+  return z.array(supplierSchema).parse(data);
+}
+
 export async function fetchProductByBarcode(
   barcode: string,
   config?: AxiosRequestConfig
@@ -126,3 +126,28 @@ export async function updateProduct(
   const { data } = await apiClient.put(`/products/${productId}`, payload);
   return productSchema.parse(data);
 }
+
+export async function uploadProductImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const { data } = await apiClient.post("/products/upload-image", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return z.object({ url: z.string() }).parse(data);
+}
+
+export async function createCategory(name: string) {
+  const { data } = await apiClient.post("/products/categories", { name });
+  return categorySchema.parse(data);
+}
+
+export async function createSupplier(name: string) {
+  const { data } = await apiClient.post("/suppliers", { company_name: name });
+  return supplierSchema.parse(data);
+}
+
+

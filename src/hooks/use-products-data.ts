@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchProductCategories,
   fetchProducts,
+  fetchSuppliers,
   type Category,
   type FetchProductsParams,
   type Product,
+  type Supplier,
 } from "@/src/lib/api/products";
 
 type HookOptions = {
@@ -113,6 +115,58 @@ export function useProductCategoriesList(options: HookOptions = {}) {
 
   return {
     categories,
+    isLoading,
+    error,
+    refresh: load,
+  };
+}
+
+export function useSuppliersList(options: HookOptions = {}) {
+  const { enabled = true } = options;
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  const load = useCallback(async () => {
+    if (!enabled) {
+      return;
+    }
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetchSuppliers({
+        signal: controller.signal,
+      });
+      setSuppliers(response);
+    } catch (cause) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setError(
+        cause instanceof Error
+          ? cause
+          : new Error("Unable to fetch suppliers.")
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    void load();
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, [load]);
+
+  return {
+    suppliers,
     isLoading,
     error,
     refresh: load,

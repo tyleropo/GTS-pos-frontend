@@ -10,4 +10,5 @@ export type Repair = {
   cost: number;
   technician: string;
   completionDate: string;
+  customer_id?: string | number;
 };

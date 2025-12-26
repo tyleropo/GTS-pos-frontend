@@ -17,7 +17,6 @@ export type NewInventoryItem = {
   reorder_level: number;
   tax_rate?: number;
   markup_percentage?: number | null;
-  unit_of_measure?: string;
-  is_serialized?: boolean;
-  warranty_period?: number | null;
+  max_stock_level?: number;
+  image_url?: string;
 };

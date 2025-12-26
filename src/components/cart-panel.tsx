@@ -8,7 +8,6 @@ import {
 } from "@/src/components/ui/card";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Button } from "@/src/components/ui/button";
-import { Badge } from "@/src/components/ui/badge";
 import { Input } from "@/src/components/ui/input";
 import {
   Dialog,
@@ -18,7 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
-import { Trash2, Wallet, CreditCard, Banknote, Plus, Minus, X } from "lucide-react";
+import { Trash2, Wallet, CreditCard, Banknote, Plus, Minus, X, User } from "lucide-react";
+import { CustomerSearch } from "@/src/components/customer-search";
+import type { Customer } from "@/src/lib/api/customers";
 
 export type CartLineItem = {
   id: string;
@@ -30,7 +31,11 @@ export type CartLineItem = {
 type CartPanelProps = {
   items: CartLineItem[];
   onClear: () => void;
-  onCheckout: (method: "cash" | "card" | "gcash") => void;
+  onCheckout: (
+    method: "cash" | "card" | "gcash", 
+    customer: Customer | null,
+    meta?: Record<string, unknown>
+  ) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
 };
@@ -54,6 +59,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   const [vatPercentage, setVatPercentage] = useState(12);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "card" | "gcash" | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -82,22 +88,36 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
     }
   };
 
+  const [amountTendered, setAmountTendered] = useState<string>("");
+
   const handlePaymentMethodClick = (method: "cash" | "card" | "gcash") => {
     setSelectedPaymentMethod(method);
+    setAmountTendered(""); // Reset tendered amount
     setIsConfirmModalOpen(true);
   };
 
+  const change = selectedPaymentMethod === "cash" 
+    ? Math.max(0, parseFloat(amountTendered || "0") - total) 
+    : 0;
+
+  const isValidTender = selectedPaymentMethod !== "cash" || parseFloat(amountTendered || "0") >= total;
+
   const handleConfirmCheckout = () => {
-    if (selectedPaymentMethod) {
-      onCheckout(selectedPaymentMethod);
+    if (selectedPaymentMethod && isValidTender) {
+      onCheckout(selectedPaymentMethod, selectedCustomer, {
+        amount_tendered: selectedPaymentMethod === "cash" ? parseFloat(amountTendered) : undefined,
+        change: selectedPaymentMethod === "cash" ? change : undefined,
+      });
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);
+      setAmountTendered("");
     }
   };
 
   const handleCancelCheckout = () => {
     setIsConfirmModalOpen(false);
     setSelectedPaymentMethod(null);
+    setAmountTendered("");
   };
 
   const selectedPaymentMethodLabel = PAYMENT_METHODS.find(
@@ -107,17 +127,23 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   return (
     <>
       <Card className="flex h-full flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Current cart</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClear}
-            disabled={items.length === 0}
-            aria-label="Clear cart"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <CardHeader className="flex flex-col gap-4">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle>Current cart</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClear}
+              disabled={items.length === 0}
+              aria-label="Clear cart"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <CustomerSearch
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={setSelectedCustomer}
+          />
         </CardHeader>
         <CardContent className="flex-1 space-y-4">
           {items.length === 0 ? (
@@ -239,6 +265,19 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Customer Info */}
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col text-sm">
+                <span className="font-medium">
+                  {selectedCustomer ? selectedCustomer.name : "Walk-in Customer"}
+                </span>
+                {selectedCustomer?.email && (
+                  <span className="text-xs text-muted-foreground">{selectedCustomer.email}</span>
+                )}
+              </div>
+            </div>
+
             {/* Order Items */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Order Items</h4>
@@ -278,13 +317,38 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
             </div>
 
             {/* Payment Method */}
-            <div className="flex items-center gap-2 rounded-lg border bg-primary/5 p-3">
+            <div className="flex flex-col gap-3 rounded-lg border bg-primary/5 p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 {selectedPaymentMethod === "cash" && <Banknote className="h-4 w-4" />}
                 {selectedPaymentMethod === "card" && <CreditCard className="h-4 w-4" />}
                 {selectedPaymentMethod === "gcash" && <Wallet className="h-4 w-4" />}
                 <span>Payment via {selectedPaymentMethodLabel}</span>
               </div>
+
+              {selectedPaymentMethod === "cash" && (
+                <div className="space-y-2 pt-2 border-t border-primary/10">
+                   <div className="flex items-center justify-between gap-4">
+                      <label className="text-sm font-medium whitespace-nowrap">Amount Tendered</label>
+                      <div className="relative w-32">
+                         <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">₱</span>
+                         <Input 
+                            type="number" 
+                            className="pl-6 h-9" 
+                            placeholder="0.00"
+                            value={amountTendered}
+                            onChange={(e) => setAmountTendered(e.target.value)}
+                            autoFocus
+                         />
+                      </div>
+                   </div>
+                   <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Change</span>
+                      <span className={change < 0 ? "text-destructive" : "font-medium"}>
+                        {currency.format(change)}
+                      </span>
+                   </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -299,6 +363,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
             <Button
               type="button"
               onClick={handleConfirmCheckout}
+              disabled={!isValidTender}
             >
               Confirm Payment
             </Button>

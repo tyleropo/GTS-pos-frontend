@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { SiteHeader } from "@/src/components/site-header";
 import {
     Card,
@@ -13,18 +13,21 @@ import { ExportButtons } from "./ExportButtons";
 import BillingStatementTable from "./BillingStatementTable";
 import { CustomerBatchSelector } from "./CustomerBatchSelector";
 import { PeriodTypeSelector } from "./PeriodTypeSelector";
-import { customers } from "@/src/data/mockCustomers";
-import { repairs } from "@/src/data/mockRepairs";
-import mockTransactions from "@/src/data/mockTransactions";
 import { generateBillingStatement, getCurrentQuarter } from "@/src/lib/billing";
 import {
     BillingStatement,
+    DocumentFormatSettings,
     BillingPeriodType,
     CustomerBillingTab,
     DEFAULT_FORMAT_SETTINGS,
-    DocumentFormatSettings,
 } from "@/src/types/billing";
+import { fetchCustomers } from "@/src/lib/api/customers";
+import { type Customer } from "@/src/types/customer";
+import { fetchTransactions } from "@/src/lib/api/transactions";
+import { fetchRepairs } from "@/src/lib/api/repairs";
+import { Repair } from "@/src/types/repair";
 import { DateRange } from "react-day-picker";
+
 import {
     Tabs,
     TabsContent,
@@ -53,47 +56,103 @@ export default function BillingPage() {
 
     const printRef = useRef<HTMLDivElement>(null);
 
-    // Generate statements for all customer tabs
-    const statements = useMemo(() => {
-        const result: Record<string, BillingStatement | null> = {};
-
-        if (!dateRange?.from || !dateRange?.to) {
-            return result;
-        }
-
-        customerTabs.forEach((tab) => {
-            const customer = customers.find((c) => c.id.toString() === tab.customerId);
-            if (customer) {
-                result[tab.customerId] = generateBillingStatement(
-                    customer,
-                    repairs,
-                    mockTransactions,
-                    {
-                        startDate: dateRange.from!,
-                        endDate: dateRange.to!,
-                    }
-                );
+    // Fetch real customers
+    const [availableCustomers, setAvailableCustomers] = useState<Customer[]>([]);
+    
+    useEffect(() => {
+        const loadCustomers = async () => {
+            try {
+                // Fetch all customers (or enough for the selector)
+                const response = await fetchCustomers({ per_page: 100 });
+                // Cast to any because API status 'string' vs "Active"|"Inactive" mismatch
+                setAvailableCustomers(response.data as unknown as Customer[]);
+            } catch (error) {
+                console.error("Failed to load customers", error);
             }
-        });
+        };
+        loadCustomers();
+    }, []);
 
-        return result;
-    }, [customerTabs, dateRange]);
+    // Generate statements for all customer tabs
+    const [statements, setStatements] = useState<Record<string, BillingStatement | null>>({});
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
-    const handleGenerateBilling = useCallback(() => {
-        setCustomerTabs(() => {
+    const handleGenerateBilling = useCallback(async () => {
+        if (!dateRange?.from || !dateRange?.to || selectedCustomerIds.length === 0) return;
+
+        setIsLoadingData(true);
+        try {
+            // Update tabs immediately
             const newTabs: CustomerBillingTab[] = selectedCustomerIds.map((id) => {
-                const customer = customers.find((c) => c.id.toString() === id);
+                const customer = availableCustomers.find((c) => c.id.toString() === id);
                 return {
                     customerId: id,
                     customerName: customer?.name || "Unknown",
                     isActive: false,
                 };
             });
-
+            setCustomerTabs(newTabs);
             setActiveTab(newTabs[0]?.customerId ?? "");
-            return newTabs;
-        });
-    }, [selectedCustomerIds]);
+
+            // Fetch data for all selected customers
+            // Optimization: We could fetch once with comma-separated IDs if API supports it,
+            // or parallel fetch per customer. Let's do a single bulk fetch if controller allows,
+            // but for safety/granularity, we'll map.
+             
+            // Actually, TransactionController now enables "customer_ids" list.
+            const [txResponse, repairsResponse] = await Promise.all([
+                fetchTransactions({
+                    customer_ids: selectedCustomerIds,
+                    start_date: dateRange.from.toISOString(),
+                    end_date: dateRange.to.toISOString(),
+                    per_page: 1000 // Fetch all
+                }),
+                fetchRepairs({
+                    customer_ids: selectedCustomerIds,
+                    start_date: dateRange.from.toISOString(),
+                    end_date: dateRange.to.toISOString(),
+                    per_page: 1000
+                })
+            ]);
+
+            const newStatements: Record<string, BillingStatement | null> = {};
+
+            selectedCustomerIds.forEach(customerId => {
+                const customer = availableCustomers.find(c => c.id.toString() === customerId);
+                if (!customer) return;
+
+                // Filter transactions/repairs for this customer in memory since we bulk fetched
+                // (Or if API returned exact match, but we have mixed results)
+                const custTransactions = txResponse.data.filter(t => 
+                   String(t.customer_id) === customerId
+                );
+                // Repairs API might need similar filter if it doesn't separate them by default (it returns array)
+                // Assuming `fetchRepairs` returns `data` array similar to transactions
+                const custRepairs = (repairsResponse.data || []).filter((r: Repair) => 
+                    String(r.customer_id) === customerId
+                );
+
+                newStatements[customerId] = generateBillingStatement(
+                    customer,
+                    custRepairs,
+                    custTransactions as any, // Temporary cast until Transaction type unification
+                    {
+                        startDate: dateRange.from!,
+                        endDate: dateRange.to!,
+                    }
+                );
+            });
+
+            setStatements(newStatements);
+
+        } catch (error) {
+            console.error("Failed to generate billing", error);
+            // Optionally show toast
+        } finally {
+            setIsLoadingData(false);
+        }
+    }, [dateRange, selectedCustomerIds, availableCustomers]);
+
 
     const handleCloseTab = useCallback(
         (customerId: string) => {
@@ -108,6 +167,13 @@ export default function BillingPage() {
             });
 
             setSelectedCustomerIds((prev) => prev.filter((id) => id !== customerId));
+            
+            // Cleanup statement
+            setStatements(prev => {
+                const next = { ...prev };
+                delete next[customerId];
+                return next;
+            });
         },
         [activeTab]
     );
@@ -130,10 +196,11 @@ export default function BillingPage() {
                         {/* Customer Selection */}
                         <div className="space-y-2">
                             <CustomerBatchSelector
-                                customers={customers}
+                                customers={availableCustomers}
                                 selectedCustomerIds={selectedCustomerIds}
                                 onSelectionChange={setSelectedCustomerIds}
                                 onGenerateBilling={handleGenerateBilling}
+                                isLoading={isLoadingData}
                             />
                         </div>
 
@@ -191,6 +258,7 @@ export default function BillingPage() {
                                         <BillingStatementTable
                                             ref={activeTab === tab.customerId ? printRef : null}
                                             statement={statements[tab.customerId] || null}
+                                            settings={formatSettings}
                                         />
                                     </TabsContent>
                                 ))}

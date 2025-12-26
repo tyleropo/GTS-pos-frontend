@@ -13,6 +13,8 @@ import { CartPanel, CartLineItem } from "@/src/components/cart-panel";
 import { BarcodeInput } from "@/src/components/barcode-input";
 import { SiteHeader } from "@/src/components/site-header";
 import { fetchProductByBarcode, type Product } from "@/src/lib/api/products";
+import { createTransaction } from "@/src/lib/api/transactions";
+import type { Customer } from "@/src/lib/api/customers";
 import { Input } from "@/src/components/ui/input";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { toast } from "sonner";
@@ -31,6 +33,7 @@ import {
   DrawerTitle,
 } from "@/src/components/ui/drawer";
 import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
+import { TransactionSuccessModal } from "@/src/components/transaction-success-modal";
 
 type CartAction =
   | { type: "add"; product: Product }
@@ -41,10 +44,10 @@ type CartAction =
 function cartReducer(state: CartLineItem[], action: CartAction) {
   switch (action.type) {
     case "add": {
-      const existing = state.find((item) => item.id === action.product.id);
+      const existing = state.find((item) => item.id === String(action.product.id));
       if (existing) {
         return state.map((item) =>
-          item.id === action.product.id
+          item.id === String(action.product.id)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -52,7 +55,7 @@ function cartReducer(state: CartLineItem[], action: CartAction) {
       return [
         ...state,
         {
-          id: action.product.id,
+          id: String(action.product.id),
           name: action.product.name,
           price: action.product.selling_price,
           quantity: 1,
@@ -154,21 +157,58 @@ export default function POSPage() {
 
   const hasCartItems = cartItems.length > 0;
 
+  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
   const handleCheckout = useCallback(
-    (method: "cash" | "card" | "gcash") => {
+    async (
+      method: "cash" | "card" | "gcash", 
+      customer: Customer | null,
+      meta?: Record<string, unknown>
+    ) => {
       if (cartItems.length === 0) {
         toast.error("Cart is empty.");
         return;
       }
-      toast.success(
-        `Checkout via ${method.toUpperCase()} for ₱${cartTotals.total.toFixed(
-          2
-        )}`
-      );
-      dispatchCart({ type: "clear" });
-      setIsCartDrawerOpen(false);
+
+      const toastId = toast.loading("Processing transaction...");
+
+      try {
+        const payload = {
+          customer_id: customer?.id ? String(customer.id) : undefined,
+          items: cartItems.map((item) => ({
+            product_id: item.id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            line_total: item.price * item.quantity,
+          })),
+          payment_method: method,
+          subtotal: cartTotals.subtotal,
+          tax: cartTotals.tax,
+          total: cartTotals.total,
+          meta: meta, // Pass meta data (tender, change)
+        };
+
+        const response = await createTransaction(payload);
+
+        toast.dismiss(toastId);
+        toast.success(
+          `Transaction ${response.invoice_number} successful!`
+        );
+        
+        setLastTransaction(response);
+        setIsSuccessModalOpen(true);
+        
+        dispatchCart({ type: "clear" });
+        setIsCartDrawerOpen(false);
+      } catch (error) {
+        toast.dismiss(toastId);
+        toast.error(
+          error instanceof Error ? error.message : "Transaction failed"
+        );
+      }
     },
-    [cartItems.length, cartTotals.total]
+    [cartItems, cartTotals]
   );
 
   const handleClearCart = useCallback(() => {
@@ -336,6 +376,16 @@ export default function POSPage() {
         }}
         title="Scan product barcode"
         description="Use your device camera to capture a barcode or QR code and add the product instantly."
+      />
+
+      <TransactionSuccessModal
+        open={isSuccessModalOpen}
+        onOpenChange={setIsSuccessModalOpen}
+        transaction={lastTransaction}
+        onNewSale={() => {
+          setIsSuccessModalOpen(false);
+          setLastTransaction(null);
+        }}
       />
     </div>
   );

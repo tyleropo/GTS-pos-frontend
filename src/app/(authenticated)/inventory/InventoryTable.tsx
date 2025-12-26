@@ -40,13 +40,13 @@ import {
 import { Badge } from "@/src/components/ui/badge";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
-import { ProductFormModal } from "./ProductFormModal";
 
 type InventoryTableProps = {
   items: InventoryItem[];
   categories: Category[];
   isLoading?: boolean;
   onProductUpdated?: () => void;
+  onEdit?: (product: InventoryItem) => void;
 };
 
 const deriveStatus = (item: InventoryItem) => {
@@ -65,14 +65,12 @@ export function InventoryTable({
   items,
   categories,
   isLoading,
-  onProductUpdated,
+  onEdit,
 }: InventoryTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -96,17 +94,6 @@ export function InventoryTable({
       return matchesStatus && matchesCategory && matchesSearch;
     });
   }, [categoryFilter, items, searchQuery, statusFilter]);
-
-  const handleEditProduct = (product: InventoryItem) => {
-    setSelectedProduct(product);
-    setIsEditModalOpen(true);
-  };
-
-  const handleProductUpdated = () => {
-    setIsEditModalOpen(false);
-    setSelectedProduct(null);
-    onProductUpdated?.();
-  };
 
   if (isLoading) {
     return (
@@ -275,14 +262,16 @@ export function InventoryTable({
                         {item.supplier?.company_name ?? "Unassigned"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditProduct(item)}>
+                            <DropdownMenuItem
+                              onSelect={() => onEdit?.(item)}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit details
                             </DropdownMenuItem>
@@ -315,13 +304,6 @@ export function InventoryTable({
         }}
         title="Scan SKU or barcode"
         description="Use your camera to locate products instantly."
-      />
-      <ProductFormModal
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        product={selectedProduct || undefined}
-        categories={categories}
-        onSuccess={handleProductUpdated}
       />
     </div>
   );

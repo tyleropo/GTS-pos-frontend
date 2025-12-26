@@ -18,10 +18,7 @@ import type { Repair } from "@/src/types/repair";
  */
 export function adaptCustomer(apiCustomer: APICustomer): Customer {
   return {
-    id:
-      typeof apiCustomer.id === "number"
-        ? apiCustomer.id
-        : parseInt(apiCustomer.id as string, 10) || 0,
+    id: apiCustomer.id,
     name: apiCustomer.name,
     email: apiCustomer.email || null,
     phone: apiCustomer.phone || null,
@@ -30,14 +27,13 @@ export function adaptCustomer(apiCustomer: APICustomer): Customer {
     created_at: apiCustomer.created_at,
     updated_at: apiCustomer.updated_at,
     totalSpent: apiCustomer.total_spent || 0,
-    orders: apiCustomer.transaction_count || 0,
+    orders: apiCustomer.transactions_count || 0,
     lastPurchase:
-      apiCustomer.created_at || new Date().toISOString().split("T")[0],
-    status: "Active", // Default to Active, can be enhanced based on business logic
-    type:
-      apiCustomer.total_spent && apiCustomer.total_spent > 100000
-        ? "VIP"
-        : "Regular",
+      apiCustomer.transactions_count && apiCustomer.transactions_count > 0
+        ? apiCustomer.updated_at?.split("T")[0] || new Date().toISOString().split("T")[0]
+        : "N/A",
+    status: (apiCustomer.status as "Active" | "Inactive") || "Active",
+    type: (apiCustomer.type as "Regular" | "VIP") || "Regular",
   };
 }
 
@@ -51,10 +47,19 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
 
   return {
     id: String(apiTransaction.id),
+    invoice_number: apiTransaction.invoice_number || String(apiTransaction.id),
     date: date || new Date().toISOString().split("T")[0],
     time: time,
     customer: apiTransaction.customer?.name || "Walk-in",
     items: apiTransaction.items?.length || 0,
+    lineItems:
+      apiTransaction.items?.map((item) => ({
+        product_id: item.product_id,
+        product_name: item.product_name || "Unknown Product",
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price),
+        line_total: Number(item.line_total),
+      })) || [],
     total: apiTransaction.total,
     paymentMethod:
       apiTransaction.payment_method === "cash"

@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Calendar, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -208,55 +208,53 @@ const PurchaseOrderTable = ({
                         <TableCell className="text-right">
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Open menu</span>
-                              </Button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem 
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  onView?.(po);
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                onSelect={(e) => {
+                                    e.preventDefault();
+                                    onView?.(po);
                                 }}
-                                onSelect={(e) => e.preventDefault()}
-                              >
+                                >
                                 <FileText className="h-4 w-4 mr-2" />
                                 View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  onEdit?.(po);
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                onSelect={(e) => {
+                                    e.preventDefault();
+                                    onEdit?.(po);
                                 }}
-                                onSelect={(e) => e.preventDefault()}
-                              >
+                                >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Order
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onDownloadPDF?.(po)}>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => onDownloadPDF?.(po)}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
-                              </DropdownMenuItem>
-                              {po.status !== "Completed" && po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Delivered" && (
+                                </DropdownMenuItem>
+                                {po.status !== "Completed" && po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Delivered" && (
                                 <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => onMarkAsCompleted?.(po)}>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => onMarkAsCompleted?.(po)}>
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Mark as Delivered
-                                  </DropdownMenuItem>
+                                    </DropdownMenuItem>
                                 </>
-                              )}
-                              {po.status !== "Cancelled" && (
+                                )}
+                                {po.status !== "Cancelled" && (
                                 <DropdownMenuItem 
-                                  className="text-destructive"
-                                  onClick={() => onCancel?.(po)}
+                                    className="text-destructive"
+                                    onSelect={() => onCancel?.(po)}
                                 >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Cancel Order
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel Order
                                 </DropdownMenuItem>
-                              )}
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

@@ -20,6 +20,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/src/components/ui/button";
+import { Loader2, Plus, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, type Product, type Category, type Supplier } from "@/src/lib/api/products";
+import { useState } from "react";
+import { ImageUpload } from "@/src/components/image-upload";
 import {
   Select,
   SelectContent,
@@ -27,13 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/src/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { updateProduct, type Product, type Category } from "@/src/lib/api/products";
-import { useState } from "react";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required").max(255, "Name is too long"),
@@ -41,13 +42,16 @@ const productFormSchema = z.object({
   barcode: z.string().optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   category_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
+  supplier_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
   brand: z.string().optional().or(z.literal("")),
   model: z.string().optional().or(z.literal("")),
+  image_url: z.string().optional().or(z.literal("")),
   cost_price: z.coerce.number().min(0, "Cost price must be at least 0"),
   selling_price: z.coerce.number().min(0, "Selling price must be at least 0"),
   stock_quantity: z.coerce.number().int().min(0, "Stock quantity must be at least 0"),
   reorder_level: z.coerce.number().int().min(0, "Reorder level must be at least 0"),
-  unit_of_measure: z.string().optional().or(z.literal("")),
+  markup_percentage: z.coerce.number().optional().nullable(),
+  tax_rate: z.coerce.number().min(0).default(0),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -57,7 +61,10 @@ interface ProductFormModalProps {
   onOpenChange: (open: boolean) => void;
   product?: Product;
   categories: Category[];
+  suppliers: Supplier[];
   onSuccess?: () => void;
+  onRefreshCategories?: () => Promise<void>;
+  onRefreshSuppliers?: () => Promise<void>;
 }
 
 export function ProductFormModal({
@@ -65,28 +72,52 @@ export function ProductFormModal({
   onOpenChange,
   product,
   categories,
+  suppliers,
   onSuccess,
+  onRefreshCategories,
+  onRefreshSuppliers,
 }: ProductFormModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!product;
 
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(productFormSchema) as any,
     defaultValues: {
       name: "",
       sku: "",
       barcode: "",
       description: "",
       category_id: "none",
+      supplier_id: "none",
       brand: "",
       model: "",
+      image_url: "",
       cost_price: 0,
       selling_price: 0,
       stock_quantity: 0,
       reorder_level: 0,
-      unit_of_measure: "",
+      markup_percentage: 0,
+      tax_rate: 0,
     },
   });
+
+  // Calculate suggested markup
+  const costPrice = form.watch("cost_price");
+  const sellingPrice = form.watch("selling_price");
+  const suggestedMarkup = (() => {
+      const cost = Number(costPrice);
+      const price = Number(sellingPrice);
+      if (!Number.isFinite(cost) || cost <= 0 || !Number.isFinite(price)) {
+        return 0;
+      }
+      return ((price - cost) / cost) * 100;
+  })();
 
   // Reset form when product changes or modal opens
   useEffect(() => {
@@ -97,51 +128,58 @@ export function ProductFormModal({
         barcode: product.barcode || "",
         description: product.description || "",
         category_id: product.category_id ? String(product.category_id) : "none",
+        supplier_id: product.supplier_id ? String(product.supplier_id) : "none",
         brand: product.brand || "",
         model: product.model || "",
+        image_url: product.image_url || "",
         cost_price: product.cost_price || 0,
         selling_price: product.selling_price || 0,
         stock_quantity: product.stock_quantity || 0,
         reorder_level: product.reorder_level || 0,
-        unit_of_measure: product.unit_of_measure || "",
+        markup_percentage: product.markup_percentage || 0,
+        tax_rate: product.tax_rate || 0,
       });
     }
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
-    if (!product) {
-      toast.error("No product selected");
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
       // Prepare payload - convert empty strings to null for optional fields
-      const payload: Partial<Product> = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: any = {
         name: values.name,
         sku: values.sku,
         barcode: values.barcode || null,
         description: values.description || null,
         category_id: values.category_id === "none" || !values.category_id ? null : values.category_id,
+        supplier_id: values.supplier_id === "none" || !values.supplier_id ? null : values.supplier_id,
         brand: values.brand || null,
         model: values.model || null,
+        image_url: values.image_url || null,
         cost_price: values.cost_price,
         selling_price: values.selling_price,
         stock_quantity: values.stock_quantity,
         reorder_level: values.reorder_level,
-        unit_of_measure: values.unit_of_measure || null,
+        markup_percentage: values.markup_percentage ?? suggestedMarkup ?? null,
+        tax_rate: values.tax_rate,
       };
 
-      await updateProduct(String(product.id), payload);
-      toast.success("Product updated successfully");
+      if (product) {
+        await updateProduct(String(product.id), payload);
+        toast.success("Product updated successfully");
+      } else {
+        await createProduct(payload);
+        toast.success("Product created successfully");
+      }
 
       form.reset();
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("Error updating product:", error);
-      toast.error("Failed to update product");
+      console.error("Error saving product:", error);
+      toast.error(product ? "Failed to update product" : "Failed to create product");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,7 +187,7 @@ export function ProductFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Product" : "Add New Product"}
@@ -162,220 +200,448 @@ export function ProductFormModal({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>
-                      Product Name <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Wireless Mouse" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            
+            {/* General Information Section */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">General Information</h3>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                        <FormLabel>
+                        Product Name <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. iPhone 15 Pro Max" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="sku"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      SKU <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., WM-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="category_id"
+                    render={({ field }) => (
+                    <FormItem>
+                        <div className="flex items-center justify-between">
+                            <FormLabel>Category</FormLabel>
+                            {!isCreatingCategory && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => setIsCreatingCategory(true)}
+                                >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    New
+                                </Button>
+                            )}
+                        </div>
+                        <FormControl>
+                            {isCreatingCategory ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="New category name"
+                                        className="h-9"
+                                        autoFocus
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={async () => {
+                                            if (!newCategoryName.trim()) return;
+                                            try {
+                                                const newCategory = await createCategory(newCategoryName);
+                                                await onRefreshCategories?.();
+                                                field.onChange(String(newCategory.id));
+                                                setNewCategoryName("");
+                                                setIsCreatingCategory(false);
+                                                toast.success(`Category "${newCategoryName}" created`);
+                                            } catch (error) {
+                                                console.error(error);
+                                                toast.error("Failed to create category");
+                                            }
+                                        }}
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={() => {
+                                            setIsCreatingCategory(false);
+                                            setNewCategoryName("");
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select category" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">Unassigned</SelectItem>
+                                        {categories.map((category) => (
+                                            <SelectItem
+                                                key={category.id}
+                                                value={String(category.id)}
+                                            >
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="barcode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Barcode</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 123456789012" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="supplier_id"
+                    render={({ field }) => (
+                    <FormItem>
+                        <div className="flex items-center justify-between">
+                            <FormLabel>Supplier</FormLabel>
+                            {!isCreatingSupplier && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => setIsCreatingSupplier(true)}
+                                >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    New
+                                </Button>
+                            )}
+                        </div>
+                        <FormControl>
+                            {isCreatingSupplier ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newSupplierName}
+                                        onChange={(e) => setNewSupplierName(e.target.value)}
+                                        placeholder="New supplier name"
+                                        className="h-9"
+                                        autoFocus
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={async () => {
+                                            if (!newSupplierName.trim()) return;
+                                            try {
+                                                const newSupplier = await createSupplier(newSupplierName);
+                                                await onRefreshSuppliers?.();
+                                                field.onChange(String(newSupplier.id));
+                                                setNewSupplierName("");
+                                                setIsCreatingSupplier(false);
+                                                toast.success(`Supplier "${newSupplierName}" created`);
+                                            } catch (error) {
+                                                console.error(error);
+                                                toast.error("Failed to create supplier");
+                                            }
+                                        }}
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={() => {
+                                            setIsCreatingSupplier(false);
+                                            setNewSupplierName("");
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select supplier" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">Unassigned</SelectItem>
+                                        {suppliers.map((supplier) => (
+                                            <SelectItem
+                                                key={supplier.id}
+                                                value={String(supplier.id)}
+                                            >
+                                                {supplier.company_name ?? supplier.contact_person ?? "Unknown"}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="category_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem
-                            key={category.id}
-                            value={String(category.id)}
-                          >
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                 <FormField
+                    control={form.control}
+                    name="sku"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>
+                        SKU <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. WM-001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brand</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Logitech" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="barcode"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Barcode</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. 123456789" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Model</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., MX Master 3" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                 <FormField
+                    control={form.control}
+                    name="model"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Model</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. A2849" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="unit_of_measure"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit of Measure</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., pcs, kg, box" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="brand"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Brand</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. Apple" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="cost_price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Cost Price <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="image_url"
+                    render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                        <FormLabel>Product Image</FormLabel>
+                        <FormControl>
+                            <ImageUpload 
+                                value={field.value}
+                                onChange={async (file) => {
+                                    if (file) {
+                                        try {
+                                          const { url } = await uploadProductImage(file);
+                                          field.onChange(url);
+                                          toast.success("Image uploaded successfully");
+                                        } catch (error) {
+                                          console.error("Upload failed", error);
+                                          toast.error("Failed to upload image");
+                                        }
+                                    } else {
+                                        field.onChange("");
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="selling_price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Selling Price <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                    <FormItem className="sm:col-span-3">
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                        <Textarea
+                            placeholder="Product description..."
+                            className="resize-none"
+                            rows={3}
+                            {...field}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+            </div>
 
-              <FormField
-                control={form.control}
-                name="stock_quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Stock Quantity <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="h-px bg-border" />
 
-              <FormField
-                control={form.control}
-                name="reorder_level"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Reorder Level <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+             {/* Pricing Section */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Pricing & Inventory</h3>
+              <div className="grid gap-4 sm:grid-cols-4">
+                 <FormField
+                    control={form.control}
+                    name="cost_price"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>
+                        Cost Price <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Product description..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                 <FormField
+                    control={form.control}
+                    name="selling_price"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>
+                        Selling Price <span className="text-destructive">*</span>
+                         <p className="text-xs text-muted-foreground mt-1">
+                            Margin: {suggestedMarkup.toFixed(1)}%
+                        </p>
+                        </FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                        />
+                        </FormControl>
+                        
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="markup_percentage"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Markup %</FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="0.0"
+                            {...field}
+                            value={field.value ?? ""}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                 <FormField
+                    control={form.control}
+                    name="tax_rate"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Tax Rate %</FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="0.0"
+                            {...field}
+                            value={field.value ?? ""}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                 <FormField
+                    control={form.control}
+                    name="stock_quantity"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>
+                        Stock Quantity <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                 <FormField
+                    control={form.control}
+                    name="reorder_level"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>
+                        Reorder Level <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
             </div>
 
             <DialogFooter>
@@ -391,7 +657,7 @@ export function ProductFormModal({
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isEditing ? "Update" : "Create"}
+                {isEditing ? "Update product" : "Create"}
               </Button>
             </DialogFooter>
           </form>
