@@ -1,3 +1,11 @@
+export interface TransactionItem {
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+}
+
 export interface Transaction{
     id:string
     invoice_number: string
@@ -5,6 +13,7 @@ export interface Transaction{
     time: string
     customer: string
     items:number
+    lineItems: TransactionItem[]
     total: number
     paymentMethod: "Credit Card" | "Cash" | string
     status: "Completed" | "Refunded" | string

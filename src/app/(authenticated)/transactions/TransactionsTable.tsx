@@ -39,6 +39,9 @@ import {
   FileText,
 } from "lucide-react";
 import { Badge } from "@/src/components/ui/badge";
+import { toast } from "sonner";
+
+import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
 
 const TransactionsTable = ({
   transactions,
@@ -49,6 +52,8 @@ const TransactionsTable = ({
   const [dateFilter, setDateFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Filter transactions based on search query and filters
   const filteredTransactions = transactions.filter((transaction) => {
@@ -164,12 +169,12 @@ const TransactionsTable = ({
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="icon">
+            {/* <Button variant="outline" size="icon">
               <Calendar className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="icon">
               <Download className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -208,7 +213,7 @@ const TransactionsTable = ({
                     <TableCell className="text-right">{transaction.items}</TableCell>
                    
                     <TableCell className="text-right font-bold">
-                      ${transaction.total.toFixed(2)}
+                      ₱{transaction.total.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
@@ -246,22 +251,39 @@ const TransactionsTable = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedTransaction(transaction);
+                                  setIsDetailsOpen(true);
+                                }}
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedTransaction(transaction);
+                                  setIsDetailsOpen(true);
+                                }}
+                              >
                                 <Printer className="h-4 w-4 mr-2" />
                                 Print Receipt
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => toast.info("Export feature coming soon")}
+                              >
                                 <FileText className="h-4 w-4 mr-2" />
                                 Export Invoice
                               </DropdownMenuItem>
                               {transaction.status === "Completed" && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-amber-600">Process Refund</DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-amber-600"
+                                    onClick={() => toast.info("Refund feature coming soon")}
+                                  >
+                                    Process Refund
+                                  </DropdownMenuItem>
                                 </>
                               )}
                             </DropdownMenuContent>
@@ -274,6 +296,11 @@ const TransactionsTable = ({
           </Table>
         </div>
       </Tabs>
+      <TransactionDetailsModal
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        transaction={selectedTransaction}
+      />
     </div>
   );
 };

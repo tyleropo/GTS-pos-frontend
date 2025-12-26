@@ -56,6 +56,14 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
     time: time,
     customer: apiTransaction.customer?.name || "Walk-in",
     items: apiTransaction.items?.length || 0,
+    lineItems:
+      apiTransaction.items?.map((item) => ({
+        product_id: item.product_id,
+        product_name: item.product_name || "Unknown Product",
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price),
+        line_total: Number(item.line_total),
+      })) || [],
     total: apiTransaction.total,
     paymentMethod:
       apiTransaction.payment_method === "cash"
