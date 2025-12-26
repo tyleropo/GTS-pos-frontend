@@ -20,6 +20,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/src/components/ui/button";
+import { Loader2, Plus, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, type Product, type Category, type Supplier } from "@/src/lib/api/products";
+import { useState } from "react";
+import { ImageUpload } from "@/src/components/image-upload";
 import {
   Select,
   SelectContent,
@@ -27,14 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/src/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { updateProduct, uploadProductImage, type Product, type Category } from "@/src/lib/api/products";
-import { useState } from "react";
-import { ImageUpload } from "@/src/components/image-upload";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required").max(255, "Name is too long"),
@@ -42,6 +42,7 @@ const productFormSchema = z.object({
   barcode: z.string().optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   category_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
+  supplier_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
   brand: z.string().optional().or(z.literal("")),
   model: z.string().optional().or(z.literal("")),
   image_url: z.string().optional().or(z.literal("")),
@@ -60,7 +61,10 @@ interface ProductFormModalProps {
   onOpenChange: (open: boolean) => void;
   product?: Product;
   categories: Category[];
+  suppliers: Supplier[];
   onSuccess?: () => void;
+  onRefreshCategories?: () => Promise<void>;
+  onRefreshSuppliers?: () => Promise<void>;
 }
 
 export function ProductFormModal({
@@ -68,10 +72,18 @@ export function ProductFormModal({
   onOpenChange,
   product,
   categories,
+  suppliers,
   onSuccess,
+  onRefreshCategories,
+  onRefreshSuppliers,
 }: ProductFormModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!product;
+
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
 
   const form = useForm<ProductFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,6 +94,7 @@ export function ProductFormModal({
       barcode: "",
       description: "",
       category_id: "none",
+      supplier_id: "none",
       brand: "",
       model: "",
       image_url: "",
@@ -115,6 +128,7 @@ export function ProductFormModal({
         barcode: product.barcode || "",
         description: product.description || "",
         category_id: product.category_id ? String(product.category_id) : "none",
+        supplier_id: product.supplier_id ? String(product.supplier_id) : "none",
         brand: product.brand || "",
         model: product.model || "",
         image_url: product.image_url || "",
@@ -129,21 +143,18 @@ export function ProductFormModal({
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
-    if (!product) {
-      toast.error("No product selected");
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
       // Prepare payload - convert empty strings to null for optional fields
-      const payload: Partial<Product> = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: any = {
         name: values.name,
         sku: values.sku,
         barcode: values.barcode || null,
         description: values.description || null,
         category_id: values.category_id === "none" || !values.category_id ? null : values.category_id,
+        supplier_id: values.supplier_id === "none" || !values.supplier_id ? null : values.supplier_id,
         brand: values.brand || null,
         model: values.model || null,
         image_url: values.image_url || null,
@@ -155,15 +166,20 @@ export function ProductFormModal({
         tax_rate: values.tax_rate,
       };
 
-      await updateProduct(String(product.id), payload);
-      toast.success("Product updated successfully");
+      if (product) {
+        await updateProduct(String(product.id), payload);
+        toast.success("Product updated successfully");
+      } else {
+        await createProduct(payload);
+        toast.success("Product created successfully");
+      }
 
       form.reset();
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("Error updating product:", error);
-      toast.error("Failed to update product");
+      console.error("Error saving product:", error);
+      toast.error(product ? "Failed to update product" : "Failed to create product");
     } finally {
       setIsSubmitting(false);
     }
@@ -171,7 +187,7 @@ export function ProductFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Product" : "Add New Product"}
@@ -211,28 +227,182 @@ export function ProductFormModal({
                     name="category_id"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        >
+                        <div className="flex items-center justify-between">
+                            <FormLabel>Category</FormLabel>
+                            {!isCreatingCategory && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => setIsCreatingCategory(true)}
+                                >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    New
+                                </Button>
+                            )}
+                        </div>
                         <FormControl>
-                            <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
+                            {isCreatingCategory ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="New category name"
+                                        className="h-9"
+                                        autoFocus
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={async () => {
+                                            if (!newCategoryName.trim()) return;
+                                            try {
+                                                const newCategory = await createCategory(newCategoryName);
+                                                await onRefreshCategories?.();
+                                                field.onChange(String(newCategory.id));
+                                                setNewCategoryName("");
+                                                setIsCreatingCategory(false);
+                                                toast.success(`Category "${newCategoryName}" created`);
+                                            } catch (error) {
+                                                console.error(error);
+                                                toast.error("Failed to create category");
+                                            }
+                                        }}
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={() => {
+                                            setIsCreatingCategory(false);
+                                            setNewCategoryName("");
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select category" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">Unassigned</SelectItem>
+                                        {categories.map((category) => (
+                                            <SelectItem
+                                                key={category.id}
+                                                value={String(category.id)}
+                                            >
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </FormControl>
-                        <SelectContent>
-                            <SelectItem value="none">Unassigned</SelectItem>
-                            {categories.map((category) => (
-                            <SelectItem
-                                key={category.id}
-                                value={String(category.id)}
-                            >
-                                {category.name}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="supplier_id"
+                    render={({ field }) => (
+                    <FormItem>
+                        <div className="flex items-center justify-between">
+                            <FormLabel>Supplier</FormLabel>
+                            {!isCreatingSupplier && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => setIsCreatingSupplier(true)}
+                                >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    New
+                                </Button>
+                            )}
+                        </div>
+                        <FormControl>
+                            {isCreatingSupplier ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newSupplierName}
+                                        onChange={(e) => setNewSupplierName(e.target.value)}
+                                        placeholder="New supplier name"
+                                        className="h-9"
+                                        autoFocus
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={async () => {
+                                            if (!newSupplierName.trim()) return;
+                                            try {
+                                                const newSupplier = await createSupplier(newSupplierName);
+                                                await onRefreshSuppliers?.();
+                                                field.onChange(String(newSupplier.id));
+                                                setNewSupplierName("");
+                                                setIsCreatingSupplier(false);
+                                                toast.success(`Supplier "${newSupplierName}" created`);
+                                            } catch (error) {
+                                                console.error(error);
+                                                toast.error("Failed to create supplier");
+                                            }
+                                        }}
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0"
+                                        onClick={() => {
+                                            setIsCreatingSupplier(false);
+                                            setNewSupplierName("");
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select supplier" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">Unassigned</SelectItem>
+                                        {suppliers.map((supplier) => (
+                                            <SelectItem
+                                                key={supplier.id}
+                                                value={String(supplier.id)}
+                                            >
+                                                {supplier.company_name ?? supplier.contact_person ?? "Unknown"}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -382,6 +552,9 @@ export function ProductFormModal({
                     <FormItem>
                         <FormLabel>
                         Selling Price <span className="text-destructive">*</span>
+                         <p className="text-xs text-muted-foreground mt-1">
+                            Margin: {suggestedMarkup.toFixed(1)}%
+                        </p>
                         </FormLabel>
                         <FormControl>
                         <Input
@@ -391,9 +564,7 @@ export function ProductFormModal({
                             {...field}
                         />
                         </FormControl>
-                         <p className="text-xs text-muted-foreground mt-1">
-                            Margin: {suggestedMarkup.toFixed(1)}%
-                        </p>
+                        
                         <FormMessage />
                     </FormItem>
                     )}

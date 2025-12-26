@@ -101,6 +101,11 @@ export async function fetchProductCategories(config?: AxiosRequestConfig) {
   return z.array(categorySchema).parse(data);
 }
 
+export async function fetchSuppliers(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get("/suppliers", config);
+  return z.array(supplierSchema).parse(data);
+}
+
 export async function fetchProductByBarcode(
   barcode: string,
   config?: AxiosRequestConfig
@@ -134,3 +139,15 @@ export async function uploadProductImage(file: File) {
 
   return z.object({ url: z.string() }).parse(data);
 }
+
+export async function createCategory(name: string) {
+  const { data } = await apiClient.post("/products/categories", { name });
+  return categorySchema.parse(data);
+}
+
+export async function createSupplier(name: string) {
+  const { data } = await apiClient.post("/suppliers", { company_name: name });
+  return supplierSchema.parse(data);
+}
+
+
