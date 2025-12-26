@@ -33,6 +33,7 @@ import {
   DrawerTitle,
 } from "@/src/components/ui/drawer";
 import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
+import { TransactionSuccessModal } from "@/src/components/transaction-success-modal";
 
 type CartAction =
   | { type: "add"; product: Product }
@@ -156,8 +157,15 @@ export default function POSPage() {
 
   const hasCartItems = cartItems.length > 0;
 
+  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
   const handleCheckout = useCallback(
-    async (method: "cash" | "card" | "gcash", customer: Customer | null) => {
+    async (
+      method: "cash" | "card" | "gcash", 
+      customer: Customer | null,
+      meta?: Record<string, unknown>
+    ) => {
       if (cartItems.length === 0) {
         toast.error("Cart is empty.");
         return;
@@ -178,6 +186,7 @@ export default function POSPage() {
           subtotal: cartTotals.subtotal,
           tax: cartTotals.tax,
           total: cartTotals.total,
+          meta: meta, // Pass meta data (tender, change)
         };
 
         const response = await createTransaction(payload);
@@ -186,6 +195,10 @@ export default function POSPage() {
         toast.success(
           `Transaction ${response.invoice_number} successful!`
         );
+        
+        setLastTransaction(response);
+        setIsSuccessModalOpen(true);
+        
         dispatchCart({ type: "clear" });
         setIsCartDrawerOpen(false);
       } catch (error) {
@@ -363,6 +376,16 @@ export default function POSPage() {
         }}
         title="Scan product barcode"
         description="Use your device camera to capture a barcode or QR code and add the product instantly."
+      />
+
+      <TransactionSuccessModal
+        open={isSuccessModalOpen}
+        onOpenChange={setIsSuccessModalOpen}
+        transaction={lastTransaction}
+        onNewSale={() => {
+          setIsSuccessModalOpen(false);
+          setLastTransaction(null);
+        }}
       />
     </div>
   );

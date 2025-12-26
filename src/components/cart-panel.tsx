@@ -31,7 +31,11 @@ export type CartLineItem = {
 type CartPanelProps = {
   items: CartLineItem[];
   onClear: () => void;
-  onCheckout: (method: "cash" | "card" | "gcash", customer: Customer | null) => void;
+  onCheckout: (
+    method: "cash" | "card" | "gcash", 
+    customer: Customer | null,
+    meta?: Record<string, unknown>
+  ) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
 };
@@ -84,24 +88,36 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
     }
   };
 
+  const [amountTendered, setAmountTendered] = useState<string>("");
+
   const handlePaymentMethodClick = (method: "cash" | "card" | "gcash") => {
     setSelectedPaymentMethod(method);
+    setAmountTendered(""); // Reset tendered amount
     setIsConfirmModalOpen(true);
   };
 
+  const change = selectedPaymentMethod === "cash" 
+    ? Math.max(0, parseFloat(amountTendered || "0") - total) 
+    : 0;
+
+  const isValidTender = selectedPaymentMethod !== "cash" || parseFloat(amountTendered || "0") >= total;
+
   const handleConfirmCheckout = () => {
-    if (selectedPaymentMethod) {
-      onCheckout(selectedPaymentMethod, selectedCustomer);
+    if (selectedPaymentMethod && isValidTender) {
+      onCheckout(selectedPaymentMethod, selectedCustomer, {
+        amount_tendered: selectedPaymentMethod === "cash" ? parseFloat(amountTendered) : undefined,
+        change: selectedPaymentMethod === "cash" ? change : undefined,
+      });
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);
-      // Optional: Reset customer after checkout? 
-      // setSelectedCustomer(null);
+      setAmountTendered("");
     }
   };
 
   const handleCancelCheckout = () => {
     setIsConfirmModalOpen(false);
     setSelectedPaymentMethod(null);
+    setAmountTendered("");
   };
 
   const selectedPaymentMethodLabel = PAYMENT_METHODS.find(
@@ -301,13 +317,38 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
             </div>
 
             {/* Payment Method */}
-            <div className="flex items-center gap-2 rounded-lg border bg-primary/5 p-3">
+            <div className="flex flex-col gap-3 rounded-lg border bg-primary/5 p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 {selectedPaymentMethod === "cash" && <Banknote className="h-4 w-4" />}
                 {selectedPaymentMethod === "card" && <CreditCard className="h-4 w-4" />}
                 {selectedPaymentMethod === "gcash" && <Wallet className="h-4 w-4" />}
                 <span>Payment via {selectedPaymentMethodLabel}</span>
               </div>
+
+              {selectedPaymentMethod === "cash" && (
+                <div className="space-y-2 pt-2 border-t border-primary/10">
+                   <div className="flex items-center justify-between gap-4">
+                      <label className="text-sm font-medium whitespace-nowrap">Amount Tendered</label>
+                      <div className="relative w-32">
+                         <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">₱</span>
+                         <Input 
+                            type="number" 
+                            className="pl-6 h-9" 
+                            placeholder="0.00"
+                            value={amountTendered}
+                            onChange={(e) => setAmountTendered(e.target.value)}
+                            autoFocus
+                         />
+                      </div>
+                   </div>
+                   <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Change</span>
+                      <span className={change < 0 ? "text-destructive" : "font-medium"}>
+                        {currency.format(change)}
+                      </span>
+                   </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -322,6 +363,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
             <Button
               type="button"
               onClick={handleConfirmCheckout}
+              disabled={!isValidTender}
             >
               Confirm Payment
             </Button>
