@@ -1,6 +1,6 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  "http://localhost:8000/api";
+  "http://192.168.254.114:8000/api";
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "GTS POS";
 
