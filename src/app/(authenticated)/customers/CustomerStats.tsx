@@ -11,7 +11,7 @@ const CustomerStats = ({customers}: {customers: Customer[]}) => {
   const totalCustomers = customers.length
   const activeCustomers = customers.filter((customer) => customer.status === "Active").length
   const vipCustomers = customers.filter((customer) => customer.type === "VIP").length
-  const totalRevenue = customers.reduce((sum, customer) => sum + customer.totalSpent, 0)
+  const totalRevenue = customers.reduce((sum, customer) => sum + (customer.totalSpent || 0), 0)
 
   return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -54,7 +54,7 @@ const CustomerStats = ({customers}: {customers: Customer[]}) => {
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">${totalRevenue.toFixed(2)}</div>
+          <div className="text-3xl font-bold">₱{totalRevenue.toFixed(2)}</div>
           <p className="text-xs text-muted-foreground">From all customer purchases</p>
         </CardContent>
       </Card>

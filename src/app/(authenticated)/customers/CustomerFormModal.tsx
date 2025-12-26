@@ -22,8 +22,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 import {
     createCustomer,
     updateCustomer,
@@ -40,6 +47,8 @@ const customerFormSchema = z.object({
     phone: z.string().optional().or(z.literal("")),
     address: z.string().optional().or(z.literal("")),
     company: z.string().optional().or(z.literal("")),
+    status: z.string().optional(),
+    type: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -54,6 +63,8 @@ interface CustomerFormModalProps {
         phone?: string | null;
         address?: string | null;
         company?: string | null;
+        status?: string;
+        type?: string;
     };
     onSuccess?: () => void;
 }
@@ -66,6 +77,10 @@ export function CustomerFormModal({
 }: CustomerFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditing = !!customer;
+    const [isCustomType, setIsCustomType] = useState(() => {
+        if (!customer?.type) return false;
+        return !["Regular", "VIP"].includes(customer.type);
+    });
 
     const form = useForm<CustomerFormValues>({
         resolver: zodResolver(customerFormSchema),
@@ -75,6 +90,8 @@ export function CustomerFormModal({
             phone: customer?.phone || "",
             address: customer?.address || "",
             company: customer?.company || "",
+            status: customer?.status || "Active",
+            type: customer?.type || "Regular",
         },
     });
 
@@ -87,7 +104,12 @@ export function CustomerFormModal({
                 phone: customer?.phone || "",
                 address: customer?.address || "",
                 company: customer?.company || "",
+                status: customer?.status || "Active",
+                type: customer?.type || "Regular",
             });
+            setIsCustomType(
+                customer?.type ? !["Regular", "VIP"].includes(customer.type) : false
+            );
         }
     });
 
@@ -102,6 +124,8 @@ export function CustomerFormModal({
                 phone: values.phone || undefined,
                 address: values.address || undefined,
                 company: values.company || undefined,
+                status: values.status,
+                type: values.type,
             };
 
             if (isEditing) {
@@ -216,6 +240,94 @@ export function CustomerFormModal({
                                 </FormItem>
                             )}
                         />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select status" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Active">Active</SelectItem>
+                                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                                <SelectItem value="Archived">Archived</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="flex items-center justify-between">
+                                            <FormLabel>Type</FormLabel>
+                                            {!isCustomType && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs"
+                                                    onClick={() => {
+                                                        setIsCustomType(true);
+                                                        field.onChange(""); // Clear value when switching to custom
+                                                    }}
+                                                >
+                                                    <Plus className="mr-1 h-3 w-3" />
+                                                    New
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <FormControl>
+                                            {isCustomType ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        placeholder="Custom Type"
+                                                        {...field}
+                                                        autoFocus
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-9 w-9 p-0"
+                                                        onClick={() => {
+                                                            setIsCustomType(false);
+                                                            field.onChange("Regular"); // Default back to Regular
+                                                        }}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="Regular">Regular</SelectItem>
+                                                        <SelectItem value="VIP">VIP</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
 
                         <DialogFooter>
                             <Button

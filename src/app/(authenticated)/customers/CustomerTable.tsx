@@ -2,6 +2,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Table,
   TableBody,
@@ -26,7 +27,6 @@ import {
   Edit,
   Filter,
   ShoppingCart,
-  FileText,
   Search,
   Trash2,
   Mail,
@@ -44,6 +44,7 @@ type CustomerTableProps = {
 }
 
 export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -168,7 +169,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{customer.orders || 0}</TableCell>
-                    <TableCell className="text-right font-medium">${(customer.totalSpent || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">₱{(customer.totalSpent || 0).toFixed(2)}</TableCell>
                     <TableCell>{customer.lastPurchase || "N/A"}</TableCell>
                     <TableCell>
                       {customer.status && (
@@ -204,14 +205,18 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Customer
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                            <DropdownMenuItem
+                            onSelect={() => {
+                              router.push(`/transactions?search=${encodeURIComponent(customer.name)}`)
+                            }}
+                          >
                             <ShoppingCart className="h-4 w-4 mr-2" />
                             View Orders
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          {/* <DropdownMenuItem>
                             <FileText className="h-4 w-4 mr-2" />
                             Purchase Orders
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"

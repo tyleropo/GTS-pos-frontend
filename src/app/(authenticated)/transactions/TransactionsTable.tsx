@@ -43,12 +43,15 @@ import { toast } from "sonner";
 
 import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
 
+import { useSearchParams } from "next/navigation";
+
 const TransactionsTable = ({
   transactions,
 }: {
   transactions: Transaction[];
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [dateFilter, setDateFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");

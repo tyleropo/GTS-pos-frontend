@@ -20,11 +20,13 @@ export const customerSchema = z.object({
   phone: z.string().nullable(),
   address: z.string().nullable(),
   company: z.string().nullable().optional(),
+  status: z.string().optional(),
+  type: z.string().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Computed attributes from backend
   total_spent: z.number().optional(),
-  transaction_count: z.number().optional(),
+  transactions_count: z.number().optional(),
 });
 
 const paginatedCustomerSchema = z.object({
@@ -46,6 +48,8 @@ export type CreateCustomerPayload = {
   phone?: string;
   address?: string;
   company?: string;
+  status?: string;
+  type?: string;
 };
 
 export type UpdateCustomerPayload = Partial<CreateCustomerPayload>;
