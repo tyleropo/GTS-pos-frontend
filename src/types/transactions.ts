@@ -1,5 +1,6 @@
 export interface Transaction{
     id:string
+    invoice_number: string
     date: string
     time: string
     customer: string

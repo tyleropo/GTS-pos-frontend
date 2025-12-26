@@ -51,6 +51,7 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
 
   return {
     id: String(apiTransaction.id),
+    invoice_number: apiTransaction.invoice_number || String(apiTransaction.id),
     date: date || new Date().toISOString().split("T")[0],
     time: time,
     customer: apiTransaction.customer?.name || "Walk-in",

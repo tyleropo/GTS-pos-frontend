@@ -55,6 +55,7 @@ const TransactionsTable = ({
     // Search filter
     const matchesSearch =
       transaction.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      transaction.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       transaction.customer.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Date filter
@@ -198,7 +199,7 @@ const TransactionsTable = ({
                 filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell className="font-bold">
-                      {transaction.id}
+                      {transaction.invoice_number}
                     </TableCell>
                     <TableCell>{transaction.date}
                         <p className="">{transaction.time}</p>

@@ -8,7 +8,6 @@ import {
 } from "@/src/components/ui/card";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Button } from "@/src/components/ui/button";
-import { Badge } from "@/src/components/ui/badge";
 import { Input } from "@/src/components/ui/input";
 import {
   Dialog,
@@ -18,7 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
-import { Trash2, Wallet, CreditCard, Banknote, Plus, Minus, X } from "lucide-react";
+import { Trash2, Wallet, CreditCard, Banknote, Plus, Minus, X, User } from "lucide-react";
+import { CustomerSearch } from "@/src/components/customer-search";
+import type { Customer } from "@/src/lib/api/customers";
 
 export type CartLineItem = {
   id: string;
@@ -30,7 +31,7 @@ export type CartLineItem = {
 type CartPanelProps = {
   items: CartLineItem[];
   onClear: () => void;
-  onCheckout: (method: "cash" | "card" | "gcash") => void;
+  onCheckout: (method: "cash" | "card" | "gcash", customer: Customer | null) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
 };
@@ -54,6 +55,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   const [vatPercentage, setVatPercentage] = useState(12);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "card" | "gcash" | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -89,9 +91,11 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
 
   const handleConfirmCheckout = () => {
     if (selectedPaymentMethod) {
-      onCheckout(selectedPaymentMethod);
+      onCheckout(selectedPaymentMethod, selectedCustomer);
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);
+      // Optional: Reset customer after checkout? 
+      // setSelectedCustomer(null);
     }
   };
 
@@ -107,17 +111,23 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   return (
     <>
       <Card className="flex h-full flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Current cart</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClear}
-            disabled={items.length === 0}
-            aria-label="Clear cart"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <CardHeader className="flex flex-col gap-4">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle>Current cart</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClear}
+              disabled={items.length === 0}
+              aria-label="Clear cart"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <CustomerSearch
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={setSelectedCustomer}
+          />
         </CardHeader>
         <CardContent className="flex-1 space-y-4">
           {items.length === 0 ? (
@@ -239,6 +249,19 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Customer Info */}
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col text-sm">
+                <span className="font-medium">
+                  {selectedCustomer ? selectedCustomer.name : "Walk-in Customer"}
+                </span>
+                {selectedCustomer?.email && (
+                  <span className="text-xs text-muted-foreground">{selectedCustomer.email}</span>
+                )}
+              </div>
+            </div>
+
             {/* Order Items */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Order Items</h4>

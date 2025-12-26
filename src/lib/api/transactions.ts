@@ -38,7 +38,10 @@ export const transactionSchema = z.object({
   total: priceNumber,
   payment_method: z.enum(["cash", "card", "gcash"]),
   items: z.array(transactionItemSchema).optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z
+    .union([z.record(z.unknown()), z.array(z.unknown())])
+    .transform((val) => (Array.isArray(val) ? {} : val))
+    .optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Relations
@@ -76,6 +79,7 @@ export type CreateTransactionPayload = {
     quantity: number;
     unit_price: number;
     discount?: number;
+    line_total: number;
   }>;
   payment_method: "cash" | "card" | "gcash";
   subtotal: number;
