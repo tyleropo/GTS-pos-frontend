@@ -191,7 +191,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="h-4 w-4" />
@@ -200,7 +200,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => onEdit?.(customer)}>
+                          <DropdownMenuItem onSelect={() => onEdit?.(customer)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Customer
                           </DropdownMenuItem>
@@ -215,7 +215,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => onDelete?.(customer)}
+                            onSelect={() => onDelete?.(customer)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete Customer
