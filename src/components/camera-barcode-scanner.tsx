@@ -56,7 +56,6 @@ export function CameraBarcodeScanner({
   const stopScanner = useCallback(() => {
     controlsRef.current?.stop();
     controlsRef.current = null;
-    readerRef.current?.reset();
     setStatus("idle");
   }, []);
 
