@@ -20,13 +20,14 @@ const priceNumber = z.union([z.number(), z.string()]).transform((val) => {
 });
 
 const purchaseOrderItemSchema = z.object({
-  product_id: z.string(),
+  product_id: z.union([z.string(), z.number()]),
   product_name: z.string().optional(),
   quantity_ordered: z.number(),
-  quantity_received: z.number().optional().default(0),
+  quantity_received: z.number().optional(),
   unit_cost: priceNumber,
   tax: priceNumber.optional(),
   line_total: priceNumber,
+  description: z.string().nullable().optional(),
 });
 
 export const purchaseOrderSchema = z.object({
@@ -38,19 +39,24 @@ export const purchaseOrderSchema = z.object({
   subtotal: priceNumber,
   tax: priceNumber,
   total: priceNumber,
+  notes: z.string().nullable().optional(),
   items: z.array(purchaseOrderItemSchema).optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Relations
-  supplier: z
+  customer: z
     .object({
       id: z.union([z.string(), z.number()]),
-      company_name: z.string().optional(),
-      supplier_code: z.string().optional(),
+      name: z.string().optional(),
+      company: z.string().nullable().optional(),
+      email: z.string().nullable().optional(),
+      phone: z.string().nullable().optional(),
     })
     .nullable()
     .optional(),
+  // Legacy support if needed, but we're switching to customer
+  supplier: z.unknown().optional(),
 });
 
 const paginatedPurchaseOrderSchema = z.object({
@@ -71,15 +77,19 @@ export type FetchPurchaseOrdersParams = {
 export type CreatePurchaseOrderPayload = {
   supplier_id: string;
   items: Array<{
-    product_id: string;
+    product_id: string | number;
     quantity_ordered: number;
     unit_cost: number;
+    line_total: number;
+    tax?: number;
+    description?: string | null;
   }>;
   expected_at?: string;
   status?: "draft" | "submitted" | "received" | "cancelled";
   subtotal: number;
   tax: number;
   total: number;
+  notes?: string;
   meta?: Record<string, unknown>;
 };
 

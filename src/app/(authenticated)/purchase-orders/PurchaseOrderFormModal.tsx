@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +9,8 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+    DialogTrigger,
+} from "@/src/components/ui/dialog";
 import {
     Form,
     FormControl,
@@ -28,29 +27,50 @@ import {
     SelectValue,
 } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // Assuming you have this component, or use Input if not
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/src/lib/utils";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/src/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/src/components/ui/popover";
 import { toast } from "sonner";
 import {
     createPurchaseOrder,
     updatePurchaseOrder,
     type CreatePurchaseOrderPayload,
+    type PurchaseOrder,
 } from "@/src/lib/api/purchase-orders";
 import { fetchProducts, type Product } from "@/src/lib/api/products";
+import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
 
 const purchaseOrderItemSchema = z.object({
-    product_id: z.string().min(1, "Product is required"),
+    product_id: z.union([z.string(), z.number()]).refine((val) => val !== "", {
+        message: "Product is required",
+    }),
     product_name: z.string().optional(),
     quantity_ordered: z.coerce.number().min(1, "Quantity must be at least 1"),
     unit_cost: z.coerce.number().min(0, "Unit cost must be positive"),
+    description: z.string().nullable().optional(),
 });
 
 const purchaseOrderFormSchema = z.object({
-    customer_name: z.string().min(1, "Customer name is required"),
+    supplier_id: z.string().min(1, "Supplier is required"),
     delivery_date: z.string().optional(),
     status: z.enum(["draft", "submitted", "received", "cancelled"]),
-    payment_status: z.enum(["pending", "paid"]).optional(),
     items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
+    payment_status: z.string().optional(),
+    notes: z.string().optional(),
 });
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
@@ -58,7 +78,7 @@ type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
 interface PurchaseOrderFormModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    purchaseOrder?: any;
+    purchaseOrder?: PurchaseOrder;
     onSuccess?: () => void;
 }
 
@@ -70,19 +90,29 @@ export function PurchaseOrderFormModal({
 }: PurchaseOrderFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
-    const [loadingProducts, setLoadingProducts] = useState(false);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [loadingData, setLoadingData] = useState(false);
+    const [customerOpen, setCustomerOpen] = useState(false);
+    const [productOpenStates, setProductOpenStates] = useState<Record<number, boolean>>({});
     const isEditing = !!purchaseOrder;
 
     const form = useForm<PurchaseOrderFormValues>({
         resolver: zodResolver(purchaseOrderFormSchema),
         defaultValues: {
-            customer_name: purchaseOrder?.customer || "",
-            delivery_date: purchaseOrder?.deliveryDate || "",
-            status: "draft",
+            supplier_id: purchaseOrder?.supplier_id || "",
+            delivery_date: purchaseOrder?.expected_at || "",
+            status: (purchaseOrder?.status as any) || "draft",
             payment_status: "pending",
+            notes: purchaseOrder?.notes || "",
             items: purchaseOrder?.items
-                ? [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0 }]
-                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0 }],
+                ? purchaseOrder.items.map(item => ({
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    quantity_ordered: item.quantity_ordered,
+                    unit_cost: item.unit_cost,
+                    description: item.description || "",
+                }))
+                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "" }],
         },
     });
 
@@ -91,23 +121,27 @@ export function PurchaseOrderFormModal({
         name: "items",
     });
 
-    // Load products
+    // Load products and suppliers
     useEffect(() => {
-        const loadProducts = async () => {
+        const loadData = async () => {
             try {
-                setLoadingProducts(true);
-                const response = await fetchProducts({ per_page: 1000 });
-                setProducts(response.data);
+                setLoadingData(true);
+                const [productsRes, customersRes] = await Promise.all([
+                   fetchProducts({ per_page: 1000 }),
+                   fetchCustomers({ per_page: 1000 })
+                ]);
+                setProducts(productsRes.data);
+                setCustomers(customersRes.data);
             } catch (error) {
-                console.error("Error loading products:", error);
-                toast.error("Failed to load products");
+                console.error("Error loading form data:", error);
+                toast.error("Failed to load form data");
             } finally {
-                setLoadingProducts(false);
+                setLoadingData(false);
             }
         };
 
         if (open) {
-            loadProducts();
+            loadData();
         }
     }, [open]);
 
@@ -115,11 +149,20 @@ export function PurchaseOrderFormModal({
     useEffect(() => {
         if (open) {
             form.reset({
-                customer_name: purchaseOrder?.customer || "",
-                delivery_date: purchaseOrder?.deliveryDate || "",
-                status: "draft",
+                supplier_id: purchaseOrder?.supplier_id || "",
+                delivery_date: purchaseOrder?.expected_at || "",
+                status: (purchaseOrder?.status as any) || "draft",
                 payment_status: "pending",
-                items: [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0 }],
+                notes: purchaseOrder?.notes || "",
+                items: purchaseOrder?.items
+                ? purchaseOrder.items.map(item => ({
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    quantity_ordered: item.quantity_ordered,
+                    unit_cost: item.unit_cost,
+                    description: item.description || "",
+                }))
+                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "" }],
             });
         }
     }, [open, purchaseOrder, form]);
@@ -137,28 +180,30 @@ export function PurchaseOrderFormModal({
         try {
             setIsSubmitting(true);
 
-            // Using customer_name as supplier_id (API field) since backend uses supplier_id
-            // but in our context it represents the customer
             const payload: CreatePurchaseOrderPayload = {
-                supplier_id: values.customer_name, // Maps to customer in our context
+                supplier_id: values.supplier_id,
                 items: values.items.map(item => ({
                     product_id: item.product_id,
                     quantity_ordered: item.quantity_ordered,
                     unit_cost: item.unit_cost,
+                    line_total: (item.quantity_ordered || 0) * (item.unit_cost || 0),
+                    tax: 0, // Assuming 0 for now as tax is calculated globally or handled by backend if per-item is needed
+                    description: item.description,
                 })),
                 expected_at: values.delivery_date || undefined,
                 status: values.status,
                 subtotal,
                 tax,
                 total,
+                notes: values.notes || undefined,
             };
 
-            if (isEditing) {
+            if (isEditing && purchaseOrder) {
                 await updatePurchaseOrder(String(purchaseOrder.id), payload);
-                toast.success("Customer order updated successfully");
+                toast.success("Purchase order updated successfully");
             } else {
                 await createPurchaseOrder(payload);
-                toast.success("Customer order created successfully");
+                toast.success("Purchase order created successfully");
             }
 
             form.reset();
@@ -168,8 +213,8 @@ export function PurchaseOrderFormModal({
             console.error("Error saving purchase order:", error);
             toast.error(
                 isEditing
-                    ? "Failed to update customer order"
-                    : "Failed to create customer order"
+                    ? "Failed to update purchase order"
+                    : "Failed to create purchase order"
             );
         } finally {
             setIsSubmitting(false);
@@ -191,29 +236,83 @@ export function PurchaseOrderFormModal({
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? "Edit Customer Order" : "New Customer Order"}
+                        {isEditing ? "Edit Purchase Order" : "New Purchase Order"}
                     </DialogTitle>
                     <DialogDescription>
                         {isEditing
-                            ? "Update customer order information below."
-                            : "Create a new order from your customer."}
+                            ? "Update purchase order information below."
+                            : "Create a new purchase order for your customer."}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Customer Name */}
+                        {/* Supplier Selection */}
                         <FormField
                             control={form.control}
-                            name="customer_name"
+                            name="supplier_id"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>
-                                        Customer Name <span className="text-destructive">*</span>
+                                        Customer <span className="text-destructive">*</span>
                                     </FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter customer name" {...field} />
-                                    </FormControl>
+                                    <Popover 
+                                        open={customerOpen} 
+                                        onOpenChange={setCustomerOpen} 
+                                        modal={true}
+                                    >
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className={cn(
+                                                        "w-full justify-between",
+                                                        !field.value && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {field.value
+                                                        ? customers.find(
+                                                            (customer) => String(customer.id) === field.value
+                                                        )?.company || customers.find(
+                                                            (customer) => String(customer.id) === field.value
+                                                        )?.name
+                                                        : "Select customer"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
+                                            <Command>
+                                                <CommandInput placeholder="Search customer..." autoFocus />
+                                                <CommandList>
+                                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {customers.map((customer) => (
+                                                            <CommandItem
+                                                                value={customer.name + " " + (customer.company || "")}
+                                                                key={customer.id}
+                                                                onSelect={() => {
+                                                                    form.setValue("supplier_id", String(customer.id));
+                                                                    setCustomerOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        String(customer.id) === field.value
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {customer.company ? `${customer.company} (${customer.name})` : customer.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -229,6 +328,20 @@ export function PurchaseOrderFormModal({
                                         <FormLabel>Delivery Date</FormLabel>
                                         <FormControl>
                                             <Input type="date" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="notes"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notes</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Additional notes..." {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -308,6 +421,7 @@ export function PurchaseOrderFormModal({
                                             product_name: "",
                                             quantity_ordered: 1,
                                             unit_cost: 0,
+                                            description: "",
                                         })
                                     }
                                 >
@@ -327,36 +441,63 @@ export function PurchaseOrderFormModal({
                                             control={form.control}
                                             name={`items.${index}.product_id`}
                                             render={({ field }) => (
-                                                <FormItem>
+                                                <FormItem className="flex flex-col">
                                                     <FormLabel className="text-xs">Product</FormLabel>
-                                                    <Select
-                                                        onValueChange={(value) =>
-                                                            handleProductChange(index, value)
-                                                        }
-                                                        defaultValue={field.value}
+                                                    <Popover 
+                                                        open={productOpenStates[index] || false} 
+                                                        onOpenChange={(open) => setProductOpenStates(prev => ({...prev, [index]: open}))} 
+                                                        modal={true}
                                                     >
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select product" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {loadingProducts ? (
-                                                                <SelectItem value="loading" disabled>
-                                                                    Loading products...
-                                                                </SelectItem>
-                                                            ) : (
-                                                                products.map((product) => (
-                                                                    <SelectItem
-                                                                        key={product.id}
-                                                                        value={String(product.id)}
-                                                                    >
-                                                                        {product.name} ({product.sku})
-                                                                    </SelectItem>
-                                                                ))
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    className={cn(
+                                                                        "w-full justify-between",
+                                                                        !field.value && "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    {field.value
+                                                                        ? products.find(
+                                                                            (product) => String(product.id) === String(field.value)
+                                                                        )?.name
+                                                                        : "Select product"}
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
+                                                            <Command>
+                                                                <CommandInput placeholder="Search product..." autoFocus />
+                                                                <CommandList>
+                                                                    <CommandEmpty>No product found.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {products.map((product) => (
+                                                                            <CommandItem
+                                                                                value={product.name + " " + product.sku}
+                                                                                key={product.id}
+                                                                                onSelect={() => {
+                                                                                    handleProductChange(index, String(product.id));
+                                                                                    setProductOpenStates(prev => ({...prev, [index]: false}));
+                                                                                }}
+                                                                            >
+                                                                                <Check
+                                                                                    className={cn(
+                                                                                        "mr-2 h-4 w-4",
+                                                                                        String(product.id) === String(field.value)
+                                                                                            ? "opacity-100"
+                                                                                            : "opacity-0"
+                                                                                    )}
+                                                                                />
+                                                                                {product.name} ({product.sku})
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -417,6 +558,26 @@ export function PurchaseOrderFormModal({
                                         >
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
+                                    </div>
+
+                                    {/* Description (Full Width) */}
+                                    <div className="col-span-12">
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.description`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="Description (optional)"
+                                                            {...field}
+                                                            value={field.value ?? ""}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </div>
                             ))}

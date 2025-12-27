@@ -83,11 +83,12 @@ export function adaptPurchaseOrder(
 
   return {
     id: String(apiPurchaseOrder.id),
+    po_number: apiPurchaseOrder.po_number || String(apiPurchaseOrder.id),
     date: date,
     customer:
-      apiPurchaseOrder.supplier?.company_name ||
-      apiPurchaseOrder.supplier?.supplier_code ||
-      "Unknown Supplier",
+      apiPurchaseOrder.customer?.company ||
+      apiPurchaseOrder.customer?.name ||
+      "Unknown Customer",
     items: apiPurchaseOrder.items?.length || 0,
     total: apiPurchaseOrder.total,
     status:

@@ -16,7 +16,7 @@ import { PurchaseOrderFormModal } from "./PurchaseOrderFormModal";
 import { ViewPurchaseOrderModal } from "./ViewPurchaseOrderModal";
 import { DeletePurchaseOrderDialog } from "./DeletePurchaseOrderDialog";
 import { FulfillPurchaseOrderModal } from "./FulfillPurchaseOrderModal";
-import { fetchPurchaseOrders, updatePurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { fetchPurchaseOrders, updatePurchaseOrder, fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
 import { useEffect, useState } from "react";
 import type { PurchaseOrder } from "@/src/types/purchaseOrder";
 import type { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
@@ -68,10 +68,17 @@ function PurchaseOrdersPage() {
     setIsViewModalOpen(true);
   };
 
-  const handleEditPurchaseOrder = (po: PurchaseOrder) => {
-    const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
-    setSelectedPurchaseOrder(apiPO || null);
-    setIsFormModalOpen(true);
+  const handleEditPurchaseOrder = async (po: PurchaseOrder) => {
+    try {
+      // Find the ID from the local list first to verify it exists or get the ID string
+      // The passed 'po' is the adapted one, so po.id is the string ID
+      const data = await fetchPurchaseOrder(po.id);
+      setSelectedPurchaseOrder(data);
+      setIsFormModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching purchase order details:", error);
+      toast.error("Failed to load purchase order details");
+    }
   };
 
   const handleDeletePurchaseOrder = (po: PurchaseOrder) => {
@@ -86,19 +93,7 @@ function PurchaseOrdersPage() {
     setIsFulfillModalOpen(true);
   };
 
-  const handleMarkAsCompleted = async (po: PurchaseOrder) => {
-    const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
-    if (!apiPO) return;
 
-    try {
-      await updatePurchaseOrder(String(apiPO.id), { status: "received" });
-      toast.success("Customer order marked as delivered");
-      loadPurchaseOrders();
-    } catch (error) {
-      console.error("Error updating customer order:", error);
-      toast.error("Failed to update customer order");
-    }
-  };
 
   const handleCancelOrder = async (po: PurchaseOrder) => {
     const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
@@ -198,7 +193,6 @@ function PurchaseOrdersPage() {
               onEdit={handleEditPurchaseOrder}
               onDelete={handleDeletePurchaseOrder}
               onReceive={handleFulfillPurchaseOrder}
-              onMarkAsCompleted={handleMarkAsCompleted}
               onCancel={handleCancelOrder}
               onDownloadPDF={handleDownloadPDF}
             />
