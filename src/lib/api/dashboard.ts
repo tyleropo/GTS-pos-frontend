@@ -102,3 +102,24 @@ export async function fetchDashboardPendingRepairs(
   const { data } = await apiClient.get("/dashboard/pending-repairs", config);
   return repairsSchema.parse(data);
 }
+
+const calendarEventSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  start: z.string(),
+  color: z.string(),
+  extendedProps: z.object({
+    type: z.enum(["po", "repair"]),
+    id: z.union([z.string(), z.number()]),
+    status: z.string(),
+  }),
+});
+
+export type CalendarEvent = z.infer<typeof calendarEventSchema>;
+
+export async function fetchDashboardCalendarEvents(
+  config?: AxiosRequestConfig
+) {
+  const { data } = await apiClient.get("/dashboard/calendar-events", config);
+  return z.array(calendarEventSchema).parse(data);
+}
