@@ -74,13 +74,7 @@ const data = {
       icon: IconDeviceImacCog,
     },
   ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: IconSettings,
-    },
-  ],
+  navSecondary: [],
 
 }
 

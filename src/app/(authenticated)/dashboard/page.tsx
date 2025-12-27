@@ -228,6 +228,8 @@ export default function DashboardPage() {
                   percentage={metric.percentage}
                   trend={metric.trend}
                   hint={metric.hint}
+                  icon={metric.icon}
+                  href={metric.href}
                 />
               ))}
         </section>

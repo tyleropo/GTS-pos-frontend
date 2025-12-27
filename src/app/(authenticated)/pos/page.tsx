@@ -267,7 +267,9 @@ export default function POSPage() {
                   <div className="flex-1">
                     <BarcodeInput
                       onScan={handleScan}
-                      placeholder="Enter or paste a barcode, then press Enter"
+                      placeholder="Enter or paste a barcode, then press Enter (Press 'b' to focus)"
+                      autoFocus={true}
+                      hotkey="b"
                     />
                   </div>
                   <Button

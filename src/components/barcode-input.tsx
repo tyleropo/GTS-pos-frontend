@@ -6,6 +6,7 @@ type BarcodeInputProps = {
   placeholder?: string;
   hotkey?: string;
   inputClassName?: string;
+  autoFocus?: boolean;
 };
 
 export function BarcodeInput({
@@ -13,12 +14,27 @@ export function BarcodeInput({
   placeholder = "Search products or scan a barcode…",
   hotkey = "/",
   inputClassName,
+  autoFocus = false,
 }: BarcodeInputProps) {
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (autoFocus) {
+      ref.current?.focus();
+    }
+  }, [autoFocus]);
+
+  useEffect(() => {
     if (!hotkey) return;
     const handler = (event: KeyboardEvent) => {
+      // Ignore if user is typing in another input
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+         return;
+      }
+      
       if (event.key === hotkey) {
         event.preventDefault();
         ref.current?.focus();
