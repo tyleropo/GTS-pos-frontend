@@ -39,6 +39,15 @@ import {
   FileText,
 } from "lucide-react";
 import { Badge } from "@/src/components/ui/badge";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/src/components/ui/pagination";
 import { toast } from "sonner";
 
 import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
@@ -47,8 +56,14 @@ import { useSearchParams } from "next/navigation";
 
 const TransactionsTable = ({
   transactions,
+  page = 1,
+  totalPages = 1,
+  onPageChange,
 }: {
   transactions: Transaction[];
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }) => {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -298,6 +313,42 @@ const TransactionsTable = ({
             </TableBody>
           </Table>
         </div>
+        
+        
+        {/* Pagination */ }
+        {totalPages > 1 && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) onPageChange?.(page - 1);
+                }}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="text-sm font-medium">
+                Page {page} of {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < totalPages) onPageChange?.(page + 1);
+                }}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+        )}
       </Tabs>
       <TransactionDetailsModal
         open={isDetailsOpen}

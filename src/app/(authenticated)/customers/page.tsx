@@ -23,6 +23,11 @@ function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{
+    last_page?: number;
+    total?: number;
+  }>({});
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -35,9 +40,12 @@ function CustomersPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchCustomers();
+      const response = await fetchCustomers({ page, per_page: 10 });
       const adapted = response.data.map(adaptCustomer);
       setCustomers(adapted);
+      if (response.meta) {
+        setMeta(response.meta);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load customers");
       console.error("Error loading customers:", err);
@@ -48,7 +56,7 @@ function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
-  }, []);
+  }, [page]);
 
   const handleAddCustomer = () => {
     setSelectedCustomer(null);
@@ -130,6 +138,9 @@ function CustomersPage() {
               customers={customers}
               onEdit={handleEditCustomer}
               onDelete={handleDeleteCustomer}
+              page={page}
+              totalPages={meta.last_page || 1}
+              onPageChange={setPage}
             />
           </CardContent>
         </Card>

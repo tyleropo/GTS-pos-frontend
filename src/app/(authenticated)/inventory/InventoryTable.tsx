@@ -40,6 +40,15 @@ import {
 import { Badge } from "@/src/components/ui/badge";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { CameraBarcodeScanner } from "@/src/components/camera-barcode-scanner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/src/components/ui/pagination";
 
 type InventoryTableProps = {
   items: InventoryItem[];
@@ -47,6 +56,15 @@ type InventoryTableProps = {
   isLoading?: boolean;
   onProductUpdated?: () => void;
   onEdit?: (product: InventoryItem) => void;
+  // Pagination
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
+  // Filters
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  categoryFilter?: string;
+  onCategoryFilterChange?: (category: string) => void;
 };
 
 const deriveStatus = (item: InventoryItem) => {
@@ -66,11 +84,30 @@ export function InventoryTable({
   categories,
   isLoading,
   onEdit,
+  page = 1,
+  totalPages = 1,
+  onPageChange,
+  searchQuery: propSearchQuery,
+  onSearchChange,
+  categoryFilter: propCategoryFilter,
+  onCategoryFilterChange,
 }: InventoryTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  const searchQuery = propSearchQuery ?? internalSearchQuery;
+  const handleSearchChange = (value: string) => {
+    if (onSearchChange) onSearchChange(value);
+    else setInternalSearchQuery(value);
+  };
+
+  const categoryFilter = propCategoryFilter ?? internalCategoryFilter;
+  const handleCategoryChange = (value: string) => {
+    if (onCategoryFilterChange) onCategoryFilterChange(value);
+    else setInternalCategoryFilter(value);
+  };
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -78,6 +115,14 @@ export function InventoryTable({
 
       const matchesStatus =
         statusFilter === "all" || normalizedStatus === statusFilter;
+
+      // If props are provided, we assume server-side filtering for category and search
+      // So we skip client-side filtering for them
+      const isServerSide = typeof propSearchQuery !== "undefined";
+
+      if (isServerSide) {
+           return matchesStatus;
+      }
 
       const matchesCategory =
         categoryFilter === "all" ||
@@ -93,7 +138,7 @@ export function InventoryTable({
 
       return matchesStatus && matchesCategory && matchesSearch;
     });
-  }, [categoryFilter, items, searchQuery, statusFilter]);
+  }, [items, statusFilter, categoryFilter, searchQuery, propSearchQuery]);
 
   if (isLoading) {
     return (
@@ -127,7 +172,7 @@ export function InventoryTable({
                 placeholder="Search by name, SKU, or supplier..."
                 className="pl-8"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => handleSearchChange(event.target.value)}
               />
             </div>
             <Button
@@ -154,7 +199,7 @@ export function InventoryTable({
                   </p>
                   <Select
                     value={categoryFilter}
-                    onValueChange={setCategoryFilter}
+                    onValueChange={handleCategoryChange}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -295,11 +340,44 @@ export function InventoryTable({
           </Table>
         </div>
       </Tabs>
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) onPageChange?.(page - 1);
+                }}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="text-sm font-medium">
+                Page {page} of {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < totalPages) onPageChange?.(page + 1);
+                }}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
       <CameraBarcodeScanner
         open={isScannerOpen}
         onOpenChange={setIsScannerOpen}
         onDetected={(code) => {
-          setSearchQuery(code);
+          handleSearchChange(code);
           setIsScannerOpen(false);
         }}
         title="Scan SKU or barcode"

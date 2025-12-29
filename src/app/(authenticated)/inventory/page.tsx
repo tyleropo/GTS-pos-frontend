@@ -44,15 +44,20 @@ export default function InventoryPage() {
     refresh: refreshSuppliers,
   } = useSuppliersList();
 
+  const [page, setPage] = useState(1);
+  const [perPage] = useState(10);
+
   const productQuery = useMemo(
     () => ({
-      per_page: 100,
+      page,
+      per_page: perPage,
     }),
-    []
+    [page, perPage]
   );
 
   const {
     products,
+    meta,
     isLoading: isLoadingProducts,
     error: productsError,
     refresh: refreshProducts,
@@ -158,6 +163,9 @@ export default function InventoryPage() {
               isLoading={isLoading}
               onProductUpdated={refreshProducts}
               onEdit={handleEditProduct}
+              page={page}
+              totalPages={meta?.last_page || 1}
+              onPageChange={setPage}
             />
           </CardContent>
         </Card>
