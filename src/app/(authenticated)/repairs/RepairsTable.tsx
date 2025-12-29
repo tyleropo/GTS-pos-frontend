@@ -1,16 +1,30 @@
-import {useState} from 'react'
+import { useState } from 'react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Smartphone, Laptop, Watch, Headphones } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
 import { Badge } from '@/src/components/ui/badge'
 import { Repair } from '@/src/types/repair'
 
-const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
-      // 1. React state for search + filters + active tab
+interface RepairsTableProps {
+  repairs: Repair[];
+  onView?: (repair: Repair) => void;
+  onEdit?: (repair: Repair) => void;
+  onDelete?: (repair: Repair) => void;
+  onUpdateStatus?: (repair: Repair, status: "pending" | "in_progress" | "completed" | "cancelled") => void;
+}
+
+const RepairsTable = ({
+  repairs,
+  onView,
+  onEdit,
+  onDelete,
+  onUpdateStatus
+}: RepairsTableProps) => {
+  // 1. React state for search + filters + active tab
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deviceFilter, setDeviceFilter] = useState("all");
@@ -19,8 +33,8 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
   // 2. Combine all filtering logic:
   //    a) Tab filter (matches repair.status → activeTab)
   //    b) Search filter (id, customer, deviceModel, or issue contains text)
-  //    c) Status dropdown (exact match or “all”)
-  //    d) Device dropdown (exact match or “all”)
+  //    c) Status dropdown (exact match or "all")
+  //    d) Device dropdown (exact match or "all")
   const filteredRepairs = repairs.filter((r) => {
     // a) Tab filter
     if (
@@ -34,6 +48,7 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
     const lcSearch = searchQuery.toLowerCase();
     const matchesSearch =
       r.id.toLowerCase().includes(lcSearch) ||
+      r.ticketNumber?.toLowerCase().includes(lcSearch) ||
       r.customer.toLowerCase().includes(lcSearch) ||
       r.deviceModel.toLowerCase().includes(lcSearch) ||
       r.issue.toLowerCase().includes(lcSearch);
@@ -57,7 +72,7 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
         <TabsList>
           <TabsTrigger value="all-repairs">All Repairs</TabsTrigger>
           <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-          <TabsTrigger value="waiting-for-parts">Waiting for Parts</TabsTrigger>
+          <TabsTrigger value="diagnostic">Pending</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
 
@@ -95,10 +110,10 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="diagnostic">Diagnostic</SelectItem>
+                    <SelectItem value="diagnostic">Pending</SelectItem>
                     <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="waiting-for-parts">Waiting for Parts</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -165,7 +180,7 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
               filteredRepairs.map((repair) => (
                 <TableRow key={repair.id}>
                   {/* Ticket ID */}
-                  <TableCell className="font-medium">{repair.id}</TableCell>
+                  <TableCell className="font-medium">{repair.ticketNumber || repair.id}</TableCell>
 
                   {/* Customer */}
                   <TableCell>{repair.customer}</TableCell>
@@ -173,19 +188,19 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                   {/* Device + Icon */}
                   <TableCell>
                     <div className="flex items-center">
-                      {repair.device === "Smartphone" && (
+                      {repair.device.toLowerCase().includes("smartphone") && (
                         <Smartphone className="h-4 w-4 mr-2 text-muted-foreground" />
                       )}
-                      {repair.device === "Laptop" && (
+                      {repair.device.toLowerCase().includes("laptop") && (
                         <Laptop className="h-4 w-4 mr-2 text-muted-foreground" />
                       )}
-                      {repair.device === "Smartwatch" && (
+                      {repair.device.toLowerCase().includes("watch") && (
                         <Watch className="h-4 w-4 mr-2 text-muted-foreground" />
                       )}
-                      {repair.device === "Headphones" && (
+                      {repair.device.toLowerCase().includes("headphone") && (
                         <Headphones className="h-4 w-4 mr-2 text-muted-foreground" />
                       )}
-                      {repair.device === "Tablet" && (
+                      {repair.device.toLowerCase().includes("tablet") && (
                         <Laptop className="h-4 w-4 mr-2 text-muted-foreground" />
                       )}
                       <span>{repair.deviceModel}</span>
@@ -193,7 +208,7 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                   </TableCell>
 
                   {/* Issue */}
-                  <TableCell>{repair.issue}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{repair.issue}</TableCell>
 
                   {/* Status Badge + Icon */}
                   <TableCell>
@@ -204,9 +219,9 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
                           : repair.status === "In Progress"
                           ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                          : repair.status === "Waiting for Parts"
-                          ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                          : repair.status === "Cancelled"
+                          ? "bg-red-100 text-red-700 hover:bg-red-100"
+                          : "bg-amber-100 text-amber-700 hover:bg-amber-100"
                       }
                     >
                       <span className="flex items-center">
@@ -216,10 +231,10 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                         {repair.status === "In Progress" && (
                           <Wrench className="h-3.5 w-3.5 mr-1" />
                         )}
-                        {repair.status === "Waiting for Parts" && (
+                        {(repair.status === "Diagnostic" || repair.status === "Pending") && (
                           <Clock className="h-3.5 w-3.5 mr-1" />
                         )}
-                        {repair.status === "Diagnostic" && (
+                        {repair.status === "Cancelled" && (
                           <AlertCircle className="h-3.5 w-3.5 mr-1" />
                         )}
                         {repair.status}
@@ -238,46 +253,72 @@ const RepairsTable = ({repairs} : {repairs: Repair[]}) => {
                   {/* Estimated Completion */}
                   <TableCell>{repair.completionDate}</TableCell>
 
-                  {/* Actions dropdown */}
+                  {/* Actions */}
                   <TableCell className="text-right">
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Quick Edit Button */}
+                      {repair.status !== "Cancelled" && onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(repair)}
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <FileText className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Update Status
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Wrench className="h-4 w-4 mr-2" />
-                          Add Notes
-                        </DropdownMenuItem>
-                        {/* Only show “Mark as Completed” if not already completed */}
-                        {repair.status !== "Completed" && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Mark as Completed
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Ticket
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      )}
+
+                      {/* Dropdown for more actions */}
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => onView?.(repair)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEdit?.(repair)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Ticket
+                          </DropdownMenuItem>
+                          
+                          {/* Status update options */}
+                          {repair.status !== "In Progress" && repair.status !== "Completed" && repair.status !== "Cancelled" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => onUpdateStatus?.(repair, "in_progress")}>
+                                <Wrench className="h-4 w-4 mr-2" />
+                                Start Repair
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {/* Only show "Mark as Completed" if not already completed */}
+                          {repair.status !== "Completed" && repair.status !== "Cancelled" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => onUpdateStatus?.(repair, "completed")}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Mark as Completed
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => onDelete?.(repair)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Ticket
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

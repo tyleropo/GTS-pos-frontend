@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -16,7 +16,6 @@ interface PurchaseOrderTableProps {
   onEdit?: (po: PurchaseOrder) => void;
   onDelete?: (po: PurchaseOrder) => void;
   onReceive?: (po: PurchaseOrder) => void;
-  onMarkAsCompleted?: (po: PurchaseOrder) => void;
   onCancel?: (po: PurchaseOrder) => void;
   onDownloadPDF?: (po: PurchaseOrder) => void;
 }
@@ -27,7 +26,6 @@ const PurchaseOrderTable = ({
   onEdit,
   onDelete,
   onReceive,
-  onMarkAsCompleted,
   onCancel,
   onDownloadPDF,
 }: PurchaseOrderTableProps) => {
@@ -160,7 +158,7 @@ const PurchaseOrderTable = ({
                   ) : (
                     filteredPOs.map((po) => (
                       <TableRow key={po.id}>
-                        <TableCell className="font-medium">{po.id}</TableCell>
+                        <TableCell className="font-medium">{po.po_number}</TableCell>
                         <TableCell>{po.date}</TableCell>
                         <TableCell>{po.customer}</TableCell>
                         <TableCell className="text-right">{po.items}</TableCell>
@@ -205,7 +203,18 @@ const PurchaseOrderTable = ({
                           </Badge>
                         </TableCell>
                         <TableCell>{po.deliveryDate}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right flex justify-end gap-2 items-center">
+                          {po.status !== "Cancelled" && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => onEdit?.(po)}
+                              title="Edit Order"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon">
@@ -224,29 +233,34 @@ const PurchaseOrderTable = ({
                                 <FileText className="h-4 w-4 mr-2" />
                                 View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                onSelect={(e) => {
-                                    e.preventDefault();
-                                    onEdit?.(po);
-                                }}
-                                >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit Order
-                                </DropdownMenuItem>
+                                
                                 <DropdownMenuItem onSelect={() => onDownloadPDF?.(po)}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
                                 </DropdownMenuItem>
-                                {po.status !== "Completed" && po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Delivered" && (
+                                
+                                {po.status !== "Received" && po.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => onMarkAsCompleted?.(po)}>
+                                    <DropdownMenuItem onSelect={() => onReceive?.(po)}>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Mark as Delivered
+                                    Receive Items
                                     </DropdownMenuItem>
                                 </>
                                 )}
-                                {po.status !== "Cancelled" && (
+                                {po.status === "Draft" && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-destructive"
+                                            onSelect={() => onDelete?.(po)}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Order
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Draft" && (
                                 <DropdownMenuItem 
                                     className="text-destructive"
                                     onSelect={() => onCancel?.(po)}

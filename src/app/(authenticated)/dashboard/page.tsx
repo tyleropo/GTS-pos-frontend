@@ -14,11 +14,16 @@ import {
   fetchDashboardMetrics,
   fetchDashboardPendingRepairs,
   fetchDashboardTopSelling,
+  fetchDashboardCalendarEvents,
+  type CalendarEvent,
 } from "@/src/lib/api/dashboard";
+import { updatePurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { updateRepair } from "@/src/lib/api/repairs";
 import { Product } from "@/src/lib/api/products";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Badge } from "@/src/components/ui/badge";
 import { useAuth } from "@/src/providers/auth-provider";
+import { toast } from "sonner";
 
 type DashboardError = {
   context: string;
@@ -43,6 +48,7 @@ export default function DashboardPage() {
   const [pendingRepairs, setPendingRepairs] = useState<
     Awaited<ReturnType<typeof fetchDashboardPendingRepairs>>
   >([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,12 +62,14 @@ export default function DashboardPage() {
         lowStockResult,
         topSellingResult,
         pendingRepairsResult,
+        calendarEventsResult,
       ] = await Promise.allSettled([
         fetchDashboardMetrics(),
         fetchDashboardActivity(),
         fetchDashboardLowStock(),
         fetchDashboardTopSelling(),
         fetchDashboardPendingRepairs(),
+        fetchDashboardCalendarEvents(),
       ]);
 
       if (cancelled) return;
@@ -123,6 +131,13 @@ export default function DashboardPage() {
             "Unable to load repair tickets.",
           ),
         });
+      }
+
+      if (calendarEventsResult.status === "fulfilled") {
+        setCalendarEvents(calendarEventsResult.value);
+      } else {
+        // Calendar events are non-critical, just log
+        console.warn("Failed to load calendar events", calendarEventsResult.reason);
       }
 
       setErrors(nextErrors);
@@ -213,13 +228,35 @@ export default function DashboardPage() {
                   percentage={metric.percentage}
                   trend={metric.trend}
                   hint={metric.hint}
+                  icon={metric.icon}
+                  href={metric.href}
                 />
               ))}
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <Calendar />
+            <Calendar 
+              events={calendarEvents} 
+              isLoading={isLoading}
+              onEventDateChange={async (eventId, type, newDate) => {
+                try {
+                  if (type === 'po') {
+                    await updatePurchaseOrder(eventId, { expected_at: newDate });
+                    toast.success('PO delivery date updated');
+                  } else {
+                    await updateRepair(eventId, { promised_at: newDate });
+                    toast.success('Repair due date updated');
+                  }
+                  // Refresh calendar events
+                  const events = await fetchDashboardCalendarEvents();
+                  setCalendarEvents(events);
+                } catch (error) {
+                  console.error('Failed to update date:', error);
+                  toast.error('Failed to update date');
+                }
+              }}
+            />
           </div>
           {isLoading ? (
             <Skeleton className="h-80 rounded-xl" />

@@ -81,9 +81,9 @@ export function ViewPurchaseOrderModal({
                                 Customer
                             </div>
                             <p className="font-medium">
-                                {purchaseOrder.supplier?.company_name ||
-                                    purchaseOrder.supplier?.supplier_code ||
-                                    "Unknown Supplier"}
+                                {purchaseOrder.customer?.company ||
+                                    purchaseOrder.customer?.name ||
+                                    "Unknown Customer"}
                             </p>
                         </div>
 
@@ -118,6 +118,15 @@ export function ViewPurchaseOrderModal({
                             </div>
                             <p className="font-medium">{purchaseOrder.items?.length || 0}</p>
                         </div>
+                        <div className="space-y-1 col-span-2">
+                             <div className="flex items-center text-sm text-muted-foreground">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Notes
+                            </div>
+                            <p className="font-medium whitespace-pre-wrap">
+                                {purchaseOrder.notes || "No notes"}
+                            </p>
+                        </div>
                     </div>
 
                     <Separator />
@@ -141,7 +150,10 @@ export function ViewPurchaseOrderModal({
                                         purchaseOrder.items.map((item, index) => (
                                             <TableRow key={index}>
                                                 <TableCell className="font-medium">
-                                                    {item.product_name || item.product_id}
+                                                    <div>{item.product_name || item.product_id}</div>
+                                                    {item.description && (
+                                                        <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {item.quantity_ordered}

@@ -83,11 +83,12 @@ export function adaptPurchaseOrder(
 
   return {
     id: String(apiPurchaseOrder.id),
+    po_number: apiPurchaseOrder.po_number || String(apiPurchaseOrder.id),
     date: date,
     customer:
-      apiPurchaseOrder.supplier?.company_name ||
-      apiPurchaseOrder.supplier?.supplier_code ||
-      "Unknown Supplier",
+      apiPurchaseOrder.customer?.company ||
+      apiPurchaseOrder.customer?.name ||
+      "Unknown Customer",
     items: apiPurchaseOrder.items?.length || 0,
     total: apiPurchaseOrder.total,
     status:
@@ -105,18 +106,28 @@ export function adaptRepair(apiRepair: APIRepair): Repair {
   const created = apiRepair.created_at || new Date().toISOString();
   const date = created.split("T")[0];
 
+  // Format status for display
+  const statusMap: Record<string, string> = {
+    pending: "Diagnostic",
+    in_progress: "In Progress",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+
   return {
     id: String(apiRepair.id),
+    ticketNumber: apiRepair.ticket_number,
     date: date,
-    customer: apiRepair.customer?.name || "Unknown",
-    device: apiRepair.device,
-    deviceModel: apiRepair.device, // Backend doesn't separate device/model
+    customer: apiRepair.customer?.name || "Walk-in",
+    customerId: apiRepair.customer_id ? String(apiRepair.customer_id) : undefined,
+    device: apiRepair.device || "Unknown",
+    deviceModel: apiRepair.device_model || apiRepair.device || "Unknown",
+    serialNumber: apiRepair.serial_number || undefined,
     issue: apiRepair.issue_description || "No description",
-    status:
-      apiRepair.status.charAt(0).toUpperCase() +
-      apiRepair.status.slice(1).replace("_", " "),
-    cost: 0, // Backend doesn't track repair cost in this model
-    technician: "Unassigned", // Backend doesn't track technician
-    completionDate: apiRepair.promised_at || date,
+    status: statusMap[apiRepair.status] || apiRepair.status,
+    resolution: apiRepair.resolution || undefined,
+    cost: apiRepair.cost || 0,
+    technician: apiRepair.technician || "Unassigned",
+    completionDate: apiRepair.promised_at?.split("T")[0] || date,
   };
 }

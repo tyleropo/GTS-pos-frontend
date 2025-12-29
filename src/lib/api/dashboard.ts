@@ -13,6 +13,8 @@ const metricSchema = z
     percentage: z.union([z.string(), z.number()]).optional(),
     trend: z.enum(["up", "down", "neutral"]).optional().default("neutral"),
     hint: z.string().optional(),
+    icon: z.enum(["revenue", "products", "low-stock", "repairs", "orders", "customers"]).optional(),
+    href: z.string().optional(),
   })
   .transform((metric) => ({
     id: metric.id ?? metric.title.toLowerCase().replace(/\s+/g, "-"),
@@ -24,15 +26,19 @@ const metricSchema = z
         : metric.percentage ?? null,
     trend: metric.trend ?? "neutral",
     hint: metric.hint ?? "",
+    icon: metric.icon,
+    href: metric.href,
   }));
 
 const metricsResponseSchema = z
-  .object({
-    cards: z.array(metricSchema).optional(),
-    metrics: z.array(metricSchema).optional(),
-    data: z.array(metricSchema).optional(),
-  })
-  .transform((payload) => payload.cards ?? payload.metrics ?? payload.data ?? []);
+  .union([
+    z.array(metricSchema), // Handle direct array response (current backend behavior)
+    z.object({             // Handle wrapped response (potential future behavior)
+      cards: z.array(metricSchema).optional(),
+      metrics: z.array(metricSchema).optional(),
+      data: z.array(metricSchema).optional(),
+    }).transform((payload) => payload.cards ?? payload.metrics ?? payload.data ?? [])
+  ]);
 
 const randomId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -101,4 +107,25 @@ export async function fetchDashboardPendingRepairs(
 ) {
   const { data } = await apiClient.get("/dashboard/pending-repairs", config);
   return repairsSchema.parse(data);
+}
+
+const calendarEventSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  start: z.string(),
+  color: z.string(),
+  extendedProps: z.object({
+    type: z.enum(["po", "repair"]),
+    id: z.union([z.string(), z.number()]),
+    status: z.string(),
+  }),
+});
+
+export type CalendarEvent = z.infer<typeof calendarEventSchema>;
+
+export async function fetchDashboardCalendarEvents(
+  config?: AxiosRequestConfig
+) {
+  const { data } = await apiClient.get("/dashboard/calendar-events", config);
+  return z.array(calendarEventSchema).parse(data);
 }
