@@ -13,7 +13,6 @@ import { Plus } from "lucide-react";
 import PurchaseOrderStats from "./PurchaseOrderStats";
 import PurchaseOrderTable from "./PurchaseOrderTable";
 import { PurchaseOrderFormModal } from "./PurchaseOrderFormModal";
-import { ViewPurchaseOrderModal } from "./ViewPurchaseOrderModal";
 import { DeletePurchaseOrderDialog } from "./DeletePurchaseOrderDialog";
 import { FulfillPurchaseOrderModal } from "./FulfillPurchaseOrderModal";
 import { fetchPurchaseOrders, updatePurchaseOrder, fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
@@ -32,7 +31,6 @@ function PurchaseOrdersPage() {
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<APIPurchaseOrder | null>(null);
@@ -60,12 +58,6 @@ function PurchaseOrdersPage() {
   const handleAddPurchaseOrder = () => {
     setSelectedPurchaseOrder(null);
     setIsFormModalOpen(true);
-  };
-
-  const handleViewPurchaseOrder = (po: PurchaseOrder) => {
-    const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
-    setSelectedPurchaseOrder(apiPO || null);
-    setIsViewModalOpen(true);
   };
 
   const handleEditPurchaseOrder = async (po: PurchaseOrder) => {
@@ -189,7 +181,6 @@ function PurchaseOrdersPage() {
           <CardContent>
             <PurchaseOrderTable
               purchaseOrders={purchaseOrders}
-              onView={handleViewPurchaseOrder}
               onEdit={handleEditPurchaseOrder}
               onDelete={handleDeletePurchaseOrder}
               onReceive={handleFulfillPurchaseOrder}
@@ -206,22 +197,6 @@ function PurchaseOrdersPage() {
         onOpenChange={setIsFormModalOpen}
         purchaseOrder={selectedPurchaseOrder || undefined}
         onSuccess={handleFormSuccess}
-      />
-
-      <ViewPurchaseOrderModal
-        open={isViewModalOpen}
-        onOpenChange={setIsViewModalOpen}
-        purchaseOrder={selectedPurchaseOrder}
-        onEdit={() => {
-          setIsViewModalOpen(false);
-          setIsFormModalOpen(true);
-        }}
-        onDownloadPDF={() => {
-          if (selectedPurchaseOrder) {
-            generatePurchaseOrderPDF(selectedPurchaseOrder);
-            toast.success("PDF downloaded successfully");
-          }
-        }}
       />
 
       <DeletePurchaseOrderDialog

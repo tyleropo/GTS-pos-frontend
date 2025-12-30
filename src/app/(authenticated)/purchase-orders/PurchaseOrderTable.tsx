@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react'
+import { format } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
@@ -9,10 +9,10 @@ import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { PurchaseOrder } from '@/src/types/purchaseOrder'
+import Link from 'next/link'
 
 interface PurchaseOrderTableProps {
   purchaseOrders: PurchaseOrder[];
-  onView?: (po: PurchaseOrder) => void;
   onEdit?: (po: PurchaseOrder) => void;
   onDelete?: (po: PurchaseOrder) => void;
   onReceive?: (po: PurchaseOrder) => void;
@@ -22,7 +22,6 @@ interface PurchaseOrderTableProps {
 
 const PurchaseOrderTable = ({
   purchaseOrders,
-  onView,
   onEdit,
   onDelete,
   onReceive,
@@ -202,7 +201,7 @@ const PurchaseOrderTable = ({
                             {po.paymentStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell>{po.deliveryDate}</TableCell>
+                        <TableCell>{po.deliveryDate ? format(new Date(po.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
                           {po.status !== "Cancelled" && (
                             <Button 
@@ -224,14 +223,11 @@ const PurchaseOrderTable = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                onSelect={(e) => {
-                                    e.preventDefault();
-                                    onView?.(po);
-                                }}
-                                >
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Details
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/purchase-orders/${po.id}`}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    View Details
+                                  </Link>
                                 </DropdownMenuItem>
                                 
                                 <DropdownMenuItem onSelect={() => onDownloadPDF?.(po)}>
@@ -239,7 +235,7 @@ const PurchaseOrderTable = ({
                                 Download PDF
                                 </DropdownMenuItem>
                                 
-                                {po.status !== "Received" && po.status !== "Cancelled" && (
+                                {/* {po.status !== "Received" && po.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => onReceive?.(po)}>
@@ -268,7 +264,7 @@ const PurchaseOrderTable = ({
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancel Order
                                 </DropdownMenuItem>
-                                )}
+                                )} */}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

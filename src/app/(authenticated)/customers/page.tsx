@@ -14,7 +14,9 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
-import { fetchCustomers } from "@/src/lib/api/customers";
+import { fetchCustomers, fetchCustomerTypes } from "@/src/lib/api/customers";
+
+
 import { useEffect, useState } from "react";
 import type { Customer } from "@/src/types/customer";
 import { adaptCustomer } from "@/src/lib/adapters";
@@ -23,6 +25,11 @@ function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{
+    last_page?: number;
+    total?: number;
+  }>({});
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -31,13 +38,18 @@ function CustomersPage() {
     null
   );
 
+  const [customerTypes, setCustomerTypes] = useState<string[]>([]);
+
   const loadCustomers = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchCustomers();
+      const response = await fetchCustomers({ page, per_page: 10 });
       const adapted = response.data.map(adaptCustomer);
       setCustomers(adapted);
+      if (response.meta) {
+        setMeta(response.meta);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load customers");
       console.error("Error loading customers:", err);
@@ -46,9 +58,19 @@ function CustomersPage() {
     }
   };
 
+  const loadCustomerTypes = async () => {
+    try {
+        const types = await fetchCustomerTypes();
+        setCustomerTypes(types);
+    } catch (err) {
+        console.error("Error loading customer types:", err);
+    }
+  };
+
   useEffect(() => {
     loadCustomers();
-  }, []);
+    loadCustomerTypes();
+  }, [page]);
 
   const handleAddCustomer = () => {
     setSelectedCustomer(null);
@@ -67,10 +89,12 @@ function CustomersPage() {
 
   const handleFormSuccess = () => {
     loadCustomers();
+    loadCustomerTypes();
   };
 
   const handleDeleteSuccess = () => {
     loadCustomers();
+    loadCustomerTypes();
   };
 
   if (loading) {
@@ -128,8 +152,12 @@ function CustomersPage() {
           <CardContent>
             <CustomerTable
               customers={customers}
+              customerTypes={customerTypes}
               onEdit={handleEditCustomer}
               onDelete={handleDeleteCustomer}
+              page={page}
+              totalPages={meta.last_page || 1}
+              onPageChange={setPage}
             />
           </CardContent>
         </Card>
@@ -141,6 +169,8 @@ function CustomersPage() {
         onOpenChange={setIsFormModalOpen}
         customer={selectedCustomer || undefined}
         onSuccess={handleFormSuccess}
+        customerTypes={customerTypes}
+        onRefreshTypes={loadCustomerTypes}
       />
 
       <DeleteCustomerDialog

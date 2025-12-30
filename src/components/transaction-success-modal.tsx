@@ -9,8 +9,18 @@ import {
   DialogTitle,
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
-import { CheckCircle2, Printer, ArrowRight } from "lucide-react";
+import { CheckCircle2, Printer, ArrowRight, Settings } from "lucide-react";
 import type { Transaction } from "@/src/lib/api/transactions";
+import { adaptTransaction } from "@/src/lib/adapters";
+
+import { useRef, useState, useEffect } from "react";
+import { useReactToPrint } from "react-to-print";
+import { 
+    ReceiptSettingsModal, 
+    ReceiptSettings, 
+    DEFAULT_RECEIPT_SETTINGS 
+} from "@/src/components/modals/receipt-settings-modal";
+import { TransactionReceipt } from "@/src/components/receipts/transaction-receipt";
 
 interface TransactionSuccessModalProps {
   open: boolean;
@@ -25,6 +35,25 @@ export function TransactionSuccessModal({
   transaction,
   onNewSale,
 }: TransactionSuccessModalProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>(DEFAULT_RECEIPT_SETTINGS);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      const saved = localStorage.getItem("pos_receipt_settings");
+      if (saved) {
+        try {
+            setReceiptSettings(JSON.parse(saved));
+        } catch (e) {
+            console.error("Failed to parse receipt settings", e);
+        }
+      }
+  }, []);
+
+  const handlePrint = useReactToPrint({
+    contentRef: receiptRef,
+  });
+
   if (!transaction) return null;
 
   const currency = new Intl.NumberFormat("en-PH", {
@@ -46,11 +75,11 @@ export function TransactionSuccessModal({
   const amountTendered = meta.amount_tendered;
   const change = meta.change;
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // Adapt transaction for receipt component
+  const receiptTransaction = transaction ? adaptTransaction(transaction) : null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center">
@@ -100,20 +129,37 @@ export function TransactionSuccessModal({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
+           <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSettingsOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+           </Button>
           <Button
             variant="outline"
             className="w-full sm:w-auto"
-            onClick={handlePrint}
+            onClick={() => handlePrint()}
           >
             <Printer className="mr-2 h-4 w-4" />
             Print Receipt
           </Button>
-          <Button className="w-full sm:w-1/2" onClick={onNewSale}>
+          <Button className="w-full sm:w-auto" onClick={onNewSale}>
             New Sale
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ReceiptSettingsModal 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen}
+        onSave={setReceiptSettings}
+    />
+    
+    <div className="hidden">
+        {receiptTransaction && (
+            <TransactionReceipt ref={receiptRef} transaction={receiptTransaction} settings={receiptSettings} />
+        )}
+    </div>
+    </>
   );
 }

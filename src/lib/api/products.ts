@@ -22,8 +22,8 @@ export const categorySchema = z.object({
 
 export const supplierSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  supplier_code: z.string().optional(),
-  company_name: z.string().optional(),
+  supplier_code: z.string().nullable().optional(),
+  company_name: z.string().nullable().optional(),
   contact_person: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
@@ -88,7 +88,11 @@ export async function fetchProducts(
     ...config,
   };
   const { data } = await apiClient.get("/products", requestConfig);
-  return paginatedProductSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  return paginatedProductSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 export async function fetchLowStockProducts() {

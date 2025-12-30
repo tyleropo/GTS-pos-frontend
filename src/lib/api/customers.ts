@@ -16,12 +16,12 @@ const paginationMetaSchema = z
 export const customerSchema = z.object({
   id: z.union([z.string(), z.number()]),
   name: z.string(),
-  email: z.string().email().nullable(),
-  phone: z.string().nullable(),
-  address: z.string().nullable(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
   company: z.string().nullable().optional(),
-  status: z.string().optional(),
-  type: z.string().optional(),
+  status: z.string().nullable().optional(),
+  type: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Computed attributes from backend
@@ -66,7 +66,13 @@ export async function fetchCustomers(
     ...config,
   };
   const { data } = await apiClient.get("/customers", requestConfig);
-  return paginatedCustomerSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  // The backend returns { data: [...], current_page: 1, ... }
+  // We need to parse it as { data: [...], meta: { current_page: 1, ... } }
+  return paginatedCustomerSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 /**
@@ -104,4 +110,12 @@ export async function updateCustomer(
  */
 export async function deleteCustomer(customerId: string) {
   await apiClient.delete(`/customers/${customerId}`);
+}
+
+/**
+ * Fetch distinct customer types
+ */
+export async function fetchCustomerTypes(config?: AxiosRequestConfig) {
+  const { data } = await apiClient.get<string[]>("/customers/types", config);
+  return data;
 }

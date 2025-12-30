@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { isToday, isYesterday, isSameWeek, parseISO } from "date-fns";
 import { Transaction } from "@/src/types/transactions";
 import {
   Table,
@@ -30,8 +31,6 @@ import {
   Search,
   Filter,
   MoreHorizontal,
-  Calendar,
-  Download,
   CreditCard,
   DollarSign,
   Eye,
@@ -39,16 +38,30 @@ import {
   FileText,
 } from "lucide-react";
 import { Badge } from "@/src/components/ui/badge";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/src/components/ui/pagination";
 import { toast } from "sonner";
 
 import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
+import { RefundModal } from "@/src/components/modals/refund-modal";
 
 import { useSearchParams } from "next/navigation";
 
 const TransactionsTable = ({
   transactions,
+  page = 1,
+  totalPages = 1,
+  onPageChange,
 }: {
   transactions: Transaction[];
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }) => {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -57,6 +70,8 @@ const TransactionsTable = ({
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [refundTransaction, setRefundTransaction] = useState<Transaction | null>(null);
+  const [isRefundOpen, setIsRefundOpen] = useState(false);
 
   // Filter transactions based on search query and filters
   const filteredTransactions = transactions.filter((transaction) => {
@@ -69,17 +84,9 @@ const TransactionsTable = ({
     // Date filter
     const matchesDate =
       dateFilter === "all" ||
-      (dateFilter === "today" && transaction.date === "2023-04-15") ||
-      (dateFilter === "yesterday" && transaction.date === "2023-04-14") ||
-      (dateFilter === "this-week" &&
-        [
-          "2023-04-10",
-          "2023-04-11",
-          "2023-04-12",
-          "2023-04-13",
-          "2023-04-14",
-          "2023-04-15",
-        ].includes(transaction.date));
+      (dateFilter === "today" && isToday(parseISO(transaction.date))) ||
+      (dateFilter === "yesterday" && isYesterday(parseISO(transaction.date))) ||
+      (dateFilter === "this-week" && isSameWeek(parseISO(transaction.date), new Date()));
 
     // Payment method filter
     const matchesPayment =
@@ -226,6 +233,11 @@ const TransactionsTable = ({
                           <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
                         )}
                         {transaction.paymentMethod}
+                        {transaction.meta?.reference_number && (
+                            <span className="ml-2 text-xs text-muted-foreground font-mono">
+                                ({transaction.meta.reference_number})
+                            </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -283,7 +295,10 @@ const TransactionsTable = ({
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-amber-600"
-                                    onClick={() => toast.info("Refund feature coming soon")}
+                                    onClick={() => {
+                                      setRefundTransaction(transaction);
+                                      setIsRefundOpen(true);
+                                    }}
                                   >
                                     Process Refund
                                   </DropdownMenuItem>
@@ -298,11 +313,57 @@ const TransactionsTable = ({
             </TableBody>
           </Table>
         </div>
+        
+        
+        {/* Pagination */ }
+        {totalPages > 1 && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) onPageChange?.(page - 1);
+                }}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="text-sm font-medium">
+                Page {page} of {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < totalPages) onPageChange?.(page + 1);
+                }}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+        )}
       </Tabs>
       <TransactionDetailsModal
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         transaction={selectedTransaction}
+      />
+
+      <RefundModal
+        open={isRefundOpen}
+        onOpenChange={setIsRefundOpen}
+        transaction={refundTransaction}
+        onRefundSuccess={() => {
+          // Refresh transactions list by triggering a page reload or refetch
+          window.location.reload();
+        }}
       />
     </div>
   );

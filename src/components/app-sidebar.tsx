@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   IconDashboard,
   IconInnerShadowTop,
-  IconSettings,
   IconShoppingCart,
   IconPackage,
   IconHistory,
@@ -12,6 +11,7 @@ import {
   IconFileText,
   IconDeviceImacCog,
   IconReceipt,
+  IconCurrencyDollar,
 } from "@tabler/icons-react"
 
 
@@ -64,6 +64,11 @@ const data = {
       icon: IconReceipt,
     },
     {
+      title: "Payments",
+      url: "/payments",
+      icon: IconCurrencyDollar,
+    },
+    {
       title: "Purchase Orders",
       url: "/purchase-orders",
       icon: IconFileText,
@@ -110,7 +115,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+
+        <NavMain
+          items={
+            user?.role === "cashier"
+              ? data.navMain.filter((item) =>
+                  ["/pos", "/repairs"].includes(item.url)
+                )
+              : data.navMain
+          }
+        />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

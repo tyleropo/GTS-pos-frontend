@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/src/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/src/components/ui/sidebar";
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -16,13 +16,25 @@ export default function AuthenticatedLayout({
   children,
 }: AuthenticatedLayoutProps) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace("/login");
+      } else if (
+        isAuthenticated &&
+        user?.role === "cashier" &&
+        !pathname.startsWith("/pos") &&
+        !pathname.startsWith("/repairs")
+      ) {
+        router.replace("/pos");
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, user, pathname]);
 
   if (isLoading) {
     return (

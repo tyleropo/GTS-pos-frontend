@@ -59,6 +59,20 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
             <div ref={ref} className="print:p-8">
                 <Card className="print:shadow-none print:border-none">
                     <CardContent className="p-6">
+                        {/* Company Name - visible in print and screen */}
+                        {settings?.companyName && (
+                            <div className="mb-4 print:mb-6 text-center">
+                                <h2 className="text-xl font-bold print:text-2xl">{settings.companyName}</h2>
+                            </div>
+                        )}
+                        
+                        {/* Header Text - visible in print and screen */}
+                        {settings?.headerText && (
+                            <div className="mb-4 print:mb-6 text-center text-sm text-muted-foreground">
+                                <p>{settings.headerText}</p>
+                            </div>
+                        )}
+                        
                         {/* Header - visible in print and screen */}
                         <div className="mb-6 print:mb-8">
                             <h1 className="text-2xl font-bold print:text-3xl">Customer Statement</h1>
@@ -184,15 +198,22 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
 
                         {/* Grand Total */}
                         <div className="flex justify-end">
-                            <div className="bg-primary text-primary-foreground px-6 py-3 rounded-lg">
+                            <div className="bg-muted px-6 py-3 rounded-lg border-2 border-foreground">
                                 <div className="flex items-center gap-8">
-                                    <span className="text-lg font-bold">GRAND TOTAL:</span>
-                                    <span className="text-2xl font-bold">
+                                    <span className="text-base font-bold">GRAND TOTAL:</span>
+                                    <span className="text-base font-bold">
                                         {formatCurrency(statement.grandTotal)}
                                     </span>
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* Footer Text - visible in print and screen */}
+                        {settings?.footerText && (
+                            <div className="mt-6 print:mt-8 text-center text-sm text-muted-foreground border-t pt-4">
+                                <p>{settings.footerText}</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

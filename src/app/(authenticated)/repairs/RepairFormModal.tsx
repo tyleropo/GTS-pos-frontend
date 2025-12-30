@@ -52,6 +52,7 @@ import {
     type Repair,
 } from "@/src/lib/api/repairs";
 import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
+import { CustomerFormModal } from "..//customers/CustomerFormModal";
 
 const repairFormSchema = z.object({
     customer_id: z.string().optional(),
@@ -95,6 +96,7 @@ export function RepairFormModal({
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loadingData, setLoadingData] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
+    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const isEditing = !!repair;
 
     const form = useForm<RepairFormValues>({
@@ -132,6 +134,15 @@ export function RepairFormModal({
             loadData();
         }
     }, [open]);
+
+    const refreshCustomers = async () => {
+        try {
+            const customersRes = await fetchCustomers({ per_page: 1000 });
+            setCustomers(customersRes.data);
+        } catch (error) {
+            console.error("Error refreshing customers:", error);
+        }
+    };
 
     // Reset form when modal opens or repair changes
     useEffect(() => {
@@ -300,6 +311,16 @@ export function RepairFormModal({
                                                                 {customer.phone && ` (${customer.phone})`}
                                                             </CommandItem>
                                                         ))}
+                                                        <CommandItem
+                                                            value="__create_new__"
+                                                            onSelect={() => {
+                                                                setCustomerOpen(false);
+                                                                setIsCustomerModalOpen(true);
+                                                            }}
+                                                            className="text-primary border-t"
+                                                        >
+                                                            + Create New Customer
+                                                        </CommandItem>
                                                     </CommandGroup>
                                                 </CommandList>
                                             </Command>
@@ -518,6 +539,15 @@ export function RepairFormModal({
                     </form>
                 </Form>
             </DialogContent>
+
+            <CustomerFormModal
+                open={isCustomerModalOpen}
+                onOpenChange={setIsCustomerModalOpen}
+                onSuccess={(newCustomer) => {
+                    refreshCustomers();
+                    form.setValue("customer_id", String(newCustomer.id));
+                }}
+            />
         </Dialog>
     );
 }

@@ -141,14 +141,14 @@ const RepairsTable = ({
           </DropdownMenu>
 
           {/* 4c. Calendar icon (just an example extra button) */}
-          <Button variant="outline" size="icon">
+          {/* <Button variant="outline" size="icon">
             <Calendar className="h-4 w-4" />
-          </Button>
+          </Button> */}
 
           {/* 4d. Download icon */}
-          <Button variant="outline" size="icon">
+          {/* <Button variant="outline" size="icon">
             <Download className="h-4 w-4" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -244,7 +244,7 @@ const RepairsTable = ({
 
                   {/* Cost */}
                   <TableCell className="text-right">
-                    {repair.cost > 0 ? `$${repair.cost.toFixed(2)}` : "Pending"}
+                    {repair.cost > 0 ? `₱${repair.cost.toFixed(2)}` : "Pending"}
                   </TableCell>
 
                   {/* Technician */}

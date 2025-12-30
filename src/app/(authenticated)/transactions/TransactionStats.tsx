@@ -38,7 +38,7 @@ const TransactionStats = ({ transactions }: { transactions: Transaction[] }) => 
           <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">${totalSales.toFixed(2)}</div>
+          <div className="text-3xl font-bold">₱{totalSales.toFixed(2)}</div>
           <p className="text-xs text-muted-foreground">In the last 7 days</p>
         </CardContent>
       </Card>

@@ -33,7 +33,7 @@ export function adaptCustomer(apiCustomer: APICustomer): Customer {
         ? apiCustomer.updated_at?.split("T")[0] || new Date().toISOString().split("T")[0]
         : "N/A",
     status: (apiCustomer.status as "Active" | "Inactive") || "Active",
-    type: (apiCustomer.type as "Regular" | "VIP") || "Regular",
+    type: apiCustomer.type || "Regular",
   };
 }
 
@@ -69,6 +69,7 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
         : "GCash",
     status: "Completed", // Transactions from backend are completed
     cashier: "System", // Can be enhanced if backend provides this
+    meta: apiTransaction.meta,
   };
 }
 
@@ -94,7 +95,10 @@ export function adaptPurchaseOrder(
     status:
       apiPurchaseOrder.status.charAt(0).toUpperCase() +
       apiPurchaseOrder.status.slice(1),
-    paymentStatus: apiPurchaseOrder.status === "received" ? "Paid" : "Pending",
+    paymentStatus: 
+      apiPurchaseOrder.payments && apiPurchaseOrder.payments.length > 0 
+        ? "Paid" 
+        : "Pending",
     deliveryDate: apiPurchaseOrder.expected_at || date,
   };
 }

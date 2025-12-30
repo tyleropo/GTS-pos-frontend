@@ -23,6 +23,13 @@ export function useProductsQuery(
   const [error, setError] = useState<Error | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
+  const [meta, setMeta] = useState<{
+    current_page?: number;
+    last_page?: number;
+    per_page?: number;
+    total?: number;
+  }>({});
+
   const load = useCallback(async () => {
     if (!enabled) {
       return;
@@ -33,10 +40,13 @@ export function useProductsQuery(
     setIsLoading(true);
     setError(null);
     try {
-      const { data } = await fetchProducts(params, {
+      const { data, meta } = await fetchProducts(params, {
         signal: controller.signal,
       });
       setProducts(data);
+      if (meta) {
+        setMeta(meta);
+      }
     } catch (cause) {
       if (controller.signal.aborted) {
         return;
@@ -62,6 +72,7 @@ export function useProductsQuery(
 
   return {
     products,
+    meta,
     isLoading,
     error,
     refresh: load,

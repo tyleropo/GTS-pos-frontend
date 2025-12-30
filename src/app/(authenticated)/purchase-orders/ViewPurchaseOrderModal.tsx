@@ -10,6 +10,12 @@ import {
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/src/components/ui/accordion";
 import { 
     Table, 
     TableBody, 
@@ -18,8 +24,10 @@ import {
     TableHeader, 
     TableRow 
 } from "@/src/components/ui/table";
-import { Calendar, Package, User, FileText, Download } from "lucide-react";
+import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus } from "lucide-react";
 import { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+import { useState } from "react";
 
 interface ViewPurchaseOrderModalProps {
     open: boolean;
@@ -27,6 +35,7 @@ interface ViewPurchaseOrderModalProps {
     purchaseOrder: APIPurchaseOrder | null;
     onEdit?: () => void;
     onDownloadPDF?: () => void;
+    onRefresh?: () => void; // Add refresh callback
 }
 
 export function ViewPurchaseOrderModal({
@@ -35,7 +44,10 @@ export function ViewPurchaseOrderModal({
     purchaseOrder,
     onEdit,
     onDownloadPDF,
+    onRefresh,
 }: ViewPurchaseOrderModalProps) {
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    
     if (!purchaseOrder) return null;
 
     const getStatusColor = (status: string) => {
@@ -162,10 +174,10 @@ export function ViewPurchaseOrderModal({
                                                     {item.quantity_received || 0}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    ${item.unit_cost.toFixed(2)}
+                                                    ₱{item.unit_cost.toFixed(2)}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    ${item.line_total.toFixed(2)}
+                                                    ₱{item.line_total.toFixed(2)}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -187,18 +199,83 @@ export function ViewPurchaseOrderModal({
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Subtotal:</span>
-                            <span className="font-medium">${purchaseOrder.subtotal.toFixed(2)}</span>
+                            <span className="font-medium">₱{purchaseOrder.subtotal.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Tax:</span>
-                            <span className="font-medium">${purchaseOrder.tax.toFixed(2)}</span>
+                            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between text-base font-bold">
                             <span>Total:</span>
-                            <span>${purchaseOrder.total.toFixed(2)}</span>
+                            <span>₱{purchaseOrder.total.toFixed(2)}</span>
                         </div>
                     </div>
+
+                    {/* Add Payment Button - Always Visible */}
+                    <div className="flex justify-end">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsPaymentModalOpen(true)}
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Payment
+                        </Button>
+                    </div>
+
+                    {/* Payments Section */}
+                    {purchaseOrder.payments && purchaseOrder.payments.length > 0 && (
+                        <>
+                            <Separator />
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="payments">
+                                    <AccordionTrigger>
+                                        <div className="flex items-center gap-2">
+                                            <DollarSign className="h-4 w-4" />
+                                            <span>Payments ({purchaseOrder.payments.length})</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="space-y-3">
+                                            {purchaseOrder.payments.map((payment) => (
+                                                <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-medium">₱{payment.amount.toFixed(2)}</p>
+                                                            {payment.is_deposited ? (
+                                                                <Badge variant="default" className="bg-green-600">
+                                                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                                    Deposited
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="outline">
+                                                                    <Clock className="h-3 w-3 mr-1" />
+                                                                    Pending Deposit
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {payment.reference_number && (
+                                                                <span className="mr-2">Ref: {payment.reference_number}</span>
+                                                            )}
+                                                            <span className="capitalize">{payment.payment_method.replace(/_/g, ' ')}</span>
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Received: {new Date(payment.date_received).toLocaleDateString()}
+                                                            {payment.date_deposited && (
+                                                                <span className="ml-2">• Deposited: {new Date(payment.date_deposited).toLocaleDateString()}</span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                        </>
+                    )}
 
                     {/* Action Buttons */}
                     <div className="flex justify-end gap-2 pt-4">
@@ -219,6 +296,17 @@ export function ViewPurchaseOrderModal({
                     </div>
                 </div>
             </DialogContent>
+            
+            {/* Payment Form Modal */}
+            <PaymentFormModal
+                open={isPaymentModalOpen}
+                onOpenChange={setIsPaymentModalOpen}
+                defaultPurchaseOrderId={String(purchaseOrder.id)}
+                onSuccess={() => {
+                    // Refresh the PO data to show new payment
+                    onRefresh?.();
+                }}
+            />
         </Dialog>
     );
 }

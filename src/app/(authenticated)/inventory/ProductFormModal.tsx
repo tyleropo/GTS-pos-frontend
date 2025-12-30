@@ -23,22 +23,30 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Check, X } from "lucide-react";
+import { Loader2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, type Product, type Category, type Supplier } from "@/src/lib/api/products";
 import { useState } from "react";
 import { ImageUpload } from "@/src/components/image-upload";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/src/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/src/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/src/components/ui/popover";
+import { cn } from "@/src/lib/utils";
+import { ChevronsUpDown } from "lucide-react";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required").max(255, "Name is too long"),
-  sku: z.string().min(1, "SKU is required").max(100, "SKU is too long"),
+  sku: z.string().max(100, "SKU is too long").optional().or(z.literal("")),
   barcode: z.string().optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   category_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
@@ -80,10 +88,12 @@ export function ProductFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!product;
 
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
-  const [newSupplierName, setNewSupplierName] = useState("");
+
+
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [supplierSearch, setSupplierSearch] = useState("");
 
   const form = useForm<ProductFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,9 +187,22 @@ export function ProductFormModal({
       form.reset();
       onOpenChange(false);
       onSuccess?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving product:", error);
-      toast.error(product ? "Failed to update product" : "Failed to create product");
+      if (error.response && error.response.status === 422) {
+        const errors = error.response.data.errors;
+        if (errors.sku) form.setError("sku", { message: errors.sku[0] });
+        if (errors.barcode) form.setError("barcode", { message: errors.barcode[0] });
+        if (errors.name) form.setError("name", { message: errors.name[0] });
+        
+        // Handle generic error if no specific field error matches
+        const hasSpecificError = errors.sku || errors.barcode || errors.name;
+        if (!hasSpecificError) {
+          toast.error("Validation failed. Please check the form.");
+        }
+      } else {
+        toast.error(product ? "Failed to update product" : "Failed to create product");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -226,90 +249,104 @@ export function ProductFormModal({
                     control={form.control}
                     name="category_id"
                     render={({ field }) => (
-                    <FormItem>
-                        <div className="flex items-center justify-between">
-                            <FormLabel>Category</FormLabel>
-                            {!isCreatingCategory && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() => setIsCreatingCategory(true)}
-                                >
-                                    <Plus className="mr-1 h-3 w-3" />
-                                    New
-                                </Button>
-                            )}
-                        </div>
-                        <FormControl>
-                            {isCreatingCategory ? (
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        placeholder="New category name"
-                                        className="h-9"
-                                        autoFocus
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Category</FormLabel>
+                        <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={categoryOpen}
+                                        className={cn(
+                                            "w-full justify-between",
+                                            !field.value && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {field.value && field.value !== "none"
+                                            ? categories.find((category) => String(category.id) === field.value)?.name
+                                            : "Select category"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput
+                                        placeholder="Search category..."
+                                        value={categorySearch}
+                                        onValueChange={setCategorySearch}
                                     />
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-9 w-9 p-0"
-                                        onClick={async () => {
-                                            if (!newCategoryName.trim()) return;
-                                            try {
-                                                const newCategory = await createCategory(newCategoryName);
-                                                await onRefreshCategories?.();
-                                                field.onChange(String(newCategory.id));
-                                                setNewCategoryName("");
-                                                setIsCreatingCategory(false);
-                                                toast.success(`Category "${newCategoryName}" created`);
-                                            } catch (error) {
-                                                console.error(error);
-                                                toast.error("Failed to create category");
-                                            }
-                                        }}
-                                    >
-                                        <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 w-9 p-0"
-                                        onClick={() => {
-                                            setIsCreatingCategory(false);
-                                            setNewCategoryName("");
-                                        }}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select category" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="none">Unassigned</SelectItem>
-                                        {categories.map((category) => (
-                                            <SelectItem
-                                                key={category.id}
-                                                value={String(category.id)}
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            <div className="p-2">
+                                                <p className="text-sm text-muted-foreground mb-2">
+                                                    No category found.
+                                                </p>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-start h-auto py-1.5 px-2 text-sm"
+                                                    onClick={async () => {
+                                                        if (!categorySearch.trim()) return;
+                                                        try {
+                                                            const newCategory = await createCategory(categorySearch);
+                                                            await onRefreshCategories?.();
+                                                            form.setValue("category_id", String(newCategory.id));
+                                                            setCategorySearch("");
+                                                            setCategoryOpen(false);
+                                                            toast.success(`Category "${categorySearch}" created`);
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                            toast.error("Failed to create category");
+                                                        }
+                                                    }}
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Create &quot;{categorySearch}&quot;
+                                                </Button>
+                                            </div>
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                value="none"
+                                                onSelect={() => {
+                                                    form.setValue("category_id", "none");
+                                                    setCategoryOpen(false);
+                                                }}
                                             >
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        </FormControl>
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        field.value === "none" ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                Unassigned
+                                            </CommandItem>
+                                            {categories.map((category) => (
+                                                <CommandItem
+                                                    value={category.name}
+                                                    key={category.id}
+                                                    onSelect={() => {
+                                                        form.setValue("category_id", String(category.id));
+                                                        setCategoryOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            field.value === String(category.id)
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {category.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -319,90 +356,104 @@ export function ProductFormModal({
                     control={form.control}
                     name="supplier_id"
                     render={({ field }) => (
-                    <FormItem>
-                        <div className="flex items-center justify-between">
-                            <FormLabel>Supplier</FormLabel>
-                            {!isCreatingSupplier && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() => setIsCreatingSupplier(true)}
-                                >
-                                    <Plus className="mr-1 h-3 w-3" />
-                                    New
-                                </Button>
-                            )}
-                        </div>
-                        <FormControl>
-                            {isCreatingSupplier ? (
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        value={newSupplierName}
-                                        onChange={(e) => setNewSupplierName(e.target.value)}
-                                        placeholder="New supplier name"
-                                        className="h-9"
-                                        autoFocus
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Supplier</FormLabel>
+                        <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={supplierOpen}
+                                        className={cn(
+                                            "w-full justify-between",
+                                            !field.value && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {field.value && field.value !== "none"
+                                            ? suppliers.find((supplier) => String(supplier.id) === field.value)?.company_name ?? suppliers.find((supplier) => String(supplier.id) === field.value)?.contact_person ?? "Unknown"
+                                            : "Select supplier"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput
+                                        placeholder="Search supplier..."
+                                        value={supplierSearch}
+                                        onValueChange={setSupplierSearch}
                                     />
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-9 w-9 p-0"
-                                        onClick={async () => {
-                                            if (!newSupplierName.trim()) return;
-                                            try {
-                                                const newSupplier = await createSupplier(newSupplierName);
-                                                await onRefreshSuppliers?.();
-                                                field.onChange(String(newSupplier.id));
-                                                setNewSupplierName("");
-                                                setIsCreatingSupplier(false);
-                                                toast.success(`Supplier "${newSupplierName}" created`);
-                                            } catch (error) {
-                                                console.error(error);
-                                                toast.error("Failed to create supplier");
-                                            }
-                                        }}
-                                    >
-                                        <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 w-9 p-0"
-                                        onClick={() => {
-                                            setIsCreatingSupplier(false);
-                                            setNewSupplierName("");
-                                        }}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select supplier" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="none">Unassigned</SelectItem>
-                                        {suppliers.map((supplier) => (
-                                            <SelectItem
-                                                key={supplier.id}
-                                                value={String(supplier.id)}
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            <div className="p-2">
+                                                <p className="text-sm text-muted-foreground mb-2">
+                                                    No supplier found.
+                                                </p>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-start h-auto py-1.5 px-2 text-sm"
+                                                    onClick={async () => {
+                                                        if (!supplierSearch.trim()) return;
+                                                        try {
+                                                            const newSupplier = await createSupplier(supplierSearch);
+                                                            await onRefreshSuppliers?.();
+                                                            form.setValue("supplier_id", String(newSupplier.id));
+                                                            setSupplierSearch("");
+                                                            setSupplierOpen(false);
+                                                            toast.success(`Supplier "${supplierSearch}" created`);
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                            toast.error("Failed to create supplier");
+                                                        }
+                                                    }}
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Create &quot;{supplierSearch}&quot;
+                                                </Button>
+                                            </div>
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                value="none"
+                                                onSelect={() => {
+                                                    form.setValue("supplier_id", "none");
+                                                    setSupplierOpen(false);
+                                                }}
                                             >
-                                                {supplier.company_name ?? supplier.contact_person ?? "Unknown"}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        </FormControl>
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        field.value === "none" ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                Unassigned
+                                            </CommandItem>
+                                            {suppliers.map((supplier) => (
+                                                <CommandItem
+                                                    value={supplier.company_name ?? supplier.contact_person ?? "Unknown"}
+                                                    key={supplier.id}
+                                                    onSelect={() => {
+                                                        form.setValue("supplier_id", String(supplier.id));
+                                                        setSupplierOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            field.value === String(supplier.id)
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {supplier.company_name ?? supplier.contact_person ?? "Unknown"}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                         <FormMessage />
                     </FormItem>
                     )}

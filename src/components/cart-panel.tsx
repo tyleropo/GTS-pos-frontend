@@ -1,4 +1,5 @@
-import { useState, type ComponentType, type SVGProps } from "react";
+import { useState, useMemo, type ComponentType, type SVGProps } from "react";
+import { cn } from "@/src/lib/utils";
 import {
   Card,
   CardContent,
@@ -20,6 +21,13 @@ import {
 import { Trash2, Wallet, CreditCard, Banknote, Plus, Minus, X, User } from "lucide-react";
 import { CustomerSearch } from "@/src/components/customer-search";
 import type { Customer } from "@/src/lib/api/customers";
+import { CustomerFormModal } from "@/src/app/(authenticated)/customers/CustomerFormModal";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/src/components/ui/accordion";
 
 export type CartLineItem = {
   id: string;
@@ -60,14 +68,48 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "card" | "gcash" | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  const handleCreateCustomer = () => {
+    setIsCustomerModalOpen(true);
+  };
+
+  const handleCustomerCreated = (customer?: Customer) => {
+    if (customer) {
+        setSelectedCustomer(customer);
+    }
+    // If no customer returned (shouldn't happen with our update), we just close which is handled by modal prop
+  };
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  /* Discount Logic */
+  const [discountType, setDiscountType] = useState<"percentage" | "amount">("percentage");
+  const [discountValue, setDiscountValue] = useState<string>("");
+
+  const discountAmount = useMemo(() => {
+     const value = parseFloat(discountValue);
+     if (isNaN(value) || value < 0) return 0;
+
+     if (discountType === "percentage") {
+        return subtotal * (Math.min(value, 100) / 100);
+     } else {
+        return Math.min(value, subtotal);
+     }
+  }, [discountType, discountValue, subtotal]);
+
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
   const taxRate = vatPercentage / 100;
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
+  
+  // Tax is inclusive: Total = Net + Tax
+  // Total = Net * (1 + Rate)
+  // Net = Total / (1 + Rate)
+  // Tax = Total - Net
+  const total = discountedSubtotal;
+  const netOfVat = total / (1 + taxRate);
+  const tax = total - netOfVat;
 
   const handleVatChange = (value: string) => {
     const parsed = parseFloat(value);
@@ -89,10 +131,13 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   };
 
   const [amountTendered, setAmountTendered] = useState<string>("");
+  const [referenceNumber, setReferenceNumber] = useState("");
 
   const handlePaymentMethodClick = (method: "cash" | "card" | "gcash") => {
     setSelectedPaymentMethod(method);
     setAmountTendered(""); // Reset tendered amount
+    setDiscountValue(""); // Reset discount
+    setReferenceNumber(""); // Reset reference number
     setIsConfirmModalOpen(true);
   };
 
@@ -107,10 +152,15 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
       onCheckout(selectedPaymentMethod, selectedCustomer, {
         amount_tendered: selectedPaymentMethod === "cash" ? parseFloat(amountTendered) : undefined,
         change: selectedPaymentMethod === "cash" ? change : undefined,
+        discount_type: discountAmount > 0 ? discountType : undefined,
+        discount_value: discountAmount > 0 ? parseFloat(discountValue) : undefined,
+        discount_amount: discountAmount > 0 ? discountAmount : undefined,
+        reference_number: referenceNumber || undefined,
       });
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);
       setAmountTendered("");
+      setDiscountValue(""); 
     }
   };
 
@@ -143,8 +193,14 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
           <CustomerSearch
             selectedCustomer={selectedCustomer}
             onSelectCustomer={setSelectedCustomer}
+            onCreate={handleCreateCustomer}
           />
         </CardHeader>
+        <CustomerFormModal
+            open={isCustomerModalOpen}
+            onOpenChange={setIsCustomerModalOpen}
+            onSuccess={handleCustomerCreated}
+        />
         <CardContent className="flex-1 space-y-4">
           {items.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
@@ -215,26 +271,46 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{currency.format(subtotal)}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">VAT</span>
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    value={vatPercentage}
-                    onChange={(e) => handleVatChange(e.target.value)}
-                    className="h-6 w-16 px-2 text-xs"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                  <span className="text-muted-foreground text-xs">%</span>
-                </div>
-              </div>
-              <span className="font-medium">{currency.format(tax)}</span>
+            {discountAmount > 0 && (
+               <div className="flex justify-between text-sm text-emerald-600">
+                 <span>Discount ({discountType === "percentage" ? `${discountValue}%` : "Fixed"})</span>
+                 <span>-{currency.format(discountAmount)}</span>
+               </div>
+            )}
+
+            <div className="my-2 border-t border-dashed" />
+
+            <div className="space-y-1">
+               <div className="flex justify-between text-sm">
+                 <span className="font-medium">Total Sales (VAT Inclusive)</span>
+                 <span className="font-medium">{currency.format(total)}</span>
+               </div>
+               <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>Less: VAT</span>
+                    <div className="flex items-center gap-1 scale-75 origin-left">
+                      <Input
+                        type="number"
+                        value={vatPercentage}
+                        onChange={(e) => handleVatChange(e.target.value)}
+                        className="h-6 w-16 px-2 text-xs"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                      />
+                      <span className="text-xs">%</span>
+                    </div>
+                  </div>
+                  <span>{currency.format(tax)}</span>
+               </div>
+               <div className="flex justify-between text-xs text-muted-foreground">
+                 <span>Net of VAT</span>
+                 <span>{currency.format(netOfVat)}</span>
+               </div>
             </div>
+
             <div className="flex justify-between text-base font-semibold">
-              <span>Total due</span>
+              <span>TOTAL</span>
               <span>{currency.format(total)}</span>
             </div>
           </div>
@@ -300,18 +376,105 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
               </ScrollArea>
             </div>
 
+            {/* Discount Section */}
+            <div className="rounded-lg border px-3">
+              <Accordion type="single" collapsible>
+                 <AccordionItem value="discount" className="border-b-0">
+                    <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+                       Discount <span className="ml-2 text-xs font-normal text-muted-foreground">(Optional)</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                       <div className="flex flex-col gap-3 pt-2">
+                          <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Type</span>
+                              <div className="flex items-center rounded-lg border bg-muted p-1">
+                                 <button
+                                    type="button"
+                                    className={cn(
+                                      "flex h-7 items-center rounded-md px-3 text-xs font-medium transition-all",
+                                      discountType === "percentage" 
+                                        ? "bg-background text-foreground shadow-sm" 
+                                        : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                    onClick={() => {
+                                       setDiscountType("percentage");
+                                       setDiscountValue("");
+                                    }}
+                                 >
+                                    Percentage (%)
+                                 </button>
+                                 <button
+                                    type="button"
+                                    className={cn(
+                                      "flex h-7 items-center rounded-md px-3 text-xs font-medium transition-all",
+                                      discountType === "amount" 
+                                        ? "bg-background text-foreground shadow-sm" 
+                                        : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                    onClick={() => {
+                                       setDiscountType("amount");
+                                       setDiscountValue("");
+                                    }}
+                                 >
+                                    Fixed Amount (₱)
+                                 </button>
+                              </div>
+                           </div>
+                           <div className="relative">
+                              {discountType === "amount" && (
+                                 <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">₱</span>
+                              )}
+                              <Input
+                                 type="number"
+                                 className={discountType === "amount" ? "pl-7" : ""}
+                                 placeholder={discountType === "percentage" ? "Enter percentage (0-100)" : "Enter amount"}
+                                 value={discountValue}
+                                 onChange={(e) => setDiscountValue(e.target.value)}
+                                 min="0"
+                                 max={discountType === "percentage" ? "100" : undefined}
+                              />
+                              {discountType === "percentage" && (
+                                 <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">%</span>
+                              )}
+                           </div>
+                       </div>
+                    </AccordionContent>
+                 </AccordionItem>
+              </Accordion>
+            </div>
+
             {/* Summary */}
             <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{currency.format(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">VAT ({vatPercentage}%)</span>
-                <span className="font-medium">{currency.format(tax)}</span>
+              {discountAmount > 0 && (
+                 <div className="flex justify-between text-sm text-emerald-600">
+                   <span>Discount ({discountType === "percentage" ? `${discountValue}%` : "Fixed"})</span>
+                   <span>-{currency.format(discountAmount)}</span>
+                 </div>
+              )}
+              
+              <div className="my-2 border-t border-dashed" />
+
+              <div className="space-y-1">
+                 <div className="flex justify-between text-sm">
+                   <span className="font-medium">Total Sales (VAT Inclusive)</span>
+                   <span className="font-medium">{currency.format(total)}</span>
+                 </div>
+                 <div className="flex justify-between text-xs text-muted-foreground">
+                   <span>Less: {vatPercentage}% VAT</span>
+                   <span>{currency.format(tax)}</span>
+                 </div>
+                 <div className="flex justify-between text-xs text-muted-foreground">
+                   <span>Net of VAT</span>
+                   <span>{currency.format(netOfVat)}</span>
+                 </div>
               </div>
+
               <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                <span>Total</span>
+                <span>TOTAL</span>
                 <span>{currency.format(total)}</span>
               </div>
             </div>
@@ -324,6 +487,20 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
                 {selectedPaymentMethod === "gcash" && <Wallet className="h-4 w-4" />}
                 <span>Payment via {selectedPaymentMethodLabel}</span>
               </div>
+
+              {(selectedPaymentMethod === "card" || selectedPaymentMethod === "gcash") && (
+                <div className="space-y-2 pt-2 border-t border-primary/10">
+                   <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Reference Number</label>
+                      <Input 
+                        placeholder={selectedPaymentMethod === "card" ? "Last 4 digits or ref number" : "GCash reference number"}
+                        value={referenceNumber}
+                        onChange={(e) => setReferenceNumber(e.target.value)}
+                        autoFocus
+                      />
+                   </div>
+                </div>
+              )}
 
               {selectedPaymentMethod === "cash" && (
                 <div className="space-y-2 pt-2 border-t border-primary/10">

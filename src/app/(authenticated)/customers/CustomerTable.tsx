@@ -36,18 +36,47 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
 import type { Customer } from "@/src/types/customer"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/src/components/ui/pagination";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/src/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/src/components/ui/popover";
+import { cn } from "@/src/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 type CustomerTableProps = {
   customers: Customer[]
+  customerTypes?: string[]
   onEdit?: (customer: Customer) => void
   onDelete?: (customer: Customer) => void
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProps) {
+export function CustomerTable({ customers, customerTypes = [], onEdit, onDelete, page = 1, totalPages = 1, onPageChange }: CustomerTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
+  const [typeOpen, setTypeOpen] = useState(false);
 
   const filteredCustomers = customers.filter((customer) => {
     // Search filter
@@ -112,16 +141,66 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                 <DropdownMenuSeparator />
                 <div className="p-2">
                   <p className="text-sm font-medium mb-2">Customer Type</p>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                      <SelectItem value="vip">VIP</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={typeOpen}
+                        className="w-full justify-between"
+                      >
+                        {typeFilter === "all"
+                          ? "All Types"
+                          : typeFilter}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[200px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search type..." />
+                        <CommandList>
+                          <CommandEmpty>No type found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="all"
+                              onSelect={() => {
+                                setTypeFilter("all");
+                                setTypeOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  typeFilter === "all" ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              All Types
+                            </CommandItem>
+                            {Array.from(new Set(["Regular", "VIP", ...customerTypes])).sort().map((type) => (
+                              <CommandItem
+                                key={type}
+                                value={type}
+                                onSelect={(currentValue) => {
+                                  // setTypeFilter(currentValue === typeFilter ? "all" : currentValue);
+                                  // Simple selection logic
+                                  setTypeFilter(type);
+                                  setTypeOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    typeFilter === type ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {type}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -234,6 +313,39 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
             </TableBody>
           </Table>
         </div>
+        {totalPages > 1 && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) onPageChange?.(page - 1);
+                }}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="text-sm font-medium">
+                Page {page} of {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < totalPages) onPageChange?.(page + 1);
+                }}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
       </Tabs>
 
     </div>

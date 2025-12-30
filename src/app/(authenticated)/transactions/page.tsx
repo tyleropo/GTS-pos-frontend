@@ -19,15 +19,23 @@ function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{
+    last_page?: number;
+    total?: number;
+  }>({});
 
   useEffect(() => {
     const loadTransactions = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchTransactions();
+        const response = await fetchTransactions({ page, per_page: 10 });
         const adapted = response.data.map(adaptTransaction);
         setTransactions(adapted);
+        if (response.meta) {
+          setMeta(response.meta);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load transactions");
         console.error("Error loading transactions:", err);
@@ -37,7 +45,7 @@ function TransactionsPage() {
     };
 
     loadTransactions();
-  }, []);
+  }, [page]);
 
   if (loading) {
     return (
@@ -86,7 +94,12 @@ function TransactionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TransactionsTable transactions={transactions} />
+              <TransactionsTable 
+                transactions={transactions} 
+                page={page}
+                totalPages={meta.last_page || 1}
+                onPageChange={setPage}
+              />
             </CardContent>
           </Card>
         </div>

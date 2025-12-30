@@ -25,7 +25,7 @@ import { fetchCustomers } from "@/src/lib/api/customers";
 import { type Customer } from "@/src/types/customer";
 import { fetchTransactions } from "@/src/lib/api/transactions";
 import { fetchRepairs } from "@/src/lib/api/repairs";
-import { Repair } from "@/src/types/repair";
+import { getSetting, upsertSetting } from "@/src/lib/api/settings";
 import { DateRange } from "react-day-picker";
 
 import {
@@ -54,7 +54,51 @@ export default function BillingPage() {
         DEFAULT_FORMAT_SETTINGS
     );
 
+    // Ref for the content to print (the visible table)
     const printRef = useRef<HTMLDivElement>(null);
+
+    // Load format settings from backend
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const setting = await getSetting("billing_format_settings");
+                if (setting && setting.value) {
+                    setFormatSettings(setting.value);
+                }
+            } catch (error) {
+                console.error("Failed to load billing format settings", error);
+                // Fallback to localStorage if backend fails
+                const saved = localStorage.getItem("pos_billing_format_settings");
+                if (saved) {
+                    try {
+                        setFormatSettings(JSON.parse(saved));
+                    } catch (e) {
+                        console.error("Failed to parse local settings", e);
+                    }
+                }
+            }
+        };
+        loadSettings();
+    }, []);
+
+    // Save format settings to backend whenever they change
+    useEffect(() => {
+        const saveSettings = async () => {
+            try {
+                await upsertSetting("billing_format_settings", formatSettings, "Billing document format preferences");
+                // Also save to localStorage as backup
+                localStorage.setItem("pos_billing_format_settings", JSON.stringify(formatSettings));
+            } catch (error) {
+                console.error("Failed to save billing format settings", error);
+                // Still save to localStorage even if backend fails
+                localStorage.setItem("pos_billing_format_settings", JSON.stringify(formatSettings));
+            }
+        };
+        // Don't save on initial load
+        if (JSON.stringify(formatSettings) !== JSON.stringify(DEFAULT_FORMAT_SETTINGS)) {
+            saveSettings();
+        }
+    }, [formatSettings]);
 
     // Fetch real customers
     const [availableCustomers, setAvailableCustomers] = useState<Customer[]>([]);
@@ -95,11 +139,6 @@ export default function BillingPage() {
             setActiveTab(newTabs[0]?.customerId ?? "");
 
             // Fetch data for all selected customers
-            // Optimization: We could fetch once with comma-separated IDs if API supports it,
-            // or parallel fetch per customer. Let's do a single bulk fetch if controller allows,
-            // but for safety/granularity, we'll map.
-             
-            // Actually, TransactionController now enables "customer_ids" list.
             const [txResponse, repairsResponse] = await Promise.all([
                 fetchTransactions({
                     customer_ids: selectedCustomerIds,
@@ -121,14 +160,16 @@ export default function BillingPage() {
                 const customer = availableCustomers.find(c => c.id.toString() === customerId);
                 if (!customer) return;
 
-                // Filter transactions/repairs for this customer in memory since we bulk fetched
-                // (Or if API returned exact match, but we have mixed results)
+                // Filter transactions/repairs for this customer in memory
                 const custTransactions = txResponse.data.filter(t => 
                    String(t.customer_id) === customerId
                 );
-                // Repairs API might need similar filter if it doesn't separate them by default (it returns array)
-                // Assuming `fetchRepairs` returns `data` array similar to transactions
-                const custRepairs = (repairsResponse.data || []).filter((r: Repair) => 
+                
+                // Use type assertion for repairs as the API typing might be imperfect or mismatching
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const repairsData = (repairsResponse.data || []) as any[];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const custRepairs = repairsData.filter((r: any) => 
                     String(r.customer_id) === customerId
                 );
 
@@ -147,7 +188,6 @@ export default function BillingPage() {
 
         } catch (error) {
             console.error("Failed to generate billing", error);
-            // Optionally show toast
         } finally {
             setIsLoadingData(false);
         }
