@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   IconDashboard,
   IconInnerShadowTop,
-  IconSettings,
   IconShoppingCart,
   IconPackage,
   IconHistory,
@@ -12,6 +11,7 @@ import {
   IconFileText,
   IconDeviceImacCog,
   IconReceipt,
+  IconCurrencyDollar,
 } from "@tabler/icons-react"
 
 
@@ -62,6 +62,11 @@ const data = {
       title: "Billing",
       url: "/billing",
       icon: IconReceipt,
+    },
+    {
+      title: "Payments",
+      url: "/payments",
+      icon: IconCurrencyDollar,
     },
     {
       title: "Purchase Orders",

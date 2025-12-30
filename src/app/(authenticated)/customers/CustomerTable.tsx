@@ -32,8 +32,6 @@ import {
   Mail,
   Phone,
   Download,
-  Phone,
-  Download,
 } from "lucide-react"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
@@ -247,7 +245,6 @@ export function CustomerTable({ customers, onEdit, onDelete, page = 1, totalPage
               )}
             </TableBody>
           </Table>
-        </div>
         </div>
         {totalPages > 1 && (
         <Pagination className="mt-4">

@@ -94,7 +94,10 @@ export function adaptPurchaseOrder(
     status:
       apiPurchaseOrder.status.charAt(0).toUpperCase() +
       apiPurchaseOrder.status.slice(1),
-    paymentStatus: apiPurchaseOrder.status === "received" ? "Paid" : "Pending",
+    paymentStatus: 
+      apiPurchaseOrder.payments && apiPurchaseOrder.payments.length > 0 
+        ? "Paid" 
+        : "Pending",
     deliveryDate: apiPurchaseOrder.expected_at || date,
   };
 }

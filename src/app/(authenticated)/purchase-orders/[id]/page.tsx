@@ -1,0 +1,387 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Separator } from "@/src/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/src/components/ui/accordion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import {
+  Calendar,
+  Package,
+  User,
+  FileText,
+  DollarSign,
+  CheckCircle2,
+  Clock,
+  Plus,
+  ArrowLeft,
+  Edit,
+} from "lucide-react";
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+import { PurchaseOrderFormModal } from "@/src/app/(authenticated)/purchase-orders/PurchaseOrderFormModal";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function PurchaseOrderDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const { data: purchaseOrder, isLoading, isError } = useQuery({
+    queryKey: ["purchase-order", params.id],
+    queryFn: () => fetchPurchaseOrder(params.id),
+  });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "received":
+        return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
+      case "submitted":
+        return "bg-blue-100 text-blue-700 hover:bg-blue-100";
+      case "draft":
+        return "bg-amber-100 text-amber-700 hover:bg-amber-100";
+      case "cancelled":
+        return "bg-rose-100 text-rose-700 hover:bg-rose-100";
+      default:
+        return "bg-gray-100 text-gray-700 hover:bg-gray-100";
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading purchase order details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !purchaseOrder) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-red-500">Failed to load purchase order details</p>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="h-8 w-8"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold">Customer Order Details</h1>
+            <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
+              {purchaseOrder.status === "draft"
+                ? "Pending"
+                : purchaseOrder.status === "submitted"
+                  ? "Processing"
+                  : purchaseOrder.status === "received"
+                    ? "Delivered"
+                    : purchaseOrder.status.charAt(0).toUpperCase() +
+                      purchaseOrder.status.slice(1)}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground">PO Number: {purchaseOrder.po_number}</p>
+        </div>
+        {purchaseOrder.status !== "received" && (
+          <Button
+            variant="outline"
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Order
+          </Button>
+        )}
+      </div>
+
+      <div className="bg-card rounded-lg border p-6 space-y-6">
+        {/* Order Information */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <User className="h-4 w-4 mr-2" />
+              Customer
+            </div>
+            <p className="font-medium">
+              {purchaseOrder.customer?.company ||
+                purchaseOrder.customer?.name ||
+                "Unknown Customer"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4 mr-2" />
+              Delivery Date
+            </div>
+            <p className="font-medium">
+              {purchaseOrder.expected_at
+                ? new Date(purchaseOrder.expected_at).toLocaleDateString()
+                : "Not specified"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <FileText className="h-4 w-4 mr-2" />
+              Created Date
+            </div>
+            <p className="font-medium">
+              {purchaseOrder.created_at
+                ? new Date(purchaseOrder.created_at).toLocaleDateString()
+                : "N/A"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Package className="h-4 w-4 mr-2" />
+              Total Items
+            </div>
+            <p className="font-medium">{purchaseOrder.items?.length || 0}</p>
+          </div>
+          <div className="space-y-1 col-span-2">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <FileText className="h-4 w-4 mr-2" />
+              Notes
+            </div>
+            <p className="font-medium whitespace-pre-wrap">
+              {purchaseOrder.notes || "No notes"}
+            </p>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Line Items */}
+        <div>
+          <h3 className="font-semibold mb-3">Order Items</h3>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Qty Ordered</TableHead>
+                  <TableHead className="text-right">Qty Shipped</TableHead>
+                  <TableHead className="text-right">Unit Cost</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+                  purchaseOrder.items.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        <div>{item.product_name || item.product_id}</div>
+                        {item.description && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {item.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.quantity_ordered}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.quantity_received || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₱{item.unit_cost.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ₱{item.line_total.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-muted-foreground"
+                    >
+                      No items
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Order Totals */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal:</span>
+            <span className="font-medium">
+              ₱{purchaseOrder.subtotal.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Tax:</span>
+            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between text-base font-bold">
+            <span>Total:</span>
+            <span>₱{purchaseOrder.total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Payment Button */}
+        <div className="flex justify-end">
+          {purchaseOrder.payments && purchaseOrder.payments.length > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPaymentModalOpen(true)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Payment
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPaymentModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment
+            </Button>
+          )}
+        </div>
+
+        {/* Payments Section */}
+        {purchaseOrder.payments && purchaseOrder.payments.length > 0 && (
+          <>
+            <Separator />
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="payments">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    <span>Payments ({purchaseOrder.payments.length})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {purchaseOrder.payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between p-3 rounded-lg border"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">
+                              ₱{payment.amount.toFixed(2)}
+                            </p>
+                            {payment.is_deposited ? (
+                              <Badge variant="default" className="bg-green-600">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Deposited
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending Deposit
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {payment.reference_number && (
+                              <span className="mr-2">
+                                Ref: {payment.reference_number}
+                              </span>
+                            )}
+                            <span className="capitalize">
+                              {payment.payment_method.replace(/_/g, " ")}
+                            </span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Received:{" "}
+                            {new Date(payment.date_received).toLocaleDateString()}
+                            {payment.date_deposited && (
+                              <span className="ml-2">
+                                • Deposited:{" "}
+                                {new Date(
+                                  payment.date_deposited
+                                ).toLocaleDateString()}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </>
+        )}
+      </div>
+
+      {/* Payment Form Modal */}
+      <PaymentFormModal
+        open={isPaymentModalOpen}
+        onOpenChange={setIsPaymentModalOpen}
+        payment={purchaseOrder.payments && purchaseOrder.payments.length > 0 ? {
+          ...purchaseOrder.payments[0],
+          purchase_order_id: purchaseOrder.id,
+          payment_method: purchaseOrder.payments[0].payment_method as "cash" | "cheque" | "bank_transfer" | "credit_card",
+        } : null}
+        defaultPurchaseOrderId={String(purchaseOrder.id)}
+        onSuccess={() => {
+          handleRefresh();
+        }}
+      />
+
+      {/* Edit Purchase Order Modal */}
+      <PurchaseOrderFormModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        purchaseOrder={purchaseOrder}
+        onSuccess={() => {
+          handleRefresh();
+          setIsEditModalOpen(false);
+        }}
+      />
+    </div>
+  );
+}

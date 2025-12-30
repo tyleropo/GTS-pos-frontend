@@ -37,6 +37,12 @@ export function CustomerSearch({
 
   useEffect(() => {
     const loadCustomers = async () => {
+      // User requested to keep list empty until typing 2-3 chars
+      if (debouncedQuery.length < 2) {
+         setCustomers([]);
+         return;
+      }
+
       setLoading(true);
       try {
         const response = await fetchCustomers({

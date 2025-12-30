@@ -29,11 +29,10 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/components/ui/textarea"; // Assuming you have this component, or use Input if not
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import {
     Command,
-    CommandEmpty,
     CommandGroup,
     CommandInput,
     CommandItem,
@@ -44,6 +43,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/src/components/ui/popover";
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { toast } from "sonner";
 import {
     createPurchaseOrder,
@@ -53,6 +53,7 @@ import {
 } from "@/src/lib/api/purchase-orders";
 import { fetchProducts, type Product } from "@/src/lib/api/products";
 import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
+import { useDebounce } from "@/src/hooks/use-debounce";
 
 const purchaseOrderItemSchema = z.object({
     product_id: z.union([z.string(), z.number()]).refine((val) => val !== "", {
@@ -69,7 +70,6 @@ const purchaseOrderFormSchema = z.object({
     delivery_date: z.string().optional(),
     status: z.enum(["draft", "submitted", "received", "cancelled"]),
     items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
-    payment_status: z.string().optional(),
     notes: z.string().optional(),
 });
 
@@ -89,11 +89,18 @@ export function PurchaseOrderFormModal({
     onSuccess,
 }: PurchaseOrderFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
-    const [loadingData, setLoadingData] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
     const [productOpenStates, setProductOpenStates] = useState<Record<number, boolean>>({});
+    
+    // Search states
+    const [customerQuery, setCustomerQuery] = useState("");
+    const debouncedCustomerQuery = useDebounce(customerQuery, 300);
+    const [productQuery, setProductQuery] = useState("");
+    const debouncedProductQuery = useDebounce(productQuery, 300);
+    
     const isEditing = !!purchaseOrder;
 
     const form = useForm<PurchaseOrderFormValues>({
@@ -101,8 +108,7 @@ export function PurchaseOrderFormModal({
         defaultValues: {
             supplier_id: purchaseOrder?.supplier_id || "",
             delivery_date: purchaseOrder?.expected_at || "",
-            status: (purchaseOrder?.status as any) || "draft",
-            payment_status: "pending",
+            status: (purchaseOrder?.status as "draft" | "submitted" | "received" | "cancelled") || "draft",
             notes: purchaseOrder?.notes || "",
             items: purchaseOrder?.items
                 ? purchaseOrder.items.map(item => ({
@@ -121,29 +127,76 @@ export function PurchaseOrderFormModal({
         name: "items",
     });
 
-    // Load products and suppliers
+    // Load customers on search
     useEffect(() => {
-        const loadData = async () => {
+        const loadCustomers = async () => {
+            if (debouncedCustomerQuery.length < 2 && !purchaseOrder) {
+                 setCustomers([]);
+                 return;
+            }
+
             try {
-                setLoadingData(true);
-                const [productsRes, customersRes] = await Promise.all([
-                   fetchProducts({ per_page: 1000 }),
-                   fetchCustomers({ per_page: 1000 })
-                ]);
-                setProducts(productsRes.data);
+                const customersRes = await fetchCustomers({ 
+                    search: debouncedCustomerQuery,
+                    per_page: 50 
+                });
                 setCustomers(customersRes.data);
             } catch (error) {
-                console.error("Error loading form data:", error);
-                toast.error("Failed to load form data");
-            } finally {
-                setLoadingData(false);
+                console.error("Error loading customers:", error);
+            } 
+        };
+        loadCustomers();
+    }, [debouncedCustomerQuery, purchaseOrder]);
+
+    // Load products on search
+    useEffect(() => {
+        const loadProducts = async () => {
+             if (debouncedProductQuery.length < 2 && !purchaseOrder) {
+                 setProducts([]);
+                 return;
+            }
+
+            try {
+                const productsRes = await fetchProducts({ 
+                    search: debouncedProductQuery,
+                    per_page: 50 
+                });
+                setProducts(productsRes.data);
+            } catch (error) {
+                console.error("Error loading products:", error);
             }
         };
-
-        if (open) {
-            loadData();
+        loadProducts();
+    }, [debouncedProductQuery, purchaseOrder]);
+    
+    // Initial load for editing
+     useEffect(() => {
+        const loadInitialData = async () => {
+            if (purchaseOrder) {
+                try {
+                     // Load the specific supplier
+                     // Assuming we have an ID, we might need to search by it or load all if API doesn't support getById in search endpoint easily
+                     // For now, load default set or search by name if available, but ID is safest. 
+                     // Since we don't have getById exposed here easily, let's load a small batch or if we have the supplier name in the order object use that.
+                     // A better approach if the API supports it: fetchCustomers({ ids: [purchaseOrder.supplier_id] })
+                     // Creating a workaround: fetch customers without filter to get initial list, or if we have the name, search it.
+                     // Just loading initial batch for now so the form isn't empty-looking.
+                     
+                    const [productsRes, customersRes] = await Promise.all([
+                        fetchProducts({ per_page: 50 }),
+                        fetchCustomers({ per_page: 50 })
+                    ]);
+                    setProducts(productsRes.data);
+                    setCustomers(customersRes.data);
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+        };
+        if (open && purchaseOrder) {
+             loadInitialData();
         }
-    }, [open]);
+    }, [open, purchaseOrder]);
 
     // Reset form when modal opens
     useEffect(() => {
@@ -152,7 +205,6 @@ export function PurchaseOrderFormModal({
                 supplier_id: purchaseOrder?.supplier_id || "",
                 delivery_date: purchaseOrder?.expected_at || "",
                 status: (purchaseOrder?.status as any) || "draft",
-                payment_status: "pending",
                 notes: purchaseOrder?.notes || "",
                 items: purchaseOrder?.items
                 ? purchaseOrder.items.map(item => ({
@@ -232,6 +284,7 @@ export function PurchaseOrderFormModal({
     };
 
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -276,17 +329,28 @@ export function PurchaseOrderFormModal({
                                                             (customer) => String(customer.id) === field.value
                                                         )?.company || customers.find(
                                                             (customer) => String(customer.id) === field.value
-                                                        )?.name
+                                                        )?.name || "Selected Customer" // Fallback if not in loaded list
                                                         : "Select customer"}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
-                                            <Command>
-                                                <CommandInput placeholder="Search customer..." autoFocus />
+                                            <Command shouldFilter={false}>
+                                                <CommandInput 
+                                                    placeholder="Search customer (min 2 chars)..." 
+                                                    autoFocus 
+                                                    value={customerQuery}
+                                                    onValueChange={setCustomerQuery}
+                                                />
                                                 <CommandList>
-                                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                                    {customers.length === 0 && (
+                                                        <div className="py-6 text-center text-sm text-muted-foreground">
+                                                            {debouncedCustomerQuery.length < 2 
+                                                                ? "Type at least 2 characters..." 
+                                                                : "No customer found."}
+                                                        </div>
+                                                    )}
                                                     <CommandGroup>
                                                         {customers.map((customer) => (
                                                             <CommandItem
@@ -351,58 +415,60 @@ export function PurchaseOrderFormModal({
 
                         <div className="grid grid-cols-2 gap-4">
                             {/* Status */}
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Order Status</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="draft">Pending</SelectItem>
-                                                <SelectItem value="submitted">Processing</SelectItem>
-                                                <SelectItem value="received">Delivered</SelectItem>
-                                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Order Status</FormLabel>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="draft">Pending</SelectItem>
+                                            <SelectItem value="submitted">Processing</SelectItem>
+                                            <SelectItem value="received">Delivered</SelectItem>
+                                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                            {/* Payment Status */}
-                            <FormField
-                                control={form.control}
-                                name="payment_status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Payment Status</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                            {/* Add Payment Button */}
+                            {isEditing && (
+                                <FormItem>
+                                    <FormLabel>Payment</FormLabel>
+                                    {purchaseOrder?.payments && purchaseOrder.payments.length > 0 ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setIsPaymentModalOpen(true)}
                                         >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select payment status" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="pending">Pending</SelectItem>
-                                                <SelectItem value="paid">Paid</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                            <Pencil className="h-4 w-4 mr-2" />
+                                            Edit Payment
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setIsPaymentModalOpen(true)}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Payment
+                                        </Button>
+                                    )}
+                                </FormItem>
+                            )}
                         </div>
 
                         {/* Line Items */}
@@ -461,17 +527,28 @@ export function PurchaseOrderFormModal({
                                                                     {field.value
                                                                         ? products.find(
                                                                             (product) => String(product.id) === String(field.value)
-                                                                        )?.name
+                                                                        )?.name || "Selected Product"
                                                                         : "Select product"}
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
-                                                            <Command>
-                                                                <CommandInput placeholder="Search product..." autoFocus />
+                                                            <Command shouldFilter={false}>
+                                                                <CommandInput 
+                                                                    placeholder="Search product (min 2 chars)..." 
+                                                                    autoFocus 
+                                                                    value={productQuery}
+                                                                    onValueChange={setProductQuery}
+                                                                />
                                                                 <CommandList>
-                                                                    <CommandEmpty>No product found.</CommandEmpty>
+                                                                    {products.length === 0 && (
+                                                                        <div className="py-6 text-center text-sm text-muted-foreground">
+                                                                            {debouncedProductQuery.length < 2 
+                                                                                ? "Type at least 2 characters..." 
+                                                                                : "No product found."}
+                                                                        </div>
+                                                                    )}
                                                                     <CommandGroup>
                                                                         {products.map((product) => (
                                                                             <CommandItem
@@ -619,5 +696,24 @@ export function PurchaseOrderFormModal({
                 </Form>
             </DialogContent>
         </Dialog>
+
+        {/* Payment Modal */}
+        {purchaseOrder && (
+            <PaymentFormModal
+                open={isPaymentModalOpen}
+                onOpenChange={setIsPaymentModalOpen}
+                defaultPurchaseOrderId={String(purchaseOrder.id)}
+                payment={
+                    purchaseOrder.payments && purchaseOrder.payments.length > 0
+                        ? { ...purchaseOrder.payments[0], purchase_order_id: purchaseOrder.id } as any
+                        : undefined
+                }
+                onSuccess={() => {
+                    setIsPaymentModalOpen(false);
+                    onSuccess?.();
+                }}
+            />
+        )}
+        </>
     );
 }

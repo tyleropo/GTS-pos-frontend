@@ -57,6 +57,16 @@ export const purchaseOrderSchema = z.object({
     .optional(),
   // Legacy support if needed, but we're switching to customer
   supplier: z.unknown().optional(),
+  // Payments linked to this PO
+  payments: z.array(z.object({
+    id: z.union([z.string(), z.number()]),
+    reference_number: z.string().nullable().optional(),
+    amount: priceNumber,
+    payment_method: z.string(),
+    date_received: z.string(),
+    is_deposited: z.boolean(),
+    date_deposited: z.string().nullable().optional(),
+  })).optional(),
 });
 
 const paginatedPurchaseOrderSchema = z.object({

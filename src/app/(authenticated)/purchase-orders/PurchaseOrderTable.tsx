@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
@@ -9,10 +8,10 @@ import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { PurchaseOrder } from '@/src/types/purchaseOrder'
+import Link from 'next/link'
 
 interface PurchaseOrderTableProps {
   purchaseOrders: PurchaseOrder[];
-  onView?: (po: PurchaseOrder) => void;
   onEdit?: (po: PurchaseOrder) => void;
   onDelete?: (po: PurchaseOrder) => void;
   onReceive?: (po: PurchaseOrder) => void;
@@ -22,7 +21,6 @@ interface PurchaseOrderTableProps {
 
 const PurchaseOrderTable = ({
   purchaseOrders,
-  onView,
   onEdit,
   onDelete,
   onReceive,
@@ -224,14 +222,11 @@ const PurchaseOrderTable = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                onSelect={(e) => {
-                                    e.preventDefault();
-                                    onView?.(po);
-                                }}
-                                >
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Details
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/purchase-orders/${po.id}`}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    View Details
+                                  </Link>
                                 </DropdownMenuItem>
                                 
                                 <DropdownMenuItem onSelect={() => onDownloadPDF?.(po)}>
