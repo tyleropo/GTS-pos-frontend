@@ -235,7 +235,7 @@ const PurchaseOrderTable = ({
                                 Download PDF
                                 </DropdownMenuItem>
                                 
-                                {po.status !== "Received" && po.status !== "Cancelled" && (
+                                {/* {po.status !== "Received" && po.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => onReceive?.(po)}>
@@ -264,7 +264,7 @@ const PurchaseOrderTable = ({
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancel Order
                                 </DropdownMenuItem>
-                                )}
+                                )} */}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

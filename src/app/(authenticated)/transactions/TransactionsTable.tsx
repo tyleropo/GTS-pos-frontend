@@ -48,6 +48,7 @@ import {
 import { toast } from "sonner";
 
 import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
+import { RefundModal } from "@/src/components/modals/refund-modal";
 
 import { useSearchParams } from "next/navigation";
 
@@ -69,6 +70,8 @@ const TransactionsTable = ({
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [refundTransaction, setRefundTransaction] = useState<Transaction | null>(null);
+  const [isRefundOpen, setIsRefundOpen] = useState(false);
 
   // Filter transactions based on search query and filters
   const filteredTransactions = transactions.filter((transaction) => {
@@ -292,7 +295,10 @@ const TransactionsTable = ({
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-amber-600"
-                                    onClick={() => toast.info("Refund feature coming soon")}
+                                    onClick={() => {
+                                      setRefundTransaction(transaction);
+                                      setIsRefundOpen(true);
+                                    }}
                                   >
                                     Process Refund
                                   </DropdownMenuItem>
@@ -348,6 +354,16 @@ const TransactionsTable = ({
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         transaction={selectedTransaction}
+      />
+
+      <RefundModal
+        open={isRefundOpen}
+        onOpenChange={setIsRefundOpen}
+        transaction={refundTransaction}
+        onRefundSuccess={() => {
+          // Refresh transactions list by triggering a page reload or refetch
+          window.location.reload();
+        }}
       />
     </div>
   );
