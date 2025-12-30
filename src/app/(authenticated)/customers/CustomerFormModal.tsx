@@ -50,6 +50,7 @@ import {
     createCustomer,
     updateCustomer,
     type CreateCustomerPayload,
+    type Customer,
 } from "@/src/lib/api/customers";
 
 const customerFormSchema = z.object({
@@ -102,7 +103,7 @@ export function CustomerFormModal({
     const [typeSearch, setTypeSearch] = useState("");
     
     // Default types plus any fetched types, deduplicated
-    const availableTypes = Array.from(new Set(["Regular", "VIP", ...customerTypes])).sort();
+    const availableTypes = Array.from(new Set(["Regular", "VIP", "Government", ...customerTypes])).sort();
 
     const form = useForm<CustomerFormValues>({
         resolver: zodResolver(customerFormSchema),
