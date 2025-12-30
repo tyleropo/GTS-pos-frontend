@@ -9,7 +9,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/src/components/ui/command";
+import { Plus } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -28,7 +30,8 @@ export function CustomerSearch({
   selectedCustomer,
   onSelectCustomer,
   className,
-}: CustomerSearchProps) {
+  onCreate,
+}: CustomerSearchProps & { onCreate?: () => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
@@ -99,7 +102,7 @@ export function CustomerSearch({
                 Loading...
               </div>
             )}
-            {!loading && customers.length === 0 && (
+            {!loading && customers.length === 0 && !onCreate && (
               <CommandEmpty>No customer found.</CommandEmpty>
             )}
             {!loading && (
@@ -147,6 +150,21 @@ export function CustomerSearch({
                   </CommandItem>
                 ))}
               </CommandGroup>
+            )}
+            {onCreate && (
+                <CommandGroup>
+                     <CommandSeparator />
+                     <CommandItem
+                        onSelect={() => {
+                            setOpen(false);
+                            onCreate();
+                        }}
+                        className="cursor-pointer"
+                     >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create new customer
+                     </CommandItem>
+                </CommandGroup>
             )}
           </CommandList>
         </Command>

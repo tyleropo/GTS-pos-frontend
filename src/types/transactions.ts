@@ -18,6 +18,7 @@ export interface Transaction{
     paymentMethod: "Credit Card" | "Cash" | string
     status: "Completed" | "Refunded" | string
     cashier: string
+    meta?: Record<string, any>
 }
 
 export type DateFileter ="all" | "today" | "yesterday" | "this-week"

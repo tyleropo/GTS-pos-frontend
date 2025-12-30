@@ -81,7 +81,7 @@ interface CustomerFormModalProps {
         status?: string | null;
         type?: string | null;
     };
-    onSuccess?: () => void;
+    onSuccess?: (customer?: Customer) => void;
     customerTypes?: string[];
     onRefreshTypes?: () => void;
 }
@@ -159,11 +159,22 @@ export function CustomerFormModal({
             onOpenChange(false);
             onSuccess?.();
             onRefreshTypes?.();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving customer:", error);
-            toast.error(
-                isEditing ? "Failed to update customer" : "Failed to create customer"
-            );
+            if (error.response && error.response.status === 422) {
+                const errors = error.response.data.errors;
+                if (errors.email) {
+                    form.setError("email", { message: errors.email[0] });
+                }
+                // Handle generic error if no specific field error matches
+                if (!errors.email) {
+                    toast.error("Validation failed. Please check the form.");
+                }
+            } else {
+                toast.error(
+                    isEditing ? "Failed to update customer" : "Failed to create customer"
+                );
+            }
         } finally {
             setIsSubmitting(false);
         }

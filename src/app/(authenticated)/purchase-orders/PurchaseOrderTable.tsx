@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { format } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
@@ -200,7 +201,7 @@ const PurchaseOrderTable = ({
                             {po.paymentStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell>{po.deliveryDate}</TableCell>
+                        <TableCell>{po.deliveryDate ? format(new Date(po.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
                           {po.status !== "Cancelled" && (
                             <Button 

@@ -102,7 +102,11 @@ export async function fetchTransactions(
     ...config,
   };
   const { data } = await apiClient.get("/transactions", requestConfig);
-  return paginatedTransactionSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  return paginatedTransactionSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 /**

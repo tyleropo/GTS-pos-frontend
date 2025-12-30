@@ -88,7 +88,11 @@ export async function fetchProducts(
     ...config,
   };
   const { data } = await apiClient.get("/products", requestConfig);
-  return paginatedProductSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  return paginatedProductSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 export async function fetchLowStockProducts() {

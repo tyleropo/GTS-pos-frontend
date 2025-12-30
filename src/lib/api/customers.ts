@@ -66,7 +66,13 @@ export async function fetchCustomers(
     ...config,
   };
   const { data } = await apiClient.get("/customers", requestConfig);
-  return paginatedCustomerSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  // The backend returns { data: [...], current_page: 1, ... }
+  // We need to parse it as { data: [...], meta: { current_page: 1, ... } }
+  return paginatedCustomerSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 /**

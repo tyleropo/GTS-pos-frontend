@@ -126,7 +126,11 @@ export async function fetchPurchaseOrders(
     ...config,
   };
   const { data } = await apiClient.get("/purchase-orders", requestConfig);
-  return paginatedPurchaseOrderSchema.parse(data);
+  // Map root-level pagination fields to 'meta'
+  return paginatedPurchaseOrderSchema.parse({
+    data: data.data,
+    meta: data
+  });
 }
 
 /**

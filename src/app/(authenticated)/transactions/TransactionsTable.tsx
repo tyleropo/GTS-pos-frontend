@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { isToday, isYesterday, isSameWeek, parseISO } from "date-fns";
 import { Transaction } from "@/src/types/transactions";
 import {
   Table,
@@ -30,8 +31,6 @@ import {
   Search,
   Filter,
   MoreHorizontal,
-  Calendar,
-  Download,
   CreditCard,
   DollarSign,
   Eye,
@@ -42,9 +41,7 @@ import { Badge } from "@/src/components/ui/badge";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/src/components/ui/pagination";
@@ -84,17 +81,9 @@ const TransactionsTable = ({
     // Date filter
     const matchesDate =
       dateFilter === "all" ||
-      (dateFilter === "today" && transaction.date === "2023-04-15") ||
-      (dateFilter === "yesterday" && transaction.date === "2023-04-14") ||
-      (dateFilter === "this-week" &&
-        [
-          "2023-04-10",
-          "2023-04-11",
-          "2023-04-12",
-          "2023-04-13",
-          "2023-04-14",
-          "2023-04-15",
-        ].includes(transaction.date));
+      (dateFilter === "today" && isToday(parseISO(transaction.date))) ||
+      (dateFilter === "yesterday" && isYesterday(parseISO(transaction.date))) ||
+      (dateFilter === "this-week" && isSameWeek(parseISO(transaction.date), new Date()));
 
     // Payment method filter
     const matchesPayment =
@@ -241,6 +230,11 @@ const TransactionsTable = ({
                           <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
                         )}
                         {transaction.paymentMethod}
+                        {transaction.meta?.reference_number && (
+                            <span className="ml-2 text-xs text-muted-foreground font-mono">
+                                ({transaction.meta.reference_number})
+                            </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

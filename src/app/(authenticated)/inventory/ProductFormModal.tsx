@@ -46,7 +46,7 @@ import { ChevronsUpDown } from "lucide-react";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required").max(255, "Name is too long"),
-  sku: z.string().min(1, "SKU is required").max(100, "SKU is too long"),
+  sku: z.string().max(100, "SKU is too long").optional().or(z.literal("")),
   barcode: z.string().optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   category_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
@@ -187,9 +187,22 @@ export function ProductFormModal({
       form.reset();
       onOpenChange(false);
       onSuccess?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving product:", error);
-      toast.error(product ? "Failed to update product" : "Failed to create product");
+      if (error.response && error.response.status === 422) {
+        const errors = error.response.data.errors;
+        if (errors.sku) form.setError("sku", { message: errors.sku[0] });
+        if (errors.barcode) form.setError("barcode", { message: errors.barcode[0] });
+        if (errors.name) form.setError("name", { message: errors.name[0] });
+        
+        // Handle generic error if no specific field error matches
+        const hasSpecificError = errors.sku || errors.barcode || errors.name;
+        if (!hasSpecificError) {
+          toast.error("Validation failed. Please check the form.");
+        }
+      } else {
+        toast.error(product ? "Failed to update product" : "Failed to create product");
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -16,7 +16,15 @@ import {
   TableRow,
 } from "@/src/components/ui/table";
 import { Transaction } from "@/src/types/transactions";
-import { Printer } from "lucide-react";
+import { Printer, Settings } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { useReactToPrint } from "react-to-print";
+import { 
+    ReceiptSettingsModal, 
+    ReceiptSettings, 
+    DEFAULT_RECEIPT_SETTINGS 
+} from "@/src/components/modals/receipt-settings-modal";
+import { TransactionReceipt } from "@/src/components/receipts/transaction-receipt";
 
 interface TransactionDetailsModalProps {
   transaction: Transaction | null;
@@ -29,13 +37,30 @@ export function TransactionDetailsModal({
   open,
   onOpenChange,
 }: TransactionDetailsModalProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>(DEFAULT_RECEIPT_SETTINGS);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Load settings on mount (or when modal opens)
+  useEffect(() => {
+      const saved = localStorage.getItem("pos_receipt_settings");
+      if (saved) {
+        try {
+            setReceiptSettings(JSON.parse(saved));
+        } catch (e) {
+            console.error("Failed to parse receipt settings", e);
+        }
+      }
+  }, []);
+
+  const handlePrint = useReactToPrint({
+    contentRef: receiptRef,
+  });
+
   if (!transaction) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -58,6 +83,11 @@ export function TransactionDetailsModal({
             <div>
               <p className="text-muted-foreground">Payment Method</p>
               <p className="font-medium">{transaction.paymentMethod}</p>
+              {transaction.meta?.reference_number && (
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                    Ref: {transaction.meta.reference_number}
+                  </p>
+              )}
             </div>
             <div>
               <p className="text-muted-foreground">Status</p>
@@ -105,13 +135,30 @@ export function TransactionDetailsModal({
         </div>
 
         <DialogFooter className="sm:justify-between">
-           <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
+           <Button variant="outline" onClick={() => setSettingsOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Customize Receipt
            </Button>
-           <Button onClick={() => onOpenChange(false)}>Close</Button>
+           <div className="flex gap-2">
+               <Button variant="outline" onClick={() => handlePrint()}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print
+               </Button>
+               <Button onClick={() => onOpenChange(false)}>Close</Button>
+           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ReceiptSettingsModal 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen}
+        onSave={setReceiptSettings}
+    />
+    
+    <div className="hidden">
+        <TransactionReceipt ref={receiptRef} transaction={transaction} settings={receiptSettings} />
+    </div>
+    </>
   );
 }

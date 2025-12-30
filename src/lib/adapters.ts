@@ -69,6 +69,7 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
         : "GCash",
     status: "Completed", // Transactions from backend are completed
     cashier: "System", // Can be enhanced if backend provides this
+    meta: apiTransaction.meta,
   };
 }
 
