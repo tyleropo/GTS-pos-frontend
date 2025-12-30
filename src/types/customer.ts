@@ -12,6 +12,6 @@ export type Customer = {
   orders?: number;
   // For UI compatibility - optional fields
   lastPurchase?: string;
-  status?: "Active" | "Inactive";
-  type?: "Regular" | "VIP";
+  status?: "Active" | "Inactive" | string | null;
+  type?: string | null;
 };

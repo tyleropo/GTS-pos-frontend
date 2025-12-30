@@ -33,7 +33,7 @@ export function adaptCustomer(apiCustomer: APICustomer): Customer {
         ? apiCustomer.updated_at?.split("T")[0] || new Date().toISOString().split("T")[0]
         : "N/A",
     status: (apiCustomer.status as "Active" | "Inactive") || "Active",
-    type: (apiCustomer.type as "Regular" | "VIP") || "Regular",
+    type: apiCustomer.type || "Regular",
   };
 }
 

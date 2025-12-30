@@ -14,7 +14,9 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
-import { fetchCustomers } from "@/src/lib/api/customers";
+import { fetchCustomers, fetchCustomerTypes } from "@/src/lib/api/customers";
+
+
 import { useEffect, useState } from "react";
 import type { Customer } from "@/src/types/customer";
 import { adaptCustomer } from "@/src/lib/adapters";
@@ -36,6 +38,8 @@ function CustomersPage() {
     null
   );
 
+  const [customerTypes, setCustomerTypes] = useState<string[]>([]);
+
   const loadCustomers = async () => {
     try {
       setLoading(true);
@@ -54,8 +58,18 @@ function CustomersPage() {
     }
   };
 
+  const loadCustomerTypes = async () => {
+    try {
+        const types = await fetchCustomerTypes();
+        setCustomerTypes(types);
+    } catch (err) {
+        console.error("Error loading customer types:", err);
+    }
+  };
+
   useEffect(() => {
     loadCustomers();
+    loadCustomerTypes();
   }, [page]);
 
   const handleAddCustomer = () => {
@@ -75,10 +89,12 @@ function CustomersPage() {
 
   const handleFormSuccess = () => {
     loadCustomers();
+    loadCustomerTypes();
   };
 
   const handleDeleteSuccess = () => {
     loadCustomers();
+    loadCustomerTypes();
   };
 
   if (loading) {
@@ -136,6 +152,7 @@ function CustomersPage() {
           <CardContent>
             <CustomerTable
               customers={customers}
+              customerTypes={customerTypes}
               onEdit={handleEditCustomer}
               onDelete={handleDeleteCustomer}
               page={page}
@@ -152,6 +169,8 @@ function CustomersPage() {
         onOpenChange={setIsFormModalOpen}
         customer={selectedCustomer || undefined}
         onSuccess={handleFormSuccess}
+        customerTypes={customerTypes}
+        onRefreshTypes={loadCustomerTypes}
       />
 
       <DeleteCustomerDialog
