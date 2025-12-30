@@ -115,7 +115,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+
+        <NavMain
+          items={
+            user?.role === "cashier"
+              ? data.navMain.filter((item) =>
+                  ["/pos", "/repairs"].includes(item.url)
+                )
+              : data.navMain
+          }
+        />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
