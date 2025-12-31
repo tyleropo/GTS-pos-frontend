@@ -189,9 +189,17 @@ export default function DashboardPage() {
       <Badge variant="secondary" className="rounded-full">
         {user.first_name} {user.last_name}
       </Badge>
-      <Badge variant="outline" className="rounded-full capitalize">
-        {user.role}
-      </Badge>
+      {user.roles && user.roles.length > 0 ? (
+        user.roles.map((role) => (
+          <Badge key={role} variant="outline" className="rounded-full capitalize">
+            {role}
+          </Badge>
+        ))
+      ) : (
+        <Badge variant="outline" className="rounded-full">
+          {user.role}
+        </Badge>
+      )}
     </div>
   ) : (
     <Badge variant="outline" className="rounded-full">
