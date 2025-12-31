@@ -105,7 +105,7 @@ export default function PurchaseOrderDetailPage({
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold">Customer Order Details</h1>
+            <h1 className="text-2xl font-bold">Supplier Order Details</h1>
             <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
               {purchaseOrder.status === "draft"
                 ? "Pending"
@@ -136,12 +136,12 @@ export default function PurchaseOrderDetailPage({
           <div className="space-y-1">
             <div className="flex items-center text-sm text-muted-foreground">
               <User className="h-4 w-4 mr-2" />
-              Customer
+              Supplier
             </div>
             <p className="font-medium">
               {purchaseOrder.customer?.company ||
                 purchaseOrder.customer?.name ||
-                "Unknown Customer"}
+                "Unknown Supplier"}
             </p>
           </div>
 

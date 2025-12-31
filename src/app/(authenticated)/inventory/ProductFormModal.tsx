@@ -19,9 +19,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
 import { Loader2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";

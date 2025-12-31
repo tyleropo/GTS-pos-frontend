@@ -11,7 +11,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/src/components/ui/dialog";
 import {
     Form,
     FormControl,
@@ -19,7 +19,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
+} from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
 import { Loader2, PackageCheck } from "lucide-react";
@@ -98,7 +98,7 @@ export function FulfillPurchaseOrderModal({
             };
 
             await receivePurchaseOrder(String(purchaseOrder.id), payload);
-            toast.success("Customer order fulfilled successfully");
+            toast.success("Supplier order fulfilled successfully");
             form.reset();
             onOpenChange(false);
             onSuccess?.();
@@ -118,7 +118,7 @@ export function FulfillPurchaseOrderModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <PackageCheck className="h-5 w-5" />
-                        Fulfill Customer Order
+                        Fulfill Supplier Order
                     </DialogTitle>
                     <DialogDescription>
                         Enter the quantity shipped for each item. PO: {purchaseOrder.po_number}

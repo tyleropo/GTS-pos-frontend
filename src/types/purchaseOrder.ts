@@ -3,7 +3,7 @@ export type PurchaseOrder = {
   id: string;
   po_number: string;
   date: string;
-  customer: string;
+  supplier: string;
   items: number;
   total: number;
   status: string;

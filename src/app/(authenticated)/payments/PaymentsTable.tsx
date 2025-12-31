@@ -63,8 +63,10 @@ export default function PaymentsTable() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Type</TableHead>
             <TableHead>Ref Number</TableHead>
-            <TableHead>PO Link</TableHead>
+            <TableHead>Order Link</TableHead>
+            <TableHead>Party</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
             <TableHead>Date Received</TableHead>
@@ -75,23 +77,41 @@ export default function PaymentsTable() {
         <TableBody>
           {payments.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={9} className="h-24 text-center">
                 No payments found.
               </TableCell>
             </TableRow>
           ) : (
             payments.map((payment) => (
               <TableRow key={payment.id}>
+                 <TableCell>
+                  <Badge variant="outline" className={
+                    payment.type === 'inbound' 
+                      ? "bg-green-100 text-green-700 hover:bg-green-100 border-green-200" 
+                      : "bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200"
+                  }>
+                    {payment.type === 'inbound' ? 'Inbound' : 'Outbound'}
+                  </Badge>
+                </TableCell>
                 <TableCell className="font-medium">
                   {payment.reference_number || "-"}
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/purchase-orders/${payment.purchase_order_id}`}
+                    href={payment.type === 'inbound' 
+                      ? `/customer-orders/${payment.payable_id}` 
+                      : `/purchase-orders/${payment.payable_id}`}
                     className="flex items-center gap-1 text-blue-600 hover:underline"
                   >
-                    View PO <ExternalLink className="h-3 w-3" />
+                    View {payment.type === 'inbound' ? 'CO' : 'PO'} <ExternalLink className="h-3 w-3" />
                   </Link>
+                </TableCell>
+                <TableCell>
+                  {payment.payable?.supplier?.company_name || 
+                   payment.payable?.supplier?.contact_person ||
+                   payment.payable?.customer?.name || 
+                   payment.payable?.customer?.company ||
+                   "-"}
                 </TableCell>
                 <TableCell>
                   {new Intl.NumberFormat("en-US", {

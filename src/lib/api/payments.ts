@@ -28,18 +28,33 @@ const customerSchema = z.object({
   phone: z.string().nullable().optional(),
 });
 
-// PurchaseOrder schema for nested data
+// PurchaseOrder schema for nested data (keep simple)
 const purchaseOrderSchema = z.object({
-  id: z.union([z.string(), z.number()]),
+  id: z.string(),
   po_number: z.string(),
-  status: z.string(),
-  total: priceNumber,
-  customer: customerSchema.nullable().optional(),
+  supplier_id: z.string().optional(),
+  supplier: z.object({
+    company_name: z.string(),
+    contact_person: z.string().nullable(),
+  }).optional(),
+});
+
+// CustomerOrder schema for nested data
+const customerOrderSchema = z.object({
+  id: z.string(),
+  co_number: z.string(),
+  customer_id: z.string().optional(),
+  customer: z.object({
+    name: z.string(),
+    company: z.string().nullable().optional(),
+  }).optional(),
 });
 
 export const paymentSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  purchase_order_id: z.union([z.string(), z.number()]),
+  payable_id: z.string(),
+  payable_type: z.string(),
+  type: z.enum(["inbound", "outbound"]),
   reference_number: z.string().nullable().optional(),
   amount: priceNumber,
   payment_method: z.enum(["cash", "cheque", "bank_transfer", "credit_card"]),
@@ -49,7 +64,7 @@ export const paymentSchema = z.object({
   notes: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
-  purchase_order: purchaseOrderSchema.nullable().optional(),
+  payable: z.union([purchaseOrderSchema, customerOrderSchema]).nullable().optional(),
 });
 
 const paginatedPaymentSchema = z.object({
@@ -60,7 +75,9 @@ const paginatedPaymentSchema = z.object({
 export type Payment = z.infer<typeof paymentSchema>;
 
 export type FetchPaymentsParams = {
-  purchase_order_id?: string;
+  payable_id?: string;
+  payable_type?: string;
+  type?: "inbound" | "outbound";
   is_deposited?: boolean;
   date_from?: string;
   date_to?: string;
@@ -69,7 +86,8 @@ export type FetchPaymentsParams = {
 };
 
 export type CreatePaymentPayload = {
-  purchase_order_id: string;
+  payable_id: string;
+  payable_type: "purchase_order" | "customer_order";
   reference_number?: string | null;
   amount: number;
   payment_method: "cash" | "cheque" | "bank_transfer" | "credit_card";

@@ -45,18 +45,16 @@ export const purchaseOrderSchema = z.object({
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Relations
-  customer: z
+  supplier: z
     .object({
       id: z.union([z.string(), z.number()]),
-      name: z.string().optional(),
-      company: z.string().nullable().optional(),
+      company_name: z.string().optional(),
+      contact_person: z.string().nullable().optional(),
       email: z.string().nullable().optional(),
       phone: z.string().nullable().optional(),
     })
     .nullable()
     .optional(),
-  // Legacy support if needed, but we're switching to customer
-  supplier: z.unknown().optional(),
   // Payments linked to this PO
   payments: z.array(z.object({
     id: z.union([z.string(), z.number()]),

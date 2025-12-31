@@ -6,7 +6,7 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/src/components/ui/dialog";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -70,7 +70,7 @@ export function ViewPurchaseOrderModal({
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center justify-between">
-                        <span>Customer Order Details</span>
+                        <span>Supplier Order Details</span>
                         <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
                             {purchaseOrder.status === "draft" ? "Pending" :
                              purchaseOrder.status === "submitted" ? "Processing" :
@@ -90,12 +90,12 @@ export function ViewPurchaseOrderModal({
                         <div className="space-y-1">
                             <div className="flex items-center text-sm text-muted-foreground">
                                 <User className="h-4 w-4 mr-2" />
-                                Customer
+                                Supplier
                             </div>
                             <p className="font-medium">
                                 {purchaseOrder.customer?.company ||
                                     purchaseOrder.customer?.name ||
-                                    "Unknown Customer"}
+                                    "Unknown Supplier"}
                             </p>
                         </div>
 

@@ -37,14 +37,14 @@ const PurchaseOrderTable = ({
   const filteredPOs = purchaseOrders.filter((po) => {
     // Search filter
     const matchesSearch =
-      po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      po.customer.toLowerCase().includes(searchQuery.toLowerCase())
+      (po.po_number || po.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (po.supplier || "").toLowerCase().includes(searchQuery.toLowerCase())
 
     // Status filter
-    const matchesStatus = statusFilter === "all" || po.status.toLowerCase() === statusFilter.toLowerCase()
+    const matchesStatus = statusFilter === "all" || (po.status || "").toLowerCase() === statusFilter.toLowerCase()
 
     // Payment status filter
-    const matchesPayment = paymentFilter === "all" || po.paymentStatus.toLowerCase() === paymentFilter.toLowerCase()
+    const matchesPayment = paymentFilter === "all" || (po.paymentStatus || "").toLowerCase() === paymentFilter.toLowerCase()
 
     // Tab filter - filter by status based on active tab
     let matchesTab = true
@@ -76,7 +76,7 @@ const PurchaseOrderTable = ({
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search by PO# or customer..."
+                    placeholder="Search by PO# or supplier..."
                     className="pl-8"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -138,7 +138,7 @@ const PurchaseOrderTable = ({
                   <TableRow>
                     <TableHead>PO Number</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -159,7 +159,7 @@ const PurchaseOrderTable = ({
                       <TableRow key={po.id}>
                         <TableCell className="font-medium">{po.po_number}</TableCell>
                         <TableCell>{po.date}</TableCell>
-                        <TableCell>{po.customer}</TableCell>
+                        <TableCell>{po.supplier}</TableCell>
                         <TableCell className="text-right">{po.items}</TableCell>
                         <TableCell className="text-right font-medium">₱{po.total.toFixed(2)}</TableCell>
                         <TableCell>
