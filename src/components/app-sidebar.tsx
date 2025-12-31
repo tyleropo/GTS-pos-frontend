@@ -12,6 +12,9 @@ import {
   IconDeviceImacCog,
   IconReceipt,
   IconCurrencyDollar,
+  IconChartBar,
+  IconClipboardList,
+  IconUserCog,
 } from "@tabler/icons-react"
 
 
@@ -78,6 +81,30 @@ const data = {
       url: "/repairs",
       icon: IconDeviceImacCog,
     },
+    {
+      title: "Users",
+      url: "/users",
+      icon: IconUserCog,
+      adminOnly: true,
+    },
+    {
+      title: "Reports",
+      url: "/reports",
+      icon: IconChartBar,
+      adminOnly: true,
+    },
+    {
+      title: "Audit Logs",
+      url: "/audit-logs",
+      icon: IconClipboardList,
+      adminOnly: true,
+    },
+    {
+      title: "Payroll",
+      url: "/payroll",
+      icon: IconCurrencyDollar,
+      adminOnly: true,
+    },
   ],
   navSecondary: [],
 
@@ -118,11 +145,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         <NavMain
           items={
-            user?.role === "cashier"
+            user?.roles?.includes("cashier") && !user?.roles?.includes("admin") && !user?.roles?.includes("manager")
               ? data.navMain.filter((item) =>
                   ["/pos", "/repairs"].includes(item.url)
                 )
-              : data.navMain
+              : user?.roles?.includes("admin")
+              ? data.navMain
+              : data.navMain.filter((item) => {
+                  if (user?.roles?.includes("manager") && item.url === "/payroll") {
+                    return true
+                  }
+                  return !(item as { adminOnly?: boolean }).adminOnly
+                })
           }
         />
         <NavSecondary items={data.navSecondary} className="mt-auto" />

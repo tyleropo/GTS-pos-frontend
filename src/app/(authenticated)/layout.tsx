@@ -27,11 +27,23 @@ export default function AuthenticatedLayout({
         router.replace("/login");
       } else if (
         isAuthenticated &&
-        user?.role === "cashier" &&
+        user?.roles?.includes("cashier") &&
+        !user?.roles?.includes("admin") &&
+        !user?.roles?.includes("manager") &&
+        !pathname.startsWith("/dashboard") &&
         !pathname.startsWith("/pos") &&
+        !pathname.startsWith("/transactions") &&
         !pathname.startsWith("/repairs")
       ) {
-        router.replace("/pos");
+        router.replace("/dashboard");
+      } else if (
+        isAuthenticated &&
+        !user?.roles?.includes("admin") &&
+        (pathname.startsWith("/users") ||
+          pathname.startsWith("/reports") ||
+          pathname.startsWith("/audit-logs"))
+      ) {
+        router.replace("/dashboard");
       }
     }
   }, [isAuthenticated, isLoading, router, user, pathname]);

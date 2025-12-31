@@ -13,7 +13,7 @@ const mockUser: AuthUser = {
   email: "dev@example.com",
   first_name: "Dev",
   last_name: "User",
-  role: "admin",
+  roles: ["admin"],
   is_active: true,
   last_login_at: null,
   created_at: new Date().toISOString(),

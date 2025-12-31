@@ -16,6 +16,7 @@ import { RepairFormModal } from "./RepairFormModal";
 import { ViewRepairModal } from "./ViewRepairModal";
 import { DeleteRepairDialog } from "./DeleteRepairDialog";
 import { fetchRepairs, fetchRepair, updateRepair } from "@/src/lib/api/repairs";
+import { fetchUsers, type User } from "@/src/lib/api/users";
 import type { Repair as APIRepair } from "@/src/lib/api/repairs";
 import { useEffect, useState } from "react";
 import type { Repair } from "@/src/types/repair";
@@ -27,6 +28,7 @@ function RepairsPage() {
   const [apiRepairs, setApiRepairs] = useState<APIRepair[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [technicians, setTechnicians] = useState<User[]>([]);
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -52,7 +54,20 @@ function RepairsPage() {
 
   useEffect(() => {
     loadRepairs();
+    loadTechnicians();
   }, []);
+
+  const loadTechnicians = async () => {
+    try {
+      const response = await fetchUsers({ per_page: 1000 });
+      const techUsers = response.data.filter(user => 
+        user.roles?.includes("technician")
+      );
+      setTechnicians(techUsers);
+    } catch (error) {
+      console.error("Error loading technicians:", error);
+    }
+  };
 
   const handleAddRepair = () => {
     setSelectedRepair(null);
@@ -167,6 +182,7 @@ function RepairsPage() {
         <CardContent>
           <RepairsTable
             repairs={repairs}
+            technicians={technicians}
             onView={handleViewRepair}
             onEdit={handleEditRepair}
             onDelete={handleDeleteRepair}

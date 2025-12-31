@@ -11,6 +11,7 @@ import { Repair } from '@/src/types/repair'
 
 interface RepairsTableProps {
   repairs: Repair[];
+  technicians?: Array<{ id: string | number; first_name: string; last_name: string }>;
   onView?: (repair: Repair) => void;
   onEdit?: (repair: Repair) => void;
   onDelete?: (repair: Repair) => void;
@@ -19,6 +20,7 @@ interface RepairsTableProps {
 
 const RepairsTable = ({
   repairs,
+  technicians = [],
   onView,
   onEdit,
   onDelete,
@@ -28,6 +30,7 @@ const RepairsTable = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deviceFilter, setDeviceFilter] = useState("all");
+  const [technicianFilter, setTechnicianFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("all-repairs");
 
   // 2. Combine all filtering logic:
@@ -62,7 +65,11 @@ const RepairsTable = ({
     const matchesDevice =
       deviceFilter === "all" || r.device.toLowerCase() === deviceFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesDevice;
+    // e) Technician dropdown filter
+    const matchesTechnician =
+      technicianFilter === "all" || r.technician === technicianFilter;
+
+    return matchesSearch && matchesStatus && matchesDevice && matchesTechnician;
   });
 
   return (
@@ -134,6 +141,26 @@ const RepairsTable = ({
                     <SelectItem value="tablet">Tablet</SelectItem>
                     <SelectItem value="smartwatch">Smartwatch</SelectItem>
                     <SelectItem value="headphones">Headphones</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Technician filter group */}
+              <div className="p-2">
+                <p className="text-sm font-medium mb-2">Technician</p>
+                <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Technicians" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Technicians</SelectItem>
+                    {technicians.map((tech) => (
+                      <SelectItem key={tech.id} value={`${tech.first_name} ${tech.last_name}`}>
+                        {tech.first_name} {tech.last_name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -52,6 +52,7 @@ import {
     type Repair,
 } from "@/src/lib/api/repairs";
 import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
+import { fetchUsers, type User } from "@/src/lib/api/users";
 import { CustomerFormModal } from "..//customers/CustomerFormModal";
 
 const repairFormSchema = z.object({
@@ -94,8 +95,10 @@ export function RepairFormModal({
 }: RepairFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [customers, setCustomers] = useState<Customer[]>([]);
+    const [technicians, setTechnicians] = useState<User[]>([]);
     const [loadingData, setLoadingData] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
+    const [technicianOpen, setTechnicianOpen] = useState(false);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const isEditing = !!repair;
 
@@ -115,16 +118,24 @@ export function RepairFormModal({
         },
     });
 
-    // Load customers when modal opens
+    // Load customers and technicians when modal opens
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoadingData(true);
-                const customersRes = await fetchCustomers({ per_page: 1000 });
+                const [customersRes, techniciansRes] = await Promise.all([
+                    fetchCustomers({ per_page: 1000 }),
+                    fetchUsers({ per_page: 1000 })
+                ]);
                 setCustomers(customersRes.data);
+                // Filter users who have technician role
+                const techUsers = techniciansRes.data.filter(user => 
+                    user.roles?.includes("technician")
+                );
+                setTechnicians(techUsers);
             } catch (error) {
                 console.error("Error loading form data:", error);
-                toast.error("Failed to load customers");
+                toast.error("Failed to load form data");
             } finally {
                 setLoadingData(false);
             }
@@ -421,11 +432,83 @@ export function RepairFormModal({
                                 control={form.control}
                                 name="technician"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Assigned Technician</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Technician name" {...field} />
-                                        </FormControl>
+                                        <Popover 
+                                            open={technicianOpen} 
+                                            onOpenChange={setTechnicianOpen}
+                                            modal={true}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className={cn(
+                                                            "w-full justify-between",
+                                                            !field.value && "text-muted-foreground"
+                                                        )}
+                                                        disabled={loadingData}
+                                                    >
+                                                        {field.value || "Unassigned"}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
+                                                <Command>
+                                                    <CommandInput 
+                                                        placeholder="Search technician..." 
+                                                        autoFocus 
+                                                        onKeyDown={(e) => e.stopPropagation()}
+                                                    />
+                                                    <CommandList>
+                                                        <CommandEmpty>No technician found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            <CommandItem
+                                                                value="unassigned"
+                                                                onSelect={() => {
+                                                                    form.setValue("technician", "");
+                                                                    setTechnicianOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        !field.value ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                Unassigned
+                                                            </CommandItem>
+                                                            {technicians.map((tech) => {
+                                                                const fullName = `${tech.first_name} ${tech.last_name}`;
+                                                                return (
+                                                                    <CommandItem
+                                                                        value={fullName}
+                                                                        key={tech.id}
+                                                                        onSelect={() => {
+                                                                            form.setValue("technician", fullName);
+                                                                            setTechnicianOpen(false);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                fullName === field.value
+                                                                                    ? "opacity-100"
+                                                                                    : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {fullName}
+                                                                        {tech.email && ` (${tech.email})`}
+                                                                    </CommandItem>
+                                                                );
+                                                            })}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -545,7 +628,9 @@ export function RepairFormModal({
                 onOpenChange={setIsCustomerModalOpen}
                 onSuccess={(newCustomer) => {
                     refreshCustomers();
-                    form.setValue("customer_id", String(newCustomer.id));
+                    if (newCustomer) {
+                        form.setValue("customer_id", String(newCustomer.id));
+                    }
                 }}
             />
         </Dialog>

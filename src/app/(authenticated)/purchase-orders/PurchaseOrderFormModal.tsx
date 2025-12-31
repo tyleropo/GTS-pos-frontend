@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,11 +25,19 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/src/components/ui/select";
+}
+from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/components/ui/textarea"; // Assuming you have this component, or use Input if not
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Trash2, Check, ChevronsUpDown, Pencil } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, ChevronsUpDown, Pencil, Percent, Coins } from "lucide-react";
+import { Switch } from "@/src/components/ui/switch";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/src/components/ui/accordion";
 import { cn } from "@/src/lib/utils";
 import {
     Command,
@@ -100,6 +108,12 @@ export function PurchaseOrderFormModal({
     const debouncedCustomerQuery = useDebounce(customerQuery, 300);
     const [productQuery, setProductQuery] = useState("");
     const debouncedProductQuery = useDebounce(productQuery, 300);
+
+    // Tax & Discount States
+    const [taxRate, setTaxRate] = useState<number>(12);
+    const [taxType, setTaxType] = useState<"inclusive" | "exclusive">("inclusive"); // inclusive = VAT included in price, exclusive = Markup
+    const [discountType, setDiscountType] = useState<"percentage" | "amount">("percentage");
+    const [discountValue, setDiscountValue] = useState<string>("");
     
     const isEditing = !!purchaseOrder;
 
@@ -216,17 +230,90 @@ export function PurchaseOrderFormModal({
                 }))
                 : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "" }],
             });
+
+            // Initialize Tax & Discount from saved meta or defaults
+            if (purchaseOrder && purchaseOrder.meta) {
+                 const meta = purchaseOrder.meta as any;
+                 if (meta.taxRate !== undefined) setTaxRate(Number(meta.taxRate));
+                 if (meta.taxType) setTaxType(meta.taxType);
+                 if (meta.discountType) setDiscountType(meta.discountType);
+                 if (meta.discountValue) setDiscountValue(String(meta.discountValue));
+            } else {
+                // Reset to defaults if new
+                setTaxRate(12);
+                setTaxType("inclusive");
+                setDiscountType("percentage");
+                setDiscountValue("");
+            }
         }
     }, [open, purchaseOrder, form]);
 
-    // Calculate totals
+    // Auto-set tax logic based on customer type
+    useEffect(() => {
+        const supplierId = form.getValues("supplier_id");
+        if (!supplierId || isEditing && purchaseOrder) return; // Don't override if editing existing order unless explicitly changed? 
+        // Logic: If user changes customer, we might want to update defaults. 
+        // But let's only do it if it's a new order or explicit change. Use a ref or simple check?
+        // For now, let's reactive to supplier_id change only if not editing potentially.
+        // Actually, if I change customer in Edit mode, I probably want new defaults too.
+
+        const customer = customers.find(c => String(c.id) === supplierId);
+        if (customer) {
+            if (customer.type === "Government") {
+                setTaxRate(30);
+                setTaxType("exclusive");
+            } else {
+                setTaxRate(12);
+                setTaxType("inclusive");
+            }
+        }
+    }, [form.watch("supplier_id"), customers, isEditing, purchaseOrder]);
+
+    // Calculations
     const items = form.watch("items");
-    const subtotal = items.reduce(
+    
+    const rawSubtotal = items.reduce(
         (sum, item) => sum + (item.quantity_ordered || 0) * (item.unit_cost || 0),
         0
     );
-    const tax = subtotal * 0.12; // 12% tax
-    const total = subtotal + tax;
+
+    // Discount Calculation
+    const discountAmount = useMemo(() => {
+        const value = parseFloat(discountValue);
+        if (isNaN(value) || value < 0) return 0;
+   
+        if (discountType === "percentage") {
+           return rawSubtotal * (Math.min(value, 100) / 100);
+        } else {
+           return Math.min(value, rawSubtotal);
+        }
+     }, [discountType, discountValue, rawSubtotal]);
+    
+    const discountedSubtotal = Math.max(0, rawSubtotal - discountAmount);
+
+    // Tax Calculation
+    const taxRateDecimal = taxRate / 100;
+    let tax = 0;
+    let total = 0;
+    let subtotalDisplay = 0; // The base amount to show
+
+    if (taxType === "inclusive") {
+        // POS Style: Price includes Tax. 
+        // Total = Discounted Subtotal
+        // Net = Total / (1 + Rate)
+        // Tax = Total - Net
+        total = discountedSubtotal;
+        const netOfTax = total / (1 + taxRateDecimal);
+        tax = total - netOfTax;
+        subtotalDisplay = total; // In inclusive, subtotal usually means the full amount before tax separation
+    } else {
+        // Exclusive/Markup: Tax is added on top
+        // Total = Discounted Subtotal * (1 + Rate)
+        // Tax = Total - Discounted Subtotal
+        subtotalDisplay = discountedSubtotal;
+        total = discountedSubtotal * (1 + taxRateDecimal);
+        tax = total - discountedSubtotal;
+    }
 
     const onSubmit = async (values: PurchaseOrderFormValues) => {
         try {
@@ -244,10 +331,17 @@ export function PurchaseOrderFormModal({
                 })),
                 expected_at: values.delivery_date || undefined,
                 status: values.status,
-                subtotal,
+                subtotal: subtotalDisplay, 
                 tax,
                 total,
                 notes: values.notes || undefined,
+                meta: {
+                    taxRate,
+                    taxType,
+                    discountType: discountAmount > 0 ? discountType : undefined,
+                    discountValue: discountAmount > 0 ? Number(discountValue) : undefined,
+                    discountAmount
+                }
             };
 
             if (isEditing && purchaseOrder) {
@@ -471,6 +565,78 @@ export function PurchaseOrderFormModal({
                             )}
                         </div>
 
+                        {/* Tax & Discount Configuration */}
+                        <div className="rounded-lg border p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <FormLabel className="text-base font-semibold">Tax Settings</FormLabel>
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        checked={taxType === "inclusive"}
+                                        onCheckedChange={(checked) => setTaxType(checked ? "inclusive" : "exclusive")}
+                                        id="tax-mode"
+                                    />
+                                    <FormLabel htmlFor="tax-mode" className="cursor-pointer">
+                                        {taxType === "inclusive" ? "Tax Inclusive (VAT)" : "Tax Exclusive (Markup)"}
+                                    </FormLabel>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem>
+                                    <FormLabel>Tax Rate (%)</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                value={taxRate}
+                                                onChange={(e) => setTaxRate(Number(e.target.value))}
+                                                className="pl-8"
+                                            />
+                                            <Percent className="h-4 w-4 absolute left-2.5 top-2.5 text-muted-foreground" />
+                                        </div>
+                                    </FormControl>
+                                </FormItem>
+                            </div>
+                            
+                             <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="discount" className="border-b-0">
+                                    <AccordionTrigger className="py-2 hover:no-underline text-sm font-medium">
+                                        Discount Options
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="flex gap-4 items-end pt-2">
+                                             <div className="w-1/3">
+                                                <FormLabel className="text-xs">Type</FormLabel>
+                                                <Select
+                                                    value={discountType}
+                                                    onValueChange={(val: any) => setDiscountType(val)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                                        <SelectItem value="amount">Fixed Amount (₱)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                             </div>
+                                             <div className="flex-1">
+                                                 <FormLabel className="text-xs">Value</FormLabel>
+                                                 <Input
+                                                    type="number"
+                                                    min="0"
+                                                    value={discountValue}
+                                                    onChange={(e) => setDiscountValue(e.target.value)}
+                                                    placeholder={discountType === "percentage" ? "10" : "100.00"}
+                                                 />
+                                             </div>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                             </Accordion>
+                        </div>
+
                         {/* Line Items */}
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
@@ -664,10 +830,20 @@ export function PurchaseOrderFormModal({
                         <div className="bg-muted p-4 rounded-lg space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span>Subtotal:</span>
-                                <span className="font-medium">₱{subtotal.toFixed(2)}</span>
+                                <span className="font-medium">₱{rawSubtotal.toFixed(2)}</span>
+                            </div>
+                            {discountAmount > 0 && (
+                                <div className="flex justify-between text-sm text-emerald-600">
+                                    <span>Discount ({discountType === "percentage" ? `${discountValue}%` : "Fixed"}):</span>
+                                    <span>-₱{discountAmount.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Tax Base:</span>
+                                <span>₱{discountedSubtotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>Tax (12%):</span>
+                                <span>Tax ({taxRate}% {taxType === "inclusive" ? "Incl." : "Excl."}):</span>
                                 <span className="font-medium">₱{tax.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-base font-bold border-t pt-2">
