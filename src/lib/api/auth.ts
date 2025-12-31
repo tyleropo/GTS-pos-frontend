@@ -10,7 +10,7 @@ export const userSchema = z.object({
   email: z.string().email(),
   first_name: z.string(),
   last_name: z.string(),
-  role: userRoleSchema,
+  roles: z.array(userRoleSchema),
   is_active: z.boolean().default(true),
   last_login_at: z.string().nullable().optional(),
   created_at: z.string().optional(),
@@ -58,7 +58,7 @@ export type RegisterPayload = {
   password_confirmation: string;
   first_name: string;
   last_name: string;
-  role?: z.infer<typeof userRoleSchema>;
+  roles?: z.infer<typeof userRoleSchema>[];
 };
 
 export async function login(payload: LoginPayload) {

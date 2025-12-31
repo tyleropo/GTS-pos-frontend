@@ -145,7 +145,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 )}
               </Button>
 
-              <div className="text-center text-sm text-muted-foreground">
+              {/* <div className="text-center text-sm text-muted-foreground">
                 Don&rsquo;t have access yet?{" "}
                 <a
                   href="/register"
@@ -153,7 +153,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 >
                   Request an account
                 </a>
-              </div>
+              </div> */}
             </div>
           </form>
 
