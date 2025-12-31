@@ -63,10 +63,11 @@ export default function PaymentsTable() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Payment ID</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Ref Number</TableHead>
             <TableHead>Order Link</TableHead>
-            <TableHead>Party</TableHead>
+            <TableHead>Customer / Supplier</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
             <TableHead>Date Received</TableHead>
@@ -77,13 +78,16 @@ export default function PaymentsTable() {
         <TableBody>
           {payments.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="h-24 text-center">
+              <TableCell colSpan={10} className="h-24 text-center">
                 No payments found.
               </TableCell>
             </TableRow>
           ) : (
             payments.map((payment) => (
               <TableRow key={payment.id}>
+                <TableCell className="font-medium text-xs text-muted-foreground whitespace-nowrap">
+                  {payment.payment_number || String(payment.id).substring(0, 8)}
+                </TableCell>
                  <TableCell>
                   <Badge variant="outline" className={
                     payment.type === 'inbound' 

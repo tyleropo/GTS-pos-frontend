@@ -16,6 +16,7 @@ import {
   fetchDashboardTopSelling,
   fetchDashboardCalendarEvents,
   type CalendarEvent,
+  fetchDashboardDailyTransactions,
 } from "@/src/lib/api/dashboard";
 import { updatePurchaseOrder } from "@/src/lib/api/purchase-orders";
 import { updateRepair } from "@/src/lib/api/repairs";
@@ -24,6 +25,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { Badge } from "@/src/components/ui/badge";
 import { useAuth } from "@/src/providers/auth-provider";
 import { toast } from "sonner";
+import { DailyTransactionsList } from "@/src/components/dashboard/daily-transactions-list";
 
 type DashboardError = {
   context: string;
@@ -49,6 +51,7 @@ export default function DashboardPage() {
     Awaited<ReturnType<typeof fetchDashboardPendingRepairs>>
   >([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [dailyTransactions, setDailyTransactions] = useState<DailyTransaction[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +66,7 @@ export default function DashboardPage() {
         topSellingResult,
         pendingRepairsResult,
         calendarEventsResult,
+        dailyTransactionsResult,
       ] = await Promise.allSettled([
         fetchDashboardMetrics(),
         fetchDashboardActivity(),
@@ -70,6 +74,7 @@ export default function DashboardPage() {
         fetchDashboardTopSelling(),
         fetchDashboardPendingRepairs(),
         fetchDashboardCalendarEvents(),
+        fetchDashboardDailyTransactions(),
       ]);
 
       if (cancelled) return;
@@ -138,6 +143,12 @@ export default function DashboardPage() {
       } else {
         // Calendar events are non-critical, just log
         console.warn("Failed to load calendar events", calendarEventsResult.reason);
+      }
+
+      if (dailyTransactionsResult.status === "fulfilled") {
+        setDailyTransactions(dailyTransactionsResult.value);
+      } else {
+        console.warn("Failed to load daily transactions", dailyTransactionsResult.reason);
       }
 
       setErrors(nextErrors);
@@ -252,6 +263,9 @@ export default function DashboardPage() {
                   if (type === 'po') {
                     await updatePurchaseOrder(eventId, { expected_at: newDate });
                     toast.success('PO delivery date updated');
+                  } else if (type === 'co') {
+                    await import("@/src/lib/api/customer-orders").then(mod => mod.updateCustomerOrder(eventId, { expected_at: newDate }));
+                    toast.success('Order due date updated');
                   } else {
                     await updateRepair(eventId, { promised_at: newDate });
                     toast.success('Repair due date updated');
@@ -269,7 +283,7 @@ export default function DashboardPage() {
           {isLoading ? (
             <Skeleton className="h-80 rounded-xl" />
           ) : (
-            <ActivityFeed activity={activity} />
+            <DailyTransactionsList transactions={dailyTransactions} />
           )}
         </section>
 
@@ -283,7 +297,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <LowStockList items={lowStockList} />
-              <TopSellingList products={topSellingList} />
+              <ActivityFeed activity={activity} />
               <PendingRepairs repairs={repairsList} />
             </>
           )}

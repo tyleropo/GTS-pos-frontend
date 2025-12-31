@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
+import { Separator } from "@/src/components/ui/separator";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
@@ -49,6 +50,9 @@ interface PaymentFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   payment?: Payment | null;
+  defaultPayableId?: string;
+  defaultPayableType?: "purchase_order" | "customer_order";
+  /** @deprecated use defaultPayableId instead */
   defaultPurchaseOrderId?: string;
   onSuccess?: () => void;
 }
@@ -57,18 +61,24 @@ export function PaymentFormModal({
   open,
   onOpenChange,
   payment,
+  defaultPayableId,
+  defaultPayableType,
   defaultPurchaseOrderId,
   onSuccess,
 }: PaymentFormModalProps) {
   const queryClient = useQueryClient();
   const isEditing = !!payment;
 
+  // Resolve default props (backward compatibility)
+  const resolvedDefaultId = defaultPayableId || defaultPurchaseOrderId;
+  const resolvedDefaultType = defaultPayableType || (defaultPurchaseOrderId ? "purchase_order" : "purchase_order");
+
   // State for order type
   const [orderType, setOrderType] = useState<"purchase_order" | "customer_order">("purchase_order");
 
   const [form, setForm] = useState<Partial<CreatePaymentPayload>>({
-    payable_id: defaultPurchaseOrderId || "",
-    payable_type: "purchase_order",
+    payable_id: resolvedDefaultId || "",
+    payable_type: resolvedDefaultType,
     reference_number: "",
     amount: 0,
     payment_method: "cash",
@@ -101,21 +111,23 @@ export function PaymentFormModal({
         reference_number: payment.reference_number || "",
         amount: payment.amount,
         payment_method: payment.payment_method,
+        bank_name: payment.bank_name || "",
+        account_number: payment.account_number || "",
         date_received: payment.date_received.split("T")[0],
         is_deposited: payment.is_deposited,
         date_deposited: payment.date_deposited?.split("T")[0] || null,
         notes: payment.notes || "",
       });
       setOrderType(payment.payable_type === 'App\\Models\\PurchaseOrder' ? 'purchase_order' : 'customer_order');
-    } else if (defaultPurchaseOrderId) {
+    } else if (resolvedDefaultId) {
       setForm((prev) => ({
         ...prev,
-        payable_id: defaultPurchaseOrderId,
-        payable_type: "purchase_order",
+        payable_id: resolvedDefaultId,
+        payable_type: resolvedDefaultType,
       }));
-       setOrderType("purchase_order");
+       setOrderType(resolvedDefaultType);
     }
-  }, [payment, defaultPurchaseOrderId]);
+  }, [payment, resolvedDefaultId, resolvedDefaultType]);
 
   // ... (Mutation setup remains similar but invalidate both queries)
 
@@ -154,17 +166,19 @@ export function PaymentFormModal({
 
   const resetForm = () => {
     setForm({
-      payable_id: defaultPurchaseOrderId || "",
-      payable_type: "purchase_order",
+      payable_id: resolvedDefaultId || "",
+      payable_type: resolvedDefaultType,
       reference_number: "",
       amount: 0,
       payment_method: "cash",
+      bank_name: "",
+      account_number: "",
       date_received: new Date().toISOString().split("T")[0],
       is_deposited: false,
       date_deposited: null,
       notes: "",
     });
-    setOrderType("purchase_order");
+    setOrderType(resolvedDefaultType);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -181,9 +195,17 @@ export function PaymentFormModal({
       reference_number: form.reference_number || null,
       amount: Number(form.amount),
       payment_method: form.payment_method as any,
+      bank_name: form.bank_name || null,
+      account_number: form.account_number || null,
       date_received: form.date_received,
-      is_deposited: form.is_deposited || false,
-      date_deposited: form.is_deposited ? form.date_deposited : null,
+      is_deposited: 
+        orderType === "purchase_order" 
+          ? false 
+          : (form.payment_method === "cash" ? true : (form.is_deposited || false)),
+      date_deposited: 
+        orderType === "purchase_order"
+          ? null 
+          : (form.payment_method === "cash" ? form.date_received : (form.is_deposited ? form.date_deposited : null)),
       notes: form.notes || null,
     };
 
@@ -212,7 +234,7 @@ export function PaymentFormModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
              {/* Order Type Toggle */}
-            {!isEditing && !defaultPurchaseOrderId && (
+            {!isEditing && !resolvedDefaultId && (
               <div className="flex gap-4 p-1 bg-muted rounded-lg">
                 <Button
                   type="button"
@@ -248,7 +270,7 @@ export function PaymentFormModal({
                 <Button
                   variant="outline"
                   role="combobox"
-                  disabled={isEditing || !!defaultPurchaseOrderId}
+                  disabled={isEditing || !!resolvedDefaultId}
                   className={cn(
                     "w-full justify-between",
                     !form.payable_id && "text-muted-foreground"
@@ -358,9 +380,19 @@ export function PaymentFormModal({
               <Label htmlFor="payment_method">Payment Method *</Label>
               <Select
                 value={form.payment_method}
-                onValueChange={(value: any) =>
-                  setForm({ ...form, payment_method: value })
-                }
+                onValueChange={(value: any) => {
+                  const isCash = value === "cash";
+                  setForm({ 
+                    ...form, 
+                    payment_method: value,
+                    // If switching to Cash: Auto-deposit handled in submit or visually hidden?
+                    // User requirement: "if it is cash we dont need it to be pending deposited".
+                    // Implies: Cash = Deposited (or simply not pending).
+                    // We will set is_deposited = true and date_deposited = date_received (or today) if user selects Cash.
+                    is_deposited: isCash ? true : form.is_deposited,
+                    date_deposited: isCash ? (form.date_received || new Date().toISOString().split("T")[0]) : form.date_deposited
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -388,38 +420,67 @@ export function PaymentFormModal({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_deposited"
-                checked={form.is_deposited}
-                onCheckedChange={(checked) =>
-                  setForm({
-                    ...form,
-                    is_deposited: checked as boolean,
-                    date_deposited: checked ? form.date_deposited : null,
-                  })
-                }
-              />
-              <Label htmlFor="is_deposited" className="font-normal cursor-pointer">
-                Payment has been deposited
-              </Label>
-            </div>
-
-            {form.is_deposited && (
-              <div className="space-y-2 ml-6">
-                <Label htmlFor="date_deposited">Date Deposited</Label>
+          {form.payment_method !== "cash" && (
+            <div className="grid grid-cols-2 gap-4 bg-muted/50 p-3 rounded-md">
+              <div className="space-y-2">
+                <Label htmlFor="bank_name">Bank Name</Label>
                 <Input
-                  id="date_deposited"
-                  type="date"
-                  value={form.date_deposited || ""}
+                  id="bank_name"
+                  placeholder="e.g. BDO, BPI"
+                  value={form.bank_name || ""}
                   onChange={(e) =>
-                    setForm({ ...form, date_deposited: e.target.value })
+                    setForm({ ...form, bank_name: e.target.value })
                   }
                 />
               </div>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="account_number">Account Number</Label>
+                <Input
+                  id="account_number"
+                  placeholder="e.g. 1234-5678-90"
+                  value={form.account_number || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, account_number: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          {orderType === "customer_order" && form.payment_method !== "cash" && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_deposited"
+                  checked={form.is_deposited}
+                  onCheckedChange={(checked) =>
+                    setForm({
+                      ...form,
+                      is_deposited: checked as boolean,
+                      date_deposited: checked ? form.date_deposited || form.date_received : null,
+                    })
+                  }
+                />
+                <Label htmlFor="is_deposited" className="font-normal cursor-pointer">
+                  Payment has been deposited
+                </Label>
+              </div>
+
+              {form.is_deposited && (
+                <div className="space-y-2 ml-6">
+                  <Label htmlFor="date_deposited">Date Deposited</Label>
+                  <Input
+                    id="date_deposited"
+                    type="date"
+                    value={form.date_deposited || ""}
+                    onChange={(e) =>
+                      setForm({ ...form, date_deposited: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>

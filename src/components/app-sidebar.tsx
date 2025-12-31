@@ -69,6 +69,7 @@ const data = {
       adminOnly: true,
       items: [
         { title: "Users", url: "/users" },
+        { title: "Employees", url: "/employees" },
         { title: "Reports", url: "/reports" },
         { title: "Audit Logs", url: "/audit-logs" },
         { title: "Payroll", url: "/payroll" },
@@ -114,23 +115,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         <NavMain
           items={
-            user?.roles?.includes("cashier") && !user?.roles?.includes("admin") && !user?.roles?.includes("manager")
+            user?.roles?.includes("admin")
               ? data.navMain
-                  .filter((item) => item.title === "Operations")
+              : user?.roles?.includes("cashier") &&
+                !user?.roles?.includes("manager")
+              ? data.navMain
+                  .filter((item) =>
+                    ["Dashboard", "Operations"].includes(item.title)
+                  )
                   .map((item) => ({
                     ...item,
                     items: item.items?.filter((subItem) =>
-                      ["POS", "Repairs"].includes(subItem.title)
+                      ["POS", "Transactions", "Repairs"].includes(subItem.title)
                     ),
                   }))
-              : user?.roles?.includes("admin")
-              ? data.navMain
-              : data.navMain.filter((item) => {
-                  if (user?.roles?.includes("manager") && item.url === "/payroll") {
-                    return true
-                  }
-                  return !(item as { adminOnly?: boolean }).adminOnly
-                })
+              : data.navMain
+                  .map((item) => {
+                    if (
+                      user?.roles?.includes("manager") &&
+                      item.title === "Administration"
+                    ) {
+                      return {
+                        ...item,
+                        adminOnly: false,
+                        items: item.items?.filter(
+                          (sub) => ["Payroll", "Employees"].includes(sub.title)
+                        ),
+                      }
+                    }
+                    return item
+                  })
+                  .filter((item) => !(item as { adminOnly?: boolean }).adminOnly)
           }
         />
         <NavSecondary items={data.navSecondary} className="mt-auto" />

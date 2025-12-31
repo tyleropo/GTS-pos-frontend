@@ -26,6 +26,7 @@ import { fetchUsers, deleteUser, type User, toggleUserStatus } from "@/src/lib/a
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { SiteHeader } from "@/src/components/site-header";
+import { ConvertToEmployeeModal } from "./ConvertToEmployeeModal";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -34,6 +35,8 @@ export default function UsersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const [showPasswordIds, setShowPasswordIds] = useState<Set<string | number>>(new Set());
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [userToConvert, setUserToConvert] = useState<User | undefined>();
 
   const loadUsers = async () => {
     try {
@@ -101,6 +104,11 @@ export default function UsersPage() {
       }
       return newSet;
     });
+  };
+
+  const handleConvertToEmployee = (user: User) => {
+    setUserToConvert(user);
+    setConvertModalOpen(true);
   };
 
   return (
@@ -224,6 +232,9 @@ export default function UsersPage() {
                         <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
                           {user.is_active ? "Deactivate" : "Activate"}
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleConvertToEmployee(user)}>
+                          Convert to Employee
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(user)}
@@ -245,6 +256,13 @@ export default function UsersPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         user={selectedUser}
+        onSuccess={loadUsers}
+      />
+
+      <ConvertToEmployeeModal
+        open={convertModalOpen}
+        onOpenChange={setConvertModalOpen}
+        user={userToConvert}
         onSuccess={loadUsers}
       />
     </div>

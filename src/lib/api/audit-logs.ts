@@ -4,15 +4,6 @@ import { apiClient } from "@/src/lib/api-client";
 import { z } from "zod";
 import type { AxiosRequestConfig } from "axios";
 
-const paginationMetaSchema = z
-  .object({
-    current_page: z.number().optional(),
-    last_page: z.number().optional(),
-   per_page: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .passthrough();
-
 export const auditLogSchema = z.object({
   id: z.union([z.string(), z.number()]),
   user_id: z.union([z.string(), z.number()]).nullable(),
@@ -39,8 +30,13 @@ export const auditLogSchema = z.object({
 
 const paginatedAuditLogSchema = z.object({
   data: z.array(auditLogSchema),
-  meta: paginationMetaSchema.optional(),
-});
+  current_page: z.number().optional(),
+  last_page: z.number().optional(),
+  per_page: z.number().optional(),
+  total: z.number().optional(),
+  from: z.number().nullable().optional(),
+  to: z.number().nullable().optional(),
+}).passthrough();
 
 export type AuditLog = z.infer<typeof auditLogSchema>;
 
@@ -67,10 +63,7 @@ export async function fetchAuditLogs(
     ...config,
   };
   const { data } = await apiClient.get("/audit-logs", requestConfig);
-  return paginatedAuditLogSchema.parse({
-    data: data.data,
-    meta: data,
-  });
+  return paginatedAuditLogSchema.parse(data);
 }
 
 /**

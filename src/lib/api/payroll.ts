@@ -20,7 +20,8 @@ export const payrollPeriodSchema = z.object({
 // Payroll Record Schema
 export const payrollRecordSchema = z.object({
   id: z.number(),
-  user_id: z.number(),
+  user_id: z.number().nullable().optional(),
+  employee_id: z.number().nullable().optional(),
   payroll_period_id: z.number(),
   base_salary: z.number(),
   commission: z.number(),
@@ -41,7 +42,13 @@ export const payrollRecordSchema = z.object({
     first_name: z.string(),
     last_name: z.string(),
     email: z.string(),
-  }).optional(),
+  }).optional().nullable(),
+  employee: z.object({
+    id: z.number(),
+    first_name: z.string(),
+    last_name: z.string(),
+    position: z.string(),
+  }).optional().nullable(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

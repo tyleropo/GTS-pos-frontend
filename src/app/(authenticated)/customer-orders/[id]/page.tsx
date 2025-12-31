@@ -33,26 +33,28 @@ import {
 } from "lucide-react";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { CustomerOrderFormModal } from "@/src/app/(authenticated)/customer-orders/CustomerOrderFormModal";
-import { useState } from "react";
+import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/src/lib/utils";
 
 export default function CustomerOrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { data: customerOrder, isLoading, isError } = useQuery({
-    queryKey: ["customer-order", params.id],
-    queryFn: () => fetchCustomerOrder(params.id),
+    queryKey: ["customer-order", id],
+    queryFn: () => fetchCustomerOrder(id),
   });
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["customer-order", params.id] });
+    queryClient.invalidateQueries({ queryKey: ["customer-order", id] });
   };
 
   const getStatusColor = (status: string) => {
@@ -268,19 +270,38 @@ export default function CustomerOrderDetailPage({
         <Separator />
 
         {/* Payment Summary */}
-        <div className="space-y-2">
-          <h3 className="font-semibold">Payment Summary</h3>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total Paid:</span>
-            <span className="font-medium text-green-600">
-              ₱{(customerOrder.total_paid || 0).toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Outstanding Balance:</span>
-            <span className="font-medium text-amber-600">
-              ₱{(customerOrder.outstanding_balance || customerOrder.total).toFixed(2)}
-            </span>
+        <div className="space-y-3">
+          <h3 className="font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Payment Status
+          </h3>
+          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Order Total:</span>
+              <span className="font-medium">
+                ₱{customerOrder.total.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="flex justify-between text-sm text-green-600">
+              <span className="flex items-center gap-1">
+                <span className="text-xs border rounded px-1 border-green-200 bg-green-50">-</span> Less: Total Paid
+              </span>
+              <span>
+                (₱{(customerOrder.total_paid || 0).toFixed(2)})
+              </span>
+            </div>
+
+            <Separator className="my-2" />
+            
+            <div className="flex justify-between text-base font-bold">
+              <span>Outstanding Balance:</span>
+              <span className={cn(
+                (customerOrder.outstanding_balance || 0) > 0 ? "text-amber-600" : "text-green-600"
+              )}>
+                ₱{(customerOrder.outstanding_balance || 0).toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -381,7 +402,8 @@ export default function CustomerOrderDetailPage({
         open={isPaymentModalOpen}
         onOpenChange={setIsPaymentModalOpen}
         payment={null}
-        defaultPurchaseOrderId={String(customerOrder.id)}
+        defaultPayableId={String(customerOrder.id)}
+        defaultPayableType="customer_order"
         onSuccess={() => {
           handleRefresh();
         }}
