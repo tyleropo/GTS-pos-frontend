@@ -13,42 +13,41 @@ import {
 } from "@/src/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { deleteCustomer } from "@/src/lib/api/customers";
+import { deleteCustomerOrder } from "@/src/lib/api/customer-orders";
 
-interface DeleteCustomerDialogProps {
+interface DeleteCustomerOrderDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    customer: {
-        id: string | number;
-        name: string;
-    } | null;
+    customerOrder: { id: string | number; co_number: string; customer?: any } | null;
     onSuccess?: () => void;
 }
 
-export function DeleteCustomerDialog({
+export function DeleteCustomerOrderDialog({
     open,
     onOpenChange,
-    customer,
+    customerOrder,
     onSuccess,
-}: DeleteCustomerDialogProps) {
+}: DeleteCustomerOrderDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!customer) return;
+        if (!customerOrder) return;
 
         try {
             setIsDeleting(true);
-            await deleteCustomer(String(customer.id));
-            toast.success(`Customer "${customer.name}" deleted successfully`);
+            await deleteCustomerOrder(String(customerOrder.id));
+            toast.success("Purchase order deleted successfully");
             onOpenChange(false);
             onSuccess?.();
         } catch (error) {
-            console.error("Error deleting customer:", error);
-            toast.error("Failed to delete customer");
+            console.error("Error deleting purchase order:", error);
+            toast.error("Failed to delete purchase order");
         } finally {
             setIsDeleting(false);
         }
     };
+
+    if (!customerOrder) return null;
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -56,9 +55,18 @@ export function DeleteCustomerDialog({
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will permanently delete the customer{" "}
-                        <span className="font-semibold">{customer?.name}</span> and all
-                        associated data. This action cannot be undone.
+                        This will permanently delete purchase order{" "}
+                        <span className="font-semibold">{customerOrder.co_number}</span>
+                        {customerOrder.customer?.company_name && (
+                            <>
+                                {" "}
+                                from{" "}
+                                <span className="font-semibold">
+                                    {customerOrder.customer.company_name}
+                                </span>
+                            </>
+                        )}
+                        . This action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
