@@ -5,15 +5,8 @@ import {
   IconDashboard,
   IconInnerShadowTop,
   IconShoppingCart,
-  IconPackage,
-  IconHistory,
   IconUsers,
   IconFileText,
-  IconDeviceImacCog,
-  IconReceipt,
-  IconCurrencyDollar,
-  IconChartBar,
-  IconClipboardList,
   IconUserCog,
 } from "@tabler/icons-react"
 
@@ -42,68 +35,44 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "POS",
-      url: "/pos",
+      title: "Operations",
       icon: IconShoppingCart,
+      items: [
+        { title: "POS", url: "/pos" },
+        { title: "Inventory", url: "/inventory" },
+        { title: "Transactions", url: "/transactions" },
+        { title: "Repairs", url: "/repairs" },
+      ],
     },
     {
-      title: "Inventory",
-      url: "/inventory",
-      icon: IconPackage,
-    },
-    {
-      title: "Transactions",
-      url: "/transactions",
-      icon: IconHistory,
-    },
-    {
-      title: "Customers",
-      url: "/customers",
+      title: "Contacts",
       icon: IconUsers,
+      items: [
+        { title: "Customers", url: "/customers" },
+        { title: "Suppliers", url: "/suppliers" },
+      ],
     },
     {
-      title: "Billing",
-      url: "/billing",
-      icon: IconReceipt,
-    },
-    {
-      title: "Payments",
-      url: "/payments",
-      icon: IconCurrencyDollar,
-    },
-    {
-      title: "Purchase Orders",
-      url: "/purchase-orders",
+      title: "Orders & Billing",
       icon: IconFileText,
+      items: [
+        { title: "Customer Orders", url: "/customer-orders" },
+        { title: "Purchase Orders", url: "/purchase-orders" },
+        { title: "Billing", url: "/billing" },
+        { title: "Payments", url: "/payments" },
+      ],
     },
+
     {
-      title: "Repairs",
-      url: "/repairs",
-      icon: IconDeviceImacCog,
-    },
-    {
-      title: "Users",
-      url: "/users",
+      title: "Administration",
       icon: IconUserCog,
       adminOnly: true,
-    },
-    {
-      title: "Reports",
-      url: "/reports",
-      icon: IconChartBar,
-      adminOnly: true,
-    },
-    {
-      title: "Audit Logs",
-      url: "/audit-logs",
-      icon: IconClipboardList,
-      adminOnly: true,
-    },
-    {
-      title: "Payroll",
-      url: "/payroll",
-      icon: IconCurrencyDollar,
-      adminOnly: true,
+      items: [
+        { title: "Users", url: "/users" },
+        { title: "Reports", url: "/reports" },
+        { title: "Audit Logs", url: "/audit-logs" },
+        { title: "Payroll", url: "/payroll" },
+      ],
     },
   ],
   navSecondary: [],
@@ -146,9 +115,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain
           items={
             user?.roles?.includes("cashier") && !user?.roles?.includes("admin") && !user?.roles?.includes("manager")
-              ? data.navMain.filter((item) =>
-                  ["/pos", "/repairs"].includes(item.url)
-                )
+              ? data.navMain
+                  .filter((item) => item.title === "Operations")
+                  .map((item) => ({
+                    ...item,
+                    items: item.items?.filter((subItem) =>
+                      ["POS", "Repairs"].includes(subItem.title)
+                    ),
+                  }))
               : user?.roles?.includes("admin")
               ? data.navMain
               : data.navMain.filter((item) => {
