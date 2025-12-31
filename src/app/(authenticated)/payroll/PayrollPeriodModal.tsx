@@ -19,7 +19,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/src/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -34,13 +34,13 @@ import { Label } from "@/src/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createPayrollPeriod } from "@/src/lib/api/payroll";
-import { fetchUsers, type User } from "@/src/lib/api/users";
+import { fetchEmployees, type Employee } from "@/src/lib/api/employees";
 
 const periodFormSchema = z.object({
   name: z.string().min(1, "Period name is required"),
   period_type: z.enum(['weekly', 'bi-weekly', 'monthly', 'custom']),
   employee_selection: z.enum(['all', 'custom']),
-  selected_user_ids: z.array(z.number()).optional(),
+  selected_user_ids: z.array(z.number()).optional(), // This now refers to employee IDs
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
 });
@@ -61,8 +61,8 @@ export function PayrollPeriodModal({
   defaultValues
 }: PayrollPeriodModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [eligibleUsers, setEligibleUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [eligibleEmployees, setEligibleEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
 
   const form = useForm<PeriodFormValues>({
     resolver: zodResolver(periodFormSchema),
@@ -83,7 +83,7 @@ export function PayrollPeriodModal({
 
   useEffect(() => {
     if (open) {
-      loadEligibleUsers();
+      loadEligibleEmployees();
       // Reset form with default values when opened
       if (defaultValues) {
         form.reset(defaultValues);
@@ -117,20 +117,16 @@ export function PayrollPeriodModal({
     }
   }, [periodType]);
 
-  const loadEligibleUsers = async () => {
+  const loadEligibleEmployees = async () => {
     try {
-      setLoadingUsers(true);
-      const response = await fetchUsers();
-      // Filter users with manager, cashier, or technician roles
-      const eligible = response.data.filter(user => 
-        user.roles?.some(role => ['manager', 'cashier', 'technician'].includes(role))
-      );
-      setEligibleUsers(eligible);
+      setLoadingEmployees(true);
+      const employees = await fetchEmployees({ status: 'active' });
+      setEligibleEmployees(employees);
     } catch (error) {
-      console.error("Error loading users:", error);
+      console.error("Error loading employees:", error);
       toast.error("Failed to load eligible employees");
     } finally {
-      setLoadingUsers(false);
+      setLoadingEmployees(false);
     }
   };
 
@@ -150,13 +146,12 @@ export function PayrollPeriodModal({
     }
   };
 
-  const toggleUser = (userId: string | number) => {
-    const numericId = typeof userId === 'string' ? parseInt(userId) : userId;
+  const toggleEmployee = (employeeId: number) => {
     const currentIds = form.getValues("selected_user_ids") || [];
-    if (currentIds.includes(numericId)) {
-      form.setValue("selected_user_ids", currentIds.filter(id => id !== numericId));
+    if (currentIds.includes(employeeId)) {
+      form.setValue("selected_user_ids", currentIds.filter(id => id !== employeeId));
     } else {
-      form.setValue("selected_user_ids", [...currentIds, numericId]);
+      form.setValue("selected_user_ids", [...currentIds, employeeId]);
     }
   };
 
@@ -223,13 +218,13 @@ export function PayrollPeriodModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="all">All Eligible Employees</SelectItem>
+                      <SelectItem value="all">All Active Employees</SelectItem>
                       <SelectItem value="custom">Select Custom</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Only employees with Manager, Cashier, or Technician roles
+                    Select which employees to include in this payroll run
                   </p>
                 </FormItem>
               )}
@@ -238,26 +233,24 @@ export function PayrollPeriodModal({
             {employeeSelection === 'custom' && (
               <div className="border rounded-md p-4 max-h-48 overflow-y-auto">
                 <Label className="mb-2 block">Select Employees</Label>
-                {loadingUsers ? (
+                {loadingEmployees ? (
                   <p className="text-sm text-muted-foreground">Loading...</p>
-                ) : eligibleUsers.length === 0 ? (
+                ) : eligibleEmployees.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No eligible employees found</p>
                 ) : (
                   <div className="space-y-2">
-                    {eligibleUsers.map((user) => (
-                      <div key={user.id} className="flex items-center space-x-2">
+                    {eligibleEmployees.map((employee) => (
+                      <div key={employee.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`user-${user.id}`}
-                          checked={form.watch("selected_user_ids")?.includes(
-                            typeof user.id === 'string' ? parseInt(user.id) : user.id
-                          )}
-                          onCheckedChange={() => toggleUser(user.id)}
+                          id={`emp-${employee.id}`}
+                          checked={form.watch("selected_user_ids")?.includes(employee.id)}
+                          onCheckedChange={() => toggleEmployee(employee.id)}
                         />
                         <label
-                          htmlFor={`user-${user.id}`}
+                          htmlFor={`emp-${employee.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                         >
-                          {user.first_name} {user.last_name} ({user.roles?.join(', ')})
+                          {employee.first_name} {employee.last_name} ({employee.position})
                         </label>
                       </div>
                     ))}

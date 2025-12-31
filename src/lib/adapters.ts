@@ -6,6 +6,7 @@
 import type { Customer as APICustomer } from "@/src/lib/api/customers";
 import type { Transaction as APITransaction } from "@/src/lib/api/transactions";
 import type { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import type { CustomerOrder as APICustomerOrder } from "@/src/lib/api/customer-orders";
 import type { Repair as APIRepair } from "@/src/lib/api/repairs";
 
 import type { Customer } from "@/src/types/customer";
@@ -86,10 +87,10 @@ export function adaptPurchaseOrder(
     id: String(apiPurchaseOrder.id),
     po_number: apiPurchaseOrder.po_number || String(apiPurchaseOrder.id),
     date: date,
-    customer:
-      apiPurchaseOrder.customer?.company ||
-      apiPurchaseOrder.customer?.name ||
-      "Unknown Customer",
+    supplier:
+      apiPurchaseOrder.supplier?.company_name ||
+      apiPurchaseOrder.supplier?.contact_person ||
+      "Unknown Supplier",
     items: apiPurchaseOrder.items?.length || 0,
     total: apiPurchaseOrder.total,
     status:
@@ -100,6 +101,36 @@ export function adaptPurchaseOrder(
         ? "Paid" 
         : "Pending",
     deliveryDate: apiPurchaseOrder.expected_at || date,
+  };
+}
+
+/**
+ * Convert API customer order to component customer order
+ */
+export function adaptCustomerOrder(
+  apiCustomerOrder: APICustomerOrder
+): any {
+  const created = apiCustomerOrder.created_at || new Date().toISOString();
+  const date = created.split("T")[0];
+
+  return {
+    id: String(apiCustomerOrder.id),
+    co_number: apiCustomerOrder.co_number || String(apiCustomerOrder.id),
+    date: date,
+    customer:
+      apiCustomerOrder.customer?.company ||
+      apiCustomerOrder.customer?.name ||
+      "Unknown Customer",
+    items: apiCustomerOrder.items?.length || 0,
+    total: apiCustomerOrder.total,
+    status:
+      apiCustomerOrder.status.charAt(0).toUpperCase() +
+      apiCustomerOrder.status.slice(1),
+    paymentStatus: 
+      apiCustomerOrder.payments && apiCustomerOrder.payments.length > 0 
+        ? "Paid" 
+        : "Pending",
+    deliveryDate: apiCustomerOrder.expected_at || date,
   };
 }
 

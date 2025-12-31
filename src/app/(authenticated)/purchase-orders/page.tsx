@@ -23,6 +23,8 @@ import { adaptPurchaseOrder } from "@/src/lib/adapters";
 import { toast } from "sonner";
 import { generatePurchaseOrderPDF } from "./utils/pdf-generator";
 
+
+//TODO:  Add feature where the incoming stocks are automatically added to the inventory but will prompt for more details like stocks etc. when an existing product it would add 
 function PurchaseOrdersPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [apiPurchaseOrders, setApiPurchaseOrders] = useState<APIPurchaseOrder[]>([]);
@@ -93,11 +95,11 @@ function PurchaseOrdersPage() {
 
     try {
       await updatePurchaseOrder(String(apiPO.id), { status: "cancelled" });
-      toast.success("Customer order cancelled");
+      toast.success("Supplier order cancelled");
       loadPurchaseOrders();
     } catch (error) {
-      console.error("Error cancelling customer order:", error);
-      toast.error("Failed to cancel customer order");
+      console.error("Error cancelling purchase order:", error);
+      toast.error("Failed to cancel purchase order");
     }
   };
 
@@ -161,21 +163,21 @@ function PurchaseOrdersPage() {
     <div className="flex flex-col">
       <SiteHeader
         title="Purchase orders"
-        subtitle="Manage customer orders and track fulfillment status."
+        subtitle="Manage purchase orders and track fulfillment status."
       />
       <div className="p-4">
         <PurchaseOrderStats purchaseOrders={purchaseOrders} />
         <Card className="mt-5">
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex justify-between">
-              Customer order list
+              Supplier order list
               <Button onClick={handleAddPurchaseOrder}>
                 <Plus className="mr-2 h-4 w-4" />
-                New customer order
+                New Purchase order
               </Button>
             </CardTitle>
             <CardDescription>
-              Manage your customer orders and fulfillment
+              Manage your purchase orders and fulfillment
             </CardDescription>
           </CardHeader>
           <CardContent>

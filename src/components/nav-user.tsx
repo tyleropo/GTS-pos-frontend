@@ -16,6 +16,12 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/src/components/ui/dropdown-menu"
 import {
   SidebarMenu,
@@ -23,6 +29,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/src/components/ui/sidebar"
+import { useTheme } from "next-themes"
+import {
+  IconSun,
+  IconMoon,
+  IconDeviceLaptop,
+} from "@tabler/icons-react"
 
 type NavUserProps = {
   user?: {
@@ -35,6 +47,7 @@ type NavUserProps = {
 
 export function NavUser({ user, onLogout }: NavUserProps) {
   const { isMobile } = useSidebar()
+  const { setTheme } = useTheme()
 
   if (!user) {
     return (
@@ -110,6 +123,32 @@ export function NavUser({ user, onLogout }: NavUserProps) {
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <IconSun className="mr-2 h-4 w-4" />
+                  <span>Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setTheme("light")}>
+                      <IconSun className="mr-2 h-4 w-4" />
+                      <span>Light</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("dark")}>
+                      <IconMoon className="mr-2 h-4 w-4" />
+                      <span>Dark</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("system")}>
+                      <IconDeviceLaptop className="mr-2 h-4 w-4" />
+                      <span>System</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout}>
               <IconLogout />
               Log out

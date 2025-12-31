@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { fetchCustomerOrder } from "@/src/lib/api/customer-orders";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -32,32 +32,34 @@ import {
   Edit,
 } from "lucide-react";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
-import { PurchaseOrderFormModal } from "@/src/app/(authenticated)/purchase-orders/PurchaseOrderFormModal";
-import { useState } from "react";
+import { CustomerOrderFormModal } from "@/src/app/(authenticated)/customer-orders/CustomerOrderFormModal";
+import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/src/lib/utils";
 
-export default function PurchaseOrderDetailPage({
+export default function CustomerOrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const { data: purchaseOrder, isLoading, isError } = useQuery({
-    queryKey: ["purchase-order", params.id],
-    queryFn: () => fetchPurchaseOrder(params.id),
+  const { data: customerOrder, isLoading, isError } = useQuery({
+    queryKey: ["customer-order", id],
+    queryFn: () => fetchCustomerOrder(id),
   });
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] });
+    queryClient.invalidateQueries({ queryKey: ["customer-order", id] });
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "received":
+      case "fulfilled":
         return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
       case "submitted":
         return "bg-blue-100 text-blue-700 hover:bg-blue-100";
@@ -80,7 +82,7 @@ export default function PurchaseOrderDetailPage({
     );
   }
 
-  if (isError || !purchaseOrder) {
+  if (isError || !customerOrder) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -105,21 +107,21 @@ export default function PurchaseOrderDetailPage({
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold">Supplier Order Details</h1>
-            <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
-              {purchaseOrder.status === "draft"
+            <h1 className="text-2xl font-bold">Customer Order Details</h1>
+            <Badge variant="outline" className={getStatusColor(customerOrder.status)}>
+              {customerOrder.status === "draft"
                 ? "Pending"
-                : purchaseOrder.status === "submitted"
+                : customerOrder.status === "submitted"
                   ? "Processing"
-                  : purchaseOrder.status === "received"
+                  : customerOrder.status === "fulfilled"
                     ? "Delivered"
-                    : purchaseOrder.status.charAt(0).toUpperCase() +
-                      purchaseOrder.status.slice(1)}
+                    : customerOrder.status.charAt(0).toUpperCase() +
+                      customerOrder.status.slice(1)}
             </Badge>
           </div>
-          <p className="text-muted-foreground">PO Number: {purchaseOrder.po_number}</p>
+          <p className="text-muted-foreground">PO Number: {customerOrder.co_number}</p>
         </div>
-        {purchaseOrder.status !== "received" && (
+        {customerOrder.status !== "fulfilled" && (
           <Button
             variant="outline"
             onClick={() => setIsEditModalOpen(true)}
@@ -136,12 +138,12 @@ export default function PurchaseOrderDetailPage({
           <div className="space-y-1">
             <div className="flex items-center text-sm text-muted-foreground">
               <User className="h-4 w-4 mr-2" />
-              Supplier
+              Customer
             </div>
             <p className="font-medium">
-              {purchaseOrder.customer?.company ||
-                purchaseOrder.customer?.name ||
-                "Unknown Supplier"}
+              {customerOrder.customer?.company ||
+                customerOrder.customer?.name ||
+                "Unknown Customer"}
             </p>
           </div>
 
@@ -151,8 +153,8 @@ export default function PurchaseOrderDetailPage({
               Delivery Date
             </div>
             <p className="font-medium">
-              {purchaseOrder.expected_at
-                ? new Date(purchaseOrder.expected_at).toLocaleDateString()
+              {customerOrder.expected_at
+                ? new Date(customerOrder.expected_at).toLocaleDateString()
                 : "Not specified"}
             </p>
           </div>
@@ -163,8 +165,8 @@ export default function PurchaseOrderDetailPage({
               Created Date
             </div>
             <p className="font-medium">
-              {purchaseOrder.created_at
-                ? new Date(purchaseOrder.created_at).toLocaleDateString()
+              {customerOrder.created_at
+                ? new Date(customerOrder.created_at).toLocaleDateString()
                 : "N/A"}
             </p>
           </div>
@@ -174,7 +176,7 @@ export default function PurchaseOrderDetailPage({
               <Package className="h-4 w-4 mr-2" />
               Total Items
             </div>
-            <p className="font-medium">{purchaseOrder.items?.length || 0}</p>
+            <p className="font-medium">{customerOrder.items?.length || 0}</p>
           </div>
           <div className="space-y-1 col-span-2">
             <div className="flex items-center text-sm text-muted-foreground">
@@ -182,7 +184,7 @@ export default function PurchaseOrderDetailPage({
               Notes
             </div>
             <p className="font-medium whitespace-pre-wrap">
-              {purchaseOrder.notes || "No notes"}
+              {customerOrder.notes || "No notes"}
             </p>
           </div>
         </div>
@@ -204,8 +206,8 @@ export default function PurchaseOrderDetailPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
-                  purchaseOrder.items.map((item, index) => (
+                {customerOrder.items && customerOrder.items.length > 0 ? (
+                  customerOrder.items.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">
                         <div>{item.product_name || item.product_id}</div>
@@ -219,7 +221,7 @@ export default function PurchaseOrderDetailPage({
                         {item.quantity_ordered}
                       </TableCell>
                       <TableCell className="text-right">
-                        {item.quantity_received || 0}
+                        {item.quantity_fulfilled || 0}
                       </TableCell>
                       <TableCell className="text-right">
                         ₱{item.unit_cost.toFixed(2)}
@@ -251,32 +253,61 @@ export default function PurchaseOrderDetailPage({
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-medium">
-              ₱{purchaseOrder.subtotal.toFixed(2)}
+              ₱{customerOrder.subtotal.toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Tax:</span>
-            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
+            <span className="font-medium">₱{customerOrder.tax.toFixed(2)}</span>
           </div>
           <Separator />
           <div className="flex justify-between text-base font-bold">
             <span>Total:</span>
-            <span>₱{purchaseOrder.total.toFixed(2)}</span>
+            <span>₱{customerOrder.total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Payment Summary */}
+        <div className="space-y-3">
+          <h3 className="font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Payment Status
+          </h3>
+          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Order Total:</span>
+              <span className="font-medium">
+                ₱{customerOrder.total.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="flex justify-between text-sm text-green-600">
+              <span className="flex items-center gap-1">
+                <span className="text-xs border rounded px-1 border-green-200 bg-green-50">-</span> Less: Total Paid
+              </span>
+              <span>
+                (₱{(customerOrder.total_paid || 0).toFixed(2)})
+              </span>
+            </div>
+
+            <Separator className="my-2" />
+            
+            <div className="flex justify-between text-base font-bold">
+              <span>Outstanding Balance:</span>
+              <span className={cn(
+                (customerOrder.outstanding_balance || 0) > 0 ? "text-amber-600" : "text-green-600"
+              )}>
+                ₱{(customerOrder.outstanding_balance || 0).toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Payment Button */}
         <div className="flex justify-end">
-          {purchaseOrder.payments && purchaseOrder.payments.length > 0 ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPaymentModalOpen(true)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Payment
-            </Button>
-          ) : (
+          {(customerOrder.outstanding_balance || customerOrder.total) > 0 ? (
             <Button
               variant="outline"
               size="sm"
@@ -285,24 +316,33 @@ export default function PurchaseOrderDetailPage({
               <Plus className="h-4 w-4 mr-2" />
               Add Payment
             </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+              Fully Paid
+            </Button>
           )}
         </div>
 
         {/* Payments Section */}
-        {purchaseOrder.payments && purchaseOrder.payments.length > 0 && (
+        {customerOrder.payments && customerOrder.payments.length > 0 && (
           <>
             <Separator />
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible defaultValue="payments" className="w-full">
               <AccordionItem value="payments">
                 <AccordionTrigger>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
-                    <span>Payments ({purchaseOrder.payments.length})</span>
+                    <span>Payments ({customerOrder.payments.length})</span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-3">
-                    {purchaseOrder.payments.map((payment) => (
+                    {customerOrder.payments.map((payment) => (
                       <div
                         key={payment.id}
                         className="flex items-center justify-between p-3 rounded-lg border"
@@ -361,22 +401,19 @@ export default function PurchaseOrderDetailPage({
       <PaymentFormModal
         open={isPaymentModalOpen}
         onOpenChange={setIsPaymentModalOpen}
-        payment={purchaseOrder.payments && purchaseOrder.payments.length > 0 ? {
-          ...purchaseOrder.payments[0],
-          purchase_order_id: purchaseOrder.id,
-          payment_method: purchaseOrder.payments[0].payment_method as "cash" | "cheque" | "bank_transfer" | "credit_card",
-        } : null}
-        defaultPurchaseOrderId={String(purchaseOrder.id)}
+        payment={null}
+        defaultPayableId={String(customerOrder.id)}
+        defaultPayableType="customer_order"
         onSuccess={() => {
           handleRefresh();
         }}
       />
 
       {/* Edit Purchase Order Modal */}
-      <PurchaseOrderFormModal
+      <CustomerOrderFormModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        purchaseOrder={purchaseOrder}
+        customerOrder={customerOrder}
         onSuccess={() => {
           handleRefresh();
           setIsEditModalOpen(false);

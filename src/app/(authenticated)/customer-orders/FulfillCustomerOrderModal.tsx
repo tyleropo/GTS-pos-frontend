@@ -25,41 +25,41 @@ import { Button } from "@/src/components/ui/button";
 import { Loader2, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import {
-    receivePurchaseOrder,
-    type PurchaseOrder as APIPurchaseOrder,
-    type ReceivePurchaseOrderPayload,
-} from "@/src/lib/api/purchase-orders";
+    fulfillCustomerOrder,
+    type CustomerOrder as APICustomerOrder,
+    type FulfillCustomerOrderPayload,
+} from "@/src/lib/api/customer-orders";
 
-const receiveItemSchema = z.object({
+const fulfillItemSchema = z.object({
     product_id: z.string(),
     product_name: z.string().optional(),
     quantity_ordered: z.number(),
-    quantity_received: z.coerce.number().min(0, "Quantity must be positive"),
+    quantity_fulfilled: z.coerce.number().min(0, "Quantity must be positive"),
 });
 
-const receiveFormSchema = z.object({
-    items: z.array(receiveItemSchema),
+const fulfillFormSchema = z.object({
+    items: z.array(fulfillItemSchema),
 });
 
-type ReceiveFormValues = z.infer<typeof receiveFormSchema>;
+type FulfillFormValues = z.infer<typeof fulfillFormSchema>;
 
-interface ReceivePurchaseOrderModalProps {
+interface FulfillCustomerOrderModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    purchaseOrder: APIPurchaseOrder | null;
+    customerOrder: APICustomerOrder | null;
     onSuccess?: () => void;
 }
 
-export function FulfillPurchaseOrderModal({
+export function FulfillCustomerOrderModal({
     open,
     onOpenChange,
-    purchaseOrder,
+    customerOrder,
     onSuccess,
-}: ReceivePurchaseOrderModalProps) {
+}: FulfillCustomerOrderModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const form = useForm<ReceiveFormValues>({
-        resolver: zodResolver(receiveFormSchema),
+    const form = useForm<FulfillFormValues>({
+        resolver: zodResolver(fulfillFormSchema),
         defaultValues: {
             items: [],
         },
@@ -72,33 +72,33 @@ export function FulfillPurchaseOrderModal({
 
     // Initialize form when purchase order changes
     useEffect(() => {
-        if (open && purchaseOrder?.items) {
+        if (open && customerOrder?.items) {
             form.reset({
-                items: purchaseOrder.items.map((item) => ({
+                items: customerOrder.items.map((item) => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
                     quantity_ordered: item.quantity_ordered,
-                    quantity_received: item.quantity_ordered, // Default to full quantity
+                    quantity_fulfilled: item.quantity_ordered, // Default to full quantity
                 })),
             });
         }
-    }, [open, purchaseOrder, form]);
+    }, [open, customerOrder, form]);
 
-    const onSubmit = async (values: ReceiveFormValues) => {
-        if (!purchaseOrder) return;
+    const onSubmit = async (values: FulfillFormValues) => {
+        if (!customerOrder) return;
 
         try {
             setIsSubmitting(true);
 
-            const payload: ReceivePurchaseOrderPayload = {
+            const payload: FulfillCustomerOrderPayload = {
                 items: values.items.map((item) => ({
                     product_id: item.product_id,
-                    quantity_received: item.quantity_received,
+                    quantity_fulfilled: item.quantity_fulfilled,
                 })),
             };
 
-            await receivePurchaseOrder(String(purchaseOrder.id), payload);
-            toast.success("Supplier order fulfilled successfully");
+            await fulfillCustomerOrder(String(customerOrder.id), payload);
+            toast.success("Customer order fulfilled successfully");
             form.reset();
             onOpenChange(false);
             onSuccess?.();
@@ -110,7 +110,7 @@ export function FulfillPurchaseOrderModal({
         }
     };
 
-    if (!purchaseOrder) return null;
+    if (!customerOrder) return null;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,16 +118,16 @@ export function FulfillPurchaseOrderModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <PackageCheck className="h-5 w-5" />
-                        Fulfill Supplier Order
+                        Fulfill Customer Order
                     </DialogTitle>
                     <DialogDescription>
-                        Enter the quantity shipped for each item. PO: {purchaseOrder.po_number}
+                        Enter the quantity shipped for each item. CO: {customerOrder.co_number}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Receive Items */}
+                        {/* Fulfill Items */}
                         <div className="space-y-3">
                             {fields.map((field, index) => (
                                 <div
@@ -154,7 +154,7 @@ export function FulfillPurchaseOrderModal({
                                     <div className="col-span-3">
                                         <FormField
                                             control={form.control}
-                                            name={`items.${index}.quantity_received`}
+                                            name={`items.${index}.quantity_fulfilled`}
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="text-xs">Shipped</FormLabel>

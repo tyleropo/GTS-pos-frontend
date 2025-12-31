@@ -19,7 +19,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
@@ -123,7 +123,7 @@ export function PayrollRecordModal({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Edit Payroll: {record.user?.first_name} {record.user?.last_name}
+            Edit Payroll: {record.employee?.first_name || record.user?.first_name} {record.employee?.last_name || record.user?.last_name}
           </DialogTitle>
           <DialogDescription>
             Update employee compensation and deductions

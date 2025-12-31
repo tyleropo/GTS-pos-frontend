@@ -28,7 +28,7 @@ import {
 }
 from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/src/components/ui/textarea"; // Assuming you have this component, or use Input if not
+import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
 import { Loader2, Plus, Trash2, Check, ChevronsUpDown, Pencil, Percent, Coins } from "lucide-react";
 import { Switch } from "@/src/components/ui/switch";
@@ -51,19 +51,19 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/src/components/ui/popover";
-
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { toast } from "sonner";
 import {
-    createPurchaseOrder,
-    updatePurchaseOrder,
-    type CreatePurchaseOrderPayload,
-    type PurchaseOrder,
-} from "@/src/lib/api/purchase-orders";
+    createCustomerOrder,
+    updateCustomerOrder,
+    type CreateCustomerOrderPayload,
+    type CustomerOrder,
+} from "@/src/lib/api/customer-orders";
 import { fetchProducts, type Product } from "@/src/lib/api/products";
-import { fetchSuppliers, type Supplier } from "@/src/lib/api/suppliers";
+import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
 import { useDebounce } from "@/src/hooks/use-debounce";
 
-const purchaseOrderItemSchema = z.object({
+const customerOrderItemSchema = z.object({
     product_id: z.union([z.string(), z.number()]).refine((val) => val !== "", {
         message: "Product is required",
     }),
@@ -73,39 +73,39 @@ const purchaseOrderItemSchema = z.object({
     description: z.string().nullable().optional(),
 });
 
-const purchaseOrderFormSchema = z.object({
-    supplier_id: z.string().min(1, "Supplier is required"),
+const customerOrderFormSchema = z.object({
+    customer_id: z.string().min(1, "Customer is required"),
     delivery_date: z.string().optional(),
-    status: z.enum(["draft", "submitted", "received", "cancelled"]),
-    items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
+    status: z.enum(["draft", "submitted", "fulfilled", "cancelled"]),
+    items: z.array(customerOrderItemSchema).min(1, "At least one item is required"),
     notes: z.string().optional(),
 });
 
-type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
+type CustomerOrderFormValues = z.infer<typeof customerOrderFormSchema>;
 
-interface PurchaseOrderFormModalProps {
+interface CustomerOrderFormModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    purchaseOrder?: PurchaseOrder;
+    customerOrder?: CustomerOrder;
     onSuccess?: () => void;
 }
 
-export function PurchaseOrderFormModal({
+export function CustomerOrderFormModal({
     open,
     onOpenChange,
-    purchaseOrder,
+    customerOrder,
     onSuccess,
-}: PurchaseOrderFormModalProps) {
+}: CustomerOrderFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [supplierOpen, setSupplierOpen] = useState(false);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [customerOpen, setCustomerOpen] = useState(false);
     const [productOpenStates, setProductOpenStates] = useState<Record<number, boolean>>({});
     
     // Search states
-    const [supplierQuery, setSupplierQuery] = useState("");
-    const debouncedSupplierQuery = useDebounce(supplierQuery, 300);
+    const [customerQuery, setCustomerQuery] = useState("");
+    const debouncedCustomerQuery = useDebounce(customerQuery, 300);
     const [productQuery, setProductQuery] = useState("");
     const debouncedProductQuery = useDebounce(productQuery, 300);
 
@@ -115,17 +115,17 @@ export function PurchaseOrderFormModal({
     const [discountType, setDiscountType] = useState<"percentage" | "amount">("percentage");
     const [discountValue, setDiscountValue] = useState<string>("");
     
-    const isEditing = !!purchaseOrder;
+    const isEditing = !!customerOrder;
 
-    const form = useForm<PurchaseOrderFormValues>({
-        resolver: zodResolver(purchaseOrderFormSchema),
+    const form = useForm<CustomerOrderFormValues>({
+        resolver: zodResolver(customerOrderFormSchema),
         defaultValues: {
-            supplier_id: purchaseOrder?.supplier_id || "",
-            delivery_date: purchaseOrder?.expected_at || "",
-            status: (purchaseOrder?.status as "draft" | "submitted" | "received" | "cancelled") || "draft",
-            notes: purchaseOrder?.notes || "",
-            items: purchaseOrder?.items
-                ? purchaseOrder.items.map(item => ({
+            customer_id: customerOrder?.customer_id || "",
+            delivery_date: customerOrder?.expected_at || "",
+            status: (customerOrder?.status as "draft" | "submitted" | "fulfilled" | "cancelled") || "draft",
+            notes: customerOrder?.notes || "",
+            items: customerOrder?.items
+                ? customerOrder.items.map(item => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
                     quantity_ordered: item.quantity_ordered,
@@ -143,29 +143,29 @@ export function PurchaseOrderFormModal({
 
     // Load customers on search
     useEffect(() => {
-        const loadSuppliers = async () => {
-            if (debouncedSupplierQuery.length < 2 && !purchaseOrder) {
-                 setSuppliers([]);
+        const loadCustomers = async () => {
+            if (debouncedCustomerQuery.length < 2 && !customerOrder) {
+                 setCustomers([]);
                  return;
             }
 
             try {
-                const suppliersRes = await fetchSuppliers({ 
-                    search: debouncedSupplierQuery,
+                const customersRes = await fetchCustomers({ 
+                    search: debouncedCustomerQuery,
                     per_page: 50 
                 });
-                setSuppliers(suppliersRes.data);
+                setCustomers(customersRes.data);
             } catch (error) {
                 console.error("Error loading customers:", error);
             } 
         };
-        loadSuppliers();
-    }, [debouncedSupplierQuery, purchaseOrder]);
+        loadCustomers();
+    }, [debouncedCustomerQuery, customerOrder]);
 
     // Load products on search
     useEffect(() => {
         const loadProducts = async () => {
-             if (debouncedProductQuery.length < 2 && !purchaseOrder) {
+             if (debouncedProductQuery.length < 2 && !customerOrder) {
                  setProducts([]);
                  return;
             }
@@ -181,47 +181,47 @@ export function PurchaseOrderFormModal({
             }
         };
         loadProducts();
-    }, [debouncedProductQuery, purchaseOrder]);
+    }, [debouncedProductQuery, customerOrder]);
     
     // Initial load for editing
      useEffect(() => {
         const loadInitialData = async () => {
-            if (purchaseOrder) {
+            if (customerOrder) {
                 try {
-                     // Load the specific supplier
+                     // Load the specific customer
                      // Assuming we have an ID, we might need to search by it or load all if API doesn't support getById in search endpoint easily
                      // For now, load default set or search by name if available, but ID is safest. 
-                     // Since we don't have getById exposed here easily, let's load a small batch or if we have the supplier name in the order object use that.
-                     // A better approach if the API supports it: fetchSuppliers({ ids: [purchaseOrder.supplier_id] })
+                     // Since we don't have getById exposed here easily, let's load a small batch or if we have the customer name in the order object use that.
+                     // A better approach if the API supports it: fetchCustomers({ ids: [customerOrder.customer_id] })
                      // Creating a workaround: fetch customers without filter to get initial list, or if we have the name, search it.
                      // Just loading initial batch for now so the form isn't empty-looking.
                      
-                    const [productsRes, suppliersRes] = await Promise.all([
+                    const [productsRes, customersRes] = await Promise.all([
                         fetchProducts({ per_page: 50 }),
-                        fetchSuppliers({ per_page: 50 })
+                        fetchCustomers({ per_page: 50 })
                     ]);
                     setProducts(productsRes.data);
-                    setSuppliers(suppliersRes.data);
+                    setCustomers(customersRes.data);
                 } catch(e) {
                     console.error(e);
                 }
             }
         };
-        if (open && purchaseOrder) {
+        if (open && customerOrder) {
              loadInitialData();
         }
-    }, [open, purchaseOrder]);
+    }, [open, customerOrder]);
 
     // Reset form when modal opens
     useEffect(() => {
         if (open) {
             form.reset({
-                supplier_id: purchaseOrder?.supplier_id || "",
-                delivery_date: purchaseOrder?.expected_at ? purchaseOrder.expected_at.split('T')[0] : "",
-                status: (purchaseOrder?.status as any) || "draft",
-                notes: purchaseOrder?.notes || "",
-                items: purchaseOrder?.items
-                ? purchaseOrder.items.map(item => ({
+                customer_id: customerOrder?.customer_id || "",
+                delivery_date: customerOrder?.expected_at || "",
+                status: (customerOrder?.status as any) || "draft",
+                notes: customerOrder?.notes || "",
+                items: customerOrder?.items
+                ? customerOrder.items.map(item => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
                     quantity_ordered: item.quantity_ordered,
@@ -232,8 +232,8 @@ export function PurchaseOrderFormModal({
             });
 
             // Initialize Tax & Discount from saved meta or defaults
-            if (purchaseOrder && purchaseOrder.meta) {
-                 const meta = purchaseOrder.meta as any;
+            if (customerOrder && customerOrder.meta) {
+                 const meta = customerOrder.meta as any;
                  if (meta.taxRate !== undefined) setTaxRate(Number(meta.taxRate));
                  if (meta.taxType) setTaxType(meta.taxType);
                  if (meta.discountType) setDiscountType(meta.discountType);
@@ -246,13 +246,28 @@ export function PurchaseOrderFormModal({
                 setDiscountValue("");
             }
         }
-    }, [open, purchaseOrder, form]);
+    }, [open, customerOrder, form]);
 
     // Auto-set tax logic based on customer type
-    // Supplier type logic removed as it does not exist in the schema currently
     useEffect(() => {
-        // Logic reserved for future implementation if suppliers get categories/types
-    }, [form.watch("supplier_id"), suppliers, isEditing, purchaseOrder]);
+        const customerId = form.getValues("customer_id");
+        if (!customerId || isEditing && customerOrder) return; // Don't override if editing existing order unless explicitly changed? 
+        // Logic: If user changes customer, we might want to update defaults. 
+        // But let's only do it if it's a new order or explicit change. Use a ref or simple check?
+        // For now, let's reactive to customer_id change only if not editing potentially.
+        // Actually, if I change customer in Edit mode, I probably want new defaults too.
+
+        const customer = customers.find(c => String(c.id) === customerId);
+        if (customer) {
+            if (customer.type === "Government") {
+                setTaxRate(30);
+                setTaxType("exclusive");
+            } else {
+                setTaxRate(12);
+                setTaxType("inclusive");
+            }
+        }
+    }, [form.watch("customer_id"), customers, isEditing, customerOrder]);
 
     // Calculations
     const items = form.watch("items");
@@ -300,12 +315,12 @@ export function PurchaseOrderFormModal({
         tax = total - discountedSubtotal;
     }
 
-    const onSubmit = async (values: PurchaseOrderFormValues) => {
+    const onSubmit = async (values: CustomerOrderFormValues) => {
         try {
             setIsSubmitting(true);
 
-            const payload: CreatePurchaseOrderPayload = {
-                supplier_id: values.supplier_id,
+            const payload: CreateCustomerOrderPayload = {
+                customer_id: values.customer_id,
                 items: values.items.map(item => ({
                     product_id: item.product_id,
                     quantity_ordered: item.quantity_ordered,
@@ -329,27 +344,24 @@ export function PurchaseOrderFormModal({
                 }
             };
 
-            if (isEditing && purchaseOrder) {
-                await updatePurchaseOrder(String(purchaseOrder.id), payload);
-                toast.success("Purchase order updated successfully");
+            if (isEditing && customerOrder) {
+                await updateCustomerOrder(String(customerOrder.id), payload);
+                toast.success("Customer order updated successfully");
             } else {
-                await createPurchaseOrder(payload);
-                toast.success("Purchase order created successfully");
+                await createCustomerOrder(payload);
+                toast.success("Customer order created successfully");
             }
 
             form.reset();
             onOpenChange(false);
             onSuccess?.();
         } catch (error) {
-            console.error("Error saving purchase order:", error);
+            console.error("Error saving customer order:", error);
             toast.error(
                 isEditing
-                    ? `Failed to update purchase order: ${error instanceof Error ? error.message : "Unknown error"}`
-                    : `Failed to create purchase order: ${error instanceof Error ? error.message : "Unknown error"}`
+                    ? "Failed to update customer order"
+                    : "Failed to create customer order"
             );
-            if ((error as any).response?.data?.errors) {
-                console.log("Validation errors:", (error as any).response.data.errors);
-            }
         } finally {
             setIsSubmitting(false);
         }
@@ -366,33 +378,34 @@ export function PurchaseOrderFormModal({
     };
 
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? "Edit Purchase Order" : "New Purchase Order"}
+                        {isEditing ? "Edit Customer Order" : "New Customer Order"}
                     </DialogTitle>
                     <DialogDescription>
                         {isEditing
-                            ? "Update purchase order information below."
-                            : "Create a new purchase order for your supplier."}
+                            ? "Update customer order information below."
+                            : "Create a new customer order for your customer."}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Supplier Selection */}
+                        {/* Customer Selection */}
                         <FormField
                             control={form.control}
-                            name="supplier_id"
+                            name="customer_id"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>
-                                        Supplier <span className="text-destructive">*</span>
+                                        Customer <span className="text-destructive">*</span>
                                     </FormLabel>
                                     <Popover 
-                                        open={supplierOpen} 
-                                        onOpenChange={setSupplierOpen} 
+                                        open={customerOpen} 
+                                        onOpenChange={setCustomerOpen} 
                                         modal={true}
                                     >
                                         <PopoverTrigger asChild>
@@ -406,10 +419,12 @@ export function PurchaseOrderFormModal({
                                                     )}
                                                 >
                                                     {field.value
-                                                        ? suppliers.find(
-                                                            (s) => String(s.id) === field.value
-                                                        )?.company_name || "Selected Supplier"
-                                                        : "Select supplier"}
+                                                        ? customers.find(
+                                                            (customer) => String(customer.id) === field.value
+                                                        )?.company || customers.find(
+                                                            (customer) => String(customer.id) === field.value
+                                                        )?.name || "Selected Customer" // Fallback if not in loaded list
+                                                        : "Select customer"}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -417,43 +432,38 @@ export function PurchaseOrderFormModal({
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
                                             <Command shouldFilter={false}>
                                                 <CommandInput 
-                                                    placeholder="Search supplier (min 2 chars)..." 
+                                                    placeholder="Search customer (min 2 chars)..." 
                                                     autoFocus 
-                                                    value={supplierQuery}
-                                                    onValueChange={setSupplierQuery}
+                                                    value={customerQuery}
+                                                    onValueChange={setCustomerQuery}
                                                 />
                                                 <CommandList>
-                                                    {suppliers.length === 0 && (
+                                                    {customers.length === 0 && (
                                                         <div className="py-6 text-center text-sm text-muted-foreground">
-                                                            {debouncedSupplierQuery.length < 2 
+                                                            {debouncedCustomerQuery.length < 2 
                                                                 ? "Type at least 2 characters..." 
-                                                                : "No supplier found."}
+                                                                : "No customer found."}
                                                         </div>
                                                     )}
                                                     <CommandGroup>
-                                                        {suppliers.map((supplier) => (
+                                                        {customers.map((customer) => (
                                                             <CommandItem
-                                                                value={supplier.company_name}
-                                                                key={supplier.id}
+                                                                value={customer.name + " " + (customer.company || "")}
+                                                                key={customer.id}
                                                                 onSelect={() => {
-                                                                    form.setValue("supplier_id", String(supplier.id));
-                                                                    setSupplierOpen(false);
+                                                                    form.setValue("customer_id", String(customer.id));
+                                                                    setCustomerOpen(false);
                                                                 }}
                                                             >
                                                                 <Check
                                                                     className={cn(
                                                                         "mr-2 h-4 w-4",
-                                                                        String(supplier.id) === field.value
+                                                                        String(customer.id) === field.value
                                                                             ? "opacity-100"
                                                                             : "opacity-0"
                                                                     )}
                                                                 />
-                                                                {supplier.company_name}
-                                                                {supplier.contact_person && (
-                                                                    <span className="ml-2 text-muted-foreground text-xs">
-                                                                        ({supplier.contact_person})
-                                                                    </span>
-                                                                )}
+                                                                {customer.company ? `${customer.company} (${customer.name})` : customer.name}
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
@@ -517,7 +527,7 @@ export function PurchaseOrderFormModal({
                                         <SelectContent>
                                             <SelectItem value="draft">Pending</SelectItem>
                                             <SelectItem value="submitted">Processing</SelectItem>
-                                            <SelectItem value="received">Delivered</SelectItem>
+                                            <SelectItem value="fulfilled">Delivered</SelectItem>
                                             <SelectItem value="cancelled">Cancelled</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -525,6 +535,34 @@ export function PurchaseOrderFormModal({
                                 </FormItem>
                             )}
                         />
+
+                            {/* Add Payment Button */}
+                            {isEditing && (
+                                <FormItem>
+                                    <FormLabel>Payment</FormLabel>
+                                    {customerOrder?.payments && customerOrder.payments.length > 0 ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setIsPaymentModalOpen(true)}
+                                        >
+                                            <Pencil className="h-4 w-4 mr-2" />
+                                            Edit Payment
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setIsPaymentModalOpen(true)}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Payment
+                                        </Button>
+                                    )}
+                                </FormItem>
+                            )}
                         </div>
 
                         {/* Tax & Discount Configuration */}
@@ -834,5 +872,24 @@ export function PurchaseOrderFormModal({
                 </Form>
             </DialogContent>
         </Dialog>
+
+        {/* Payment Modal */}
+        {customerOrder && (
+            <PaymentFormModal
+                open={isPaymentModalOpen}
+                onOpenChange={setIsPaymentModalOpen}
+                defaultCustomerOrderId={String(customerOrder.id)}
+                payment={
+                    customerOrder.payments && customerOrder.payments.length > 0
+                        ? { ...customerOrder.payments[0], customer_order_id: customerOrder.id } as any
+                        : undefined
+                }
+                onSuccess={() => {
+                    setIsPaymentModalOpen(false);
+                    onSuccess?.();
+                }}
+            />
+        )}
+        </>
     );
 }

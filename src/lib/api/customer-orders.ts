@@ -19,43 +19,46 @@ const priceNumber = z.union([z.number(), z.string()]).transform((val) => {
   return Number.isFinite(numericValue) ? numericValue : 0;
 });
 
-const purchaseOrderItemSchema = z.object({
+const customerOrderItemSchema = z.object({
   product_id: z.union([z.string(), z.number()]),
   product_name: z.string().optional(),
   quantity_ordered: z.number(),
-  quantity_received: z.number().optional(),
+  quantity_fulfilled: z.number().optional(),
   unit_cost: priceNumber,
   tax: priceNumber.optional(),
   line_total: priceNumber,
   description: z.string().nullable().optional(),
 });
 
-export const purchaseOrderSchema = z.object({
+export const customerOrderSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  po_number: z.string(),
-  supplier_id: z.string(),
-  status: z.enum(["draft", "submitted", "received", "cancelled"]),
+  co_number: z.string(),
+  customer_id: z.string(),
+  status: z.enum(["draft", "submitted", "fulfilled", "cancelled"]),
+  payment_status: z.enum(["pending", "partial", "paid"]).optional(),
   expected_at: z.string().nullable().optional(),
   subtotal: priceNumber,
   tax: priceNumber,
   total: priceNumber,
+  total_paid: priceNumber.optional(),
+  outstanding_balance: priceNumber.optional(),
   notes: z.string().nullable().optional(),
-  items: z.array(purchaseOrderItemSchema).optional(),
+  items: z.array(customerOrderItemSchema).optional(),
   meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   // Relations
-  supplier: z
+  customer: z
     .object({
       id: z.union([z.string(), z.number()]),
-      company_name: z.string().optional(),
-      contact_person: z.string().nullable().optional(),
+      name: z.string().optional(),
+      company: z.string().nullable().optional(),
       email: z.string().nullable().optional(),
       phone: z.string().nullable().optional(),
     })
     .nullable()
     .optional(),
-  // Payments linked to this PO
+  // Payments linked to this customer order
   payments: z.array(z.object({
     id: z.union([z.string(), z.number()]),
     reference_number: z.string().nullable().optional(),
@@ -67,23 +70,23 @@ export const purchaseOrderSchema = z.object({
   })).optional(),
 });
 
-const paginatedPurchaseOrderSchema = z.object({
-  data: z.array(purchaseOrderSchema),
+const paginatedCustomerOrderSchema = z.object({
+  data: z.array(customerOrderSchema),
   meta: paginationMetaSchema.optional(),
 });
 
-export type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
-export type PurchaseOrderItem = z.infer<typeof purchaseOrderItemSchema>;
+export type CustomerOrder = z.infer<typeof customerOrderSchema>;
+export type CustomerOrderItem = z.infer<typeof customerOrderItemSchema>;
 
-export type FetchPurchaseOrdersParams = {
+export type FetchCustomerOrdersParams = {
   search?: string;
-  status?: "draft" | "submitted" | "received" | "cancelled";
+  status?: "draft" | "submitted" | "fulfilled" | "cancelled";
   page?: number;
   per_page?: number;
 };
 
-export type CreatePurchaseOrderPayload = {
-  supplier_id: string;
+export type CreateCustomerOrderPayload = {
+  customer_id: string;
   items: Array<{
     product_id: string | number;
     quantity_ordered: number;
@@ -93,7 +96,7 @@ export type CreatePurchaseOrderPayload = {
     description?: string | null;
   }>;
   expected_at?: string;
-  status?: "draft" | "submitted" | "received" | "cancelled";
+  status?: "draft" | "submitted" | "fulfilled" | "cancelled";
   subtotal: number;
   tax: number;
   total: number;
@@ -101,89 +104,89 @@ export type CreatePurchaseOrderPayload = {
   meta?: Record<string, unknown>;
 };
 
-export type UpdatePurchaseOrderPayload = Partial<CreatePurchaseOrderPayload> & {
-  status?: "draft" | "submitted" | "received" | "cancelled";
+export type UpdateCustomerOrderPayload = Partial<CreateCustomerOrderPayload> & {
+  status?: "draft" | "submitted" | "fulfilled" | "cancelled";
 };
 
-export type ReceivePurchaseOrderPayload = {
+export type FulfillCustomerOrderPayload = {
   items: Array<{
     product_id: string;
-    quantity_received: number;
+    quantity_fulfilled: number;
   }>;
 };
 
 /**
- * Fetch all purchase orders with optional filters
+ * Fetch all customer orders with optional filters
  */
-export async function fetchPurchaseOrders(
-  params?: FetchPurchaseOrdersParams,
+export async function fetchCustomerOrders(
+  params?: FetchCustomerOrdersParams,
   config?: AxiosRequestConfig
 ) {
   const requestConfig: AxiosRequestConfig = {
     params,
     ...config,
   };
-  const { data } = await apiClient.get("/purchase-orders", requestConfig);
+  const { data } = await apiClient.get("/customer-orders", requestConfig);
   // Map root-level pagination fields to 'meta'
-  return paginatedPurchaseOrderSchema.parse({
+  return paginatedCustomerOrderSchema.parse({
     data: data.data,
     meta: data
   });
 }
 
 /**
- * Fetch a single purchase order by ID
+ * Fetch a single customer order by ID
  */
-export async function fetchPurchaseOrder(
-  purchaseOrderId: string,
+export async function fetchCustomerOrder(
+  customerOrderId: string,
   config?: AxiosRequestConfig
 ) {
   const { data } = await apiClient.get(
-    `/purchase-orders/${purchaseOrderId}`,
+    `/customer-orders/${customerOrderId}`,
     config
   );
-  return purchaseOrderSchema.parse(data);
+  return customerOrderSchema.parse(data);
 }
 
 /**
- * Create a new purchase order
+ * Create a new customer order
  */
-export async function createPurchaseOrder(payload: CreatePurchaseOrderPayload) {
-  const { data } = await apiClient.post("/purchase-orders", payload);
-  return purchaseOrderSchema.parse(data);
+export async function createCustomerOrder(payload: CreateCustomerOrderPayload) {
+  const { data } = await apiClient.post("/customer-orders", payload);
+  return customerOrderSchema.parse(data);
 }
 
 /**
- * Update an existing purchase order
+ * Update an existing customer order
  */
-export async function updatePurchaseOrder(
-  purchaseOrderId: string,
-  payload: UpdatePurchaseOrderPayload
+export async function updateCustomerOrder(
+  customerOrderId: string,
+  payload: UpdateCustomerOrderPayload
 ) {
   const { data } = await apiClient.put(
-    `/purchase-orders/${purchaseOrderId}`,
+    `/customer-orders/${customerOrderId}`,
     payload
   );
-  return purchaseOrderSchema.parse(data);
+  return customerOrderSchema.parse(data);
 }
 
 /**
- * Delete a purchase order
+ * Delete a customer order
  */
-export async function deletePurchaseOrder(purchaseOrderId: string) {
-  await apiClient.delete(`/purchase-orders/${purchaseOrderId}`);
+export async function deleteCustomerOrder(customerOrderId: string) {
+  await apiClient.delete(`/customer-orders/${customerOrderId}`);
 }
 
 /**
- * Receive items from a purchase order
+ * Fulfill items from a customer order (deducts inventory)
  */
-export async function receivePurchaseOrder(
-  purchaseOrderId: string,
-  payload: ReceivePurchaseOrderPayload
+export async function fulfillCustomerOrder(
+  customerOrderId: string,
+  payload: FulfillCustomerOrderPayload
 ) {
   const { data } = await apiClient.post(
-    `/purchase-orders/${purchaseOrderId}/receive`,
+    `/customer-orders/${customerOrderId}/fulfill`,
     payload
   );
-  return purchaseOrderSchema.parse(data);
+  return customerOrderSchema.parse(data);
 }

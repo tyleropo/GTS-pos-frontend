@@ -115,7 +115,7 @@ const calendarEventSchema = z.object({
   start: z.string(),
   color: z.string(),
   extendedProps: z.object({
-    type: z.enum(["po", "repair"]),
+    type: z.enum(["po", "repair", "co"]),
     id: z.union([z.string(), z.number()]),
     status: z.string(),
   }),
@@ -128,4 +128,22 @@ export async function fetchDashboardCalendarEvents(
 ) {
   const { data } = await apiClient.get("/dashboard/calendar-events", config);
   return z.array(calendarEventSchema).parse(data);
+}
+
+const dailyTransactionSchema = z.object({
+  id: z.string(),
+  invoice_number: z.string(),
+  customer: z.string(),
+  total: z.union([z.string(), z.number()]),
+  status: z.string(),
+  time: z.string(),
+});
+
+export type DailyTransaction = z.infer<typeof dailyTransactionSchema>;
+
+export async function fetchDashboardDailyTransactions(
+  config?: AxiosRequestConfig
+) {
+  const { data } = await apiClient.get("/dashboard/daily-transactions", config);
+  return z.array(dailyTransactionSchema).parse(data);
 }

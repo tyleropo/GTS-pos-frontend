@@ -8,52 +8,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
-import { PurchaseOrder } from '@/src/types/purchaseOrder'
+import { CustomerOrder } from '@/src/types/customerOrder'
 import Link from 'next/link'
 
-interface PurchaseOrderTableProps {
-  purchaseOrders: PurchaseOrder[];
-  onEdit?: (po: PurchaseOrder) => void;
-  onDelete?: (po: PurchaseOrder) => void;
-  onReceive?: (po: PurchaseOrder) => void;
-  onCancel?: (po: PurchaseOrder) => void;
-  onDownloadPDF?: (po: PurchaseOrder) => void;
+interface CustomerOrderTableProps {
+  customerOrders: CustomerOrder[];
+  onEdit?: (order: CustomerOrder) => void;
+  onDelete?: (order: CustomerOrder) => void;
+  onFulfill?: (order: CustomerOrder) => void;
+  onCancel?: (order: CustomerOrder) => void;
+  onDownloadPDF?: (order: CustomerOrder) => void;
 }
 
-const PurchaseOrderTable = ({
-  purchaseOrders,
+const CustomerOrderTable = ({
+  customerOrders,
   onEdit,
   onDelete,
-  onReceive,
+  onFulfill,
   onCancel,
   onDownloadPDF,
-}: PurchaseOrderTableProps) => {
+}: CustomerOrderTableProps) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("all-orders")
 
-  // Filter purchase orders based on search query, filters, and active tab
-  const filteredPOs = purchaseOrders.filter((po) => {
+  // Filter customer orders based on search query, filters, and active tab
+  const filteredOrders = customerOrders.filter((order) => {
     // Search filter
     const matchesSearch =
-      (po.po_number || po.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (po.supplier || "").toLowerCase().includes(searchQuery.toLowerCase())
+      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer.toLowerCase().includes(searchQuery.toLowerCase())
 
     // Status filter
-    const matchesStatus = statusFilter === "all" || (po.status || "").toLowerCase() === statusFilter.toLowerCase()
+    const matchesStatus = statusFilter === "all" || order.status.toLowerCase() === statusFilter.toLowerCase()
 
     // Payment status filter
-    const matchesPayment = paymentFilter === "all" || (po.paymentStatus || "").toLowerCase() === paymentFilter.toLowerCase()
+    const matchesPayment = paymentFilter === "all" || order.paymentStatus.toLowerCase() === paymentFilter.toLowerCase()
 
     // Tab filter - filter by status based on active tab
     let matchesTab = true
     if (activeTab === "pending") {
-      matchesTab = po.status === "Pending" || po.status === "Draft"
+      matchesTab = order.status === "Pending" || order.status === "Draft"
     } else if (activeTab === "processing") {
-      matchesTab = po.status === "Processing" || po.status === "Submitted"
+      matchesTab = order.status === "Processing" || order.status === "Submitted"
     } else if (activeTab === "completed") {
-      matchesTab = po.status === "Completed" || po.status === "Received" || po.status === "Delivered"
+      matchesTab = order.status === "Completed" || order.status === "Fulfilled" || order.status === "Delivered"
     }
     // activeTab === "all-orders" matches everything
 
@@ -76,7 +76,7 @@ const PurchaseOrderTable = ({
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search by PO# or supplier..."
+                    placeholder="Search by Order# or customer..."
                     className="pl-8"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -136,9 +136,9 @@ const PurchaseOrderTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>PO Number</TableHead>
+                    <TableHead>Customer Order Number</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Supplier</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead className="text-right">Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -148,42 +148,42 @@ const PurchaseOrderTable = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPOs.length === 0 ? (
+                  {filteredOrders.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="h-24 text-center">
                         No results found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredPOs.map((po) => (
-                      <TableRow key={po.id}>
-                        <TableCell className="font-medium">{po.po_number}</TableCell>
-                        <TableCell>{po.date}</TableCell>
-                        <TableCell>{po.supplier}</TableCell>
-                        <TableCell className="text-right">{po.items}</TableCell>
-                        <TableCell className="text-right font-medium">₱{po.total.toFixed(2)}</TableCell>
+                    filteredOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.co_number}</TableCell>
+                        <TableCell>{order.date}</TableCell>
+                        <TableCell>{order.customer}</TableCell>
+                        <TableCell className="text-right">{order.items}</TableCell>
+                        <TableCell className="text-right font-medium">₱{order.total.toFixed(2)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
                             className={
-                              po.status === "Completed" || po.status === "Received" || po.status === "Delivered"
+                              order.status === "Completed" || order.status === "Fulfilled" || order.status === "Delivered"
                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : po.status === "Processing" || po.status === "Submitted"
+                                : order.status === "Processing" || order.status === "Submitted"
                                   ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                                  : po.status === "Pending" || po.status === "Draft"
+                                  : order.status === "Pending" || order.status === "Draft"
                                     ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
                                     : "bg-rose-100 text-rose-700 hover:bg-rose-100"
                             }
                           >
                             <span className="flex items-center">
-                              {(po.status === "Processing" || po.status === "Submitted") && <Clock className="h-3.5 w-3.5 mr-1" />}
-                              {(po.status === "Completed" || po.status === "Received" || po.status === "Delivered") && <CheckCircle className="h-3.5 w-3.5 mr-1" />}
-                              {(po.status === "Pending" || po.status === "Draft") && <AlertCircle className="h-3.5 w-3.5 mr-1" />}
-                              {po.status === "Cancelled" && <XCircle className="h-3.5 w-3.5 mr-1" />}
-                              {po.status === "Draft" ? "Pending" :
-                               po.status === "Submitted" ? "Processing" :
-                               po.status === "Received" ? "Delivered" :
-                               po.status}
+                              {(order.status === "Processing" || order.status === "Submitted") && <Clock className="h-3.5 w-3.5 mr-1" />}
+                              {(order.status === "Completed" || order.status === "Fulfilled" || order.status === "Delivered") && <CheckCircle className="h-3.5 w-3.5 mr-1" />}
+                              {(order.status === "Pending" || order.status === "Draft") && <AlertCircle className="h-3.5 w-3.5 mr-1" />}
+                              {order.status === "Cancelled" && <XCircle className="h-3.5 w-3.5 mr-1" />}
+                              {order.status === "Draft" ? "Pending" :
+                               order.status === "Submitted" ? "Processing" :
+                               order.status === "Fulfilled" ? "Delivered" :
+                               order.status}
                             </span>
                           </Badge>
                         </TableCell>
@@ -191,24 +191,28 @@ const PurchaseOrderTable = ({
                           <Badge
                             variant="outline"
                             className={
-                              po.paymentStatus === "Paid"
+                              order.paymentStatus === "Paid" || order.paymentStatus === "paid"
                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : po.paymentStatus === "Pending"
-                                  ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
-                                  : "bg-rose-100 text-rose-700 hover:bg-rose-100"
+                                : order.paymentStatus === "Partial" || order.paymentStatus === "partial"
+                                  ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                                  : "bg-amber-100 text-amber-700 hover:bg-amber-100"
                             }
                           >
-                            {po.paymentStatus}
+                            {(order.paymentStatus === "pending" || order.paymentStatus === "Pending") 
+                              ? "Pending" 
+                              : (order.paymentStatus === "partial" || order.paymentStatus === "Partial")
+                                ? "Partial"
+                                : "Paid"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{po.deliveryDate ? format(new Date(po.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                        <TableCell>{order.deliveryDate ? format(new Date(order.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
-                          {po.status !== "Cancelled" && (
+                          {order.status !== "Cancelled" && (
                             <Button 
                               variant="outline" 
                               size="sm" 
                               className="h-8 w-8 p-0"
-                              onClick={() => onEdit?.(po)}
+                              onClick={() => onEdit?.(order)}
                               title="Edit Order"
                             >
                               <Edit className="h-4 w-4" />
@@ -224,42 +228,42 @@ const PurchaseOrderTable = ({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/purchase-orders/${po.id}`}>
+                                  <Link href={`/customer-orders/${order.id}`}>
                                     <FileText className="h-4 w-4 mr-2" />
                                     View Details
                                   </Link>
                                 </DropdownMenuItem>
                                 
-                                <DropdownMenuItem onSelect={() => onDownloadPDF?.(po)}>
+                                <DropdownMenuItem onSelect={() => onDownloadPDF?.(order)}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
                                 </DropdownMenuItem>
                                 
-                                {/* {po.status !== "Received" && po.status !== "Cancelled" && (
+                                {/* {order.status !== "Fulfilled" && order.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => onReceive?.(po)}>
+                                    <DropdownMenuItem onSelect={() => onFulfill?.(order)}>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Receive Items
+                                    Fulfill Items
                                     </DropdownMenuItem>
                                 </>
                                 )}
-                                {po.status === "Draft" && (
+                                {order.status === "Draft" && (
                                     <>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem 
                                             className="text-destructive"
-                                            onSelect={() => onDelete?.(po)}
+                                            onSelect={() => onDelete?.(order)}
                                         >
                                             <Trash2 className="h-4 w-4 mr-2" />
                                             Delete Order
                                         </DropdownMenuItem>
                                     </>
                                 )}
-                                {po.status !== "Cancelled" && po.status !== "Received" && po.status !== "Draft" && (
+                                {order.status !== "Cancelled" && order.status !== "Fulfilled" && order.status !== "Draft" && (
                                 <DropdownMenuItem 
                                     className="text-destructive"
-                                    onSelect={() => onCancel?.(po)}
+                                    onSelect={() => onCancel?.(order)}
                                 >
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancel Order
@@ -278,4 +282,4 @@ const PurchaseOrderTable = ({
   )
 }
 
-export default PurchaseOrderTable
+export default CustomerOrderTable

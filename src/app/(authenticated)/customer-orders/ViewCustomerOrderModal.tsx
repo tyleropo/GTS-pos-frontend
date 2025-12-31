@@ -25,34 +25,34 @@ import {
     TableRow 
 } from "@/src/components/ui/table";
 import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus } from "lucide-react";
-import { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { CustomerOrder as APICustomerOrder } from "@/src/lib/api/customer-orders";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { useState } from "react";
 
-interface ViewPurchaseOrderModalProps {
+interface ViewCustomerOrderModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    purchaseOrder: APIPurchaseOrder | null;
+    customerOrder: APICustomerOrder | null;
     onEdit?: () => void;
     onDownloadPDF?: () => void;
     onRefresh?: () => void; // Add refresh callback
 }
 
-export function ViewPurchaseOrderModal({
+export function ViewCustomerOrderModal({
     open,
     onOpenChange,
-    purchaseOrder,
+    customerOrder,
     onEdit,
     onDownloadPDF,
     onRefresh,
-}: ViewPurchaseOrderModalProps) {
+}: ViewCustomerOrderModalProps) {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     
-    if (!purchaseOrder) return null;
+    if (!customerOrder) return null;
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case "received":
+            case "fulfilled":
                 return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
             case "submitted":
                 return "bg-blue-100 text-blue-700 hover:bg-blue-100";
@@ -70,17 +70,17 @@ export function ViewPurchaseOrderModal({
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center justify-between">
-                        <span>Supplier Order Details</span>
-                        <Badge variant="outline" className={getStatusColor(purchaseOrder.status)}>
-                            {purchaseOrder.status === "draft" ? "Pending" :
-                             purchaseOrder.status === "submitted" ? "Processing" :
-                             purchaseOrder.status === "received" ? "Delivered" :
-                             purchaseOrder.status.charAt(0).toUpperCase() +
-                                purchaseOrder.status.slice(1)}
+                        <span>Customer Order Details</span>
+                        <Badge variant="outline" className={getStatusColor(customerOrder.status)}>
+                            {customerOrder.status === "draft" ? "Pending" :
+                             customerOrder.status === "submitted" ? "Processing" :
+                             customerOrder.status === "fulfilled" ? "Delivered" :
+                             customerOrder.status.charAt(0).toUpperCase() +
+                                customerOrder.status.slice(1)}
                         </Badge>
                     </DialogTitle>
                     <DialogDescription>
-                        PO Number: {purchaseOrder.po_number}
+                        PO Number: {customerOrder.co_number}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -90,12 +90,12 @@ export function ViewPurchaseOrderModal({
                         <div className="space-y-1">
                             <div className="flex items-center text-sm text-muted-foreground">
                                 <User className="h-4 w-4 mr-2" />
-                                Supplier
+                                Customer
                             </div>
                             <p className="font-medium">
-                                {purchaseOrder.customer?.company ||
-                                    purchaseOrder.customer?.name ||
-                                    "Unknown Supplier"}
+                                {customerOrder.customer?.company ||
+                                    customerOrder.customer?.name ||
+                                    "Unknown Customer"}
                             </p>
                         </div>
 
@@ -105,8 +105,8 @@ export function ViewPurchaseOrderModal({
                                 Delivery Date
                             </div>
                             <p className="font-medium">
-                                {purchaseOrder.expected_at
-                                    ? new Date(purchaseOrder.expected_at).toLocaleDateString()
+                                {customerOrder.expected_at
+                                    ? new Date(customerOrder.expected_at).toLocaleDateString()
                                     : "Not specified"}
                             </p>
                         </div>
@@ -117,8 +117,8 @@ export function ViewPurchaseOrderModal({
                                 Created Date
                             </div>
                             <p className="font-medium">
-                                {purchaseOrder.created_at
-                                    ? new Date(purchaseOrder.created_at).toLocaleDateString()
+                                {customerOrder.created_at
+                                    ? new Date(customerOrder.created_at).toLocaleDateString()
                                     : "N/A"}
                             </p>
                         </div>
@@ -128,7 +128,7 @@ export function ViewPurchaseOrderModal({
                                 <Package className="h-4 w-4 mr-2" />
                                 Total Items
                             </div>
-                            <p className="font-medium">{purchaseOrder.items?.length || 0}</p>
+                            <p className="font-medium">{customerOrder.items?.length || 0}</p>
                         </div>
                         <div className="space-y-1 col-span-2">
                              <div className="flex items-center text-sm text-muted-foreground">
@@ -136,7 +136,7 @@ export function ViewPurchaseOrderModal({
                                 Notes
                             </div>
                             <p className="font-medium whitespace-pre-wrap">
-                                {purchaseOrder.notes || "No notes"}
+                                {customerOrder.notes || "No notes"}
                             </p>
                         </div>
                     </div>
@@ -158,8 +158,8 @@ export function ViewPurchaseOrderModal({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
-                                        purchaseOrder.items.map((item, index) => (
+                                    {customerOrder.items && customerOrder.items.length > 0 ? (
+                                        customerOrder.items.map((item, index) => (
                                             <TableRow key={index}>
                                                 <TableCell className="font-medium">
                                                     <div>{item.product_name || item.product_id}</div>
@@ -171,7 +171,7 @@ export function ViewPurchaseOrderModal({
                                                     {item.quantity_ordered}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {item.quantity_received || 0}
+                                                    {item.quantity_fulfilled || 0}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     ₱{item.unit_cost.toFixed(2)}
@@ -199,16 +199,16 @@ export function ViewPurchaseOrderModal({
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Subtotal:</span>
-                            <span className="font-medium">₱{purchaseOrder.subtotal.toFixed(2)}</span>
+                            <span className="font-medium">₱{customerOrder.subtotal.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Tax:</span>
-                            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
+                            <span className="font-medium">₱{customerOrder.tax.toFixed(2)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between text-base font-bold">
                             <span>Total:</span>
-                            <span>₱{purchaseOrder.total.toFixed(2)}</span>
+                            <span>₱{customerOrder.total.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -225,7 +225,7 @@ export function ViewPurchaseOrderModal({
                     </div>
 
                     {/* Payments Section */}
-                    {purchaseOrder.payments && purchaseOrder.payments.length > 0 && (
+                    {customerOrder.payments && customerOrder.payments.length > 0 && (
                         <>
                             <Separator />
                             <Accordion type="single" collapsible className="w-full">
@@ -233,12 +233,12 @@ export function ViewPurchaseOrderModal({
                                     <AccordionTrigger>
                                         <div className="flex items-center gap-2">
                                             <DollarSign className="h-4 w-4" />
-                                            <span>Payments ({purchaseOrder.payments.length})</span>
+                                            <span>Payments ({customerOrder.payments.length})</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <div className="space-y-3">
-                                            {purchaseOrder.payments.map((payment) => (
+                                            {customerOrder.payments.map((payment) => (
                                                 <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border">
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export function ViewPurchaseOrderModal({
                                                             <span className="capitalize">{payment.payment_method.replace(/_/g, ' ')}</span>
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Received: {new Date(payment.date_received).toLocaleDateString()}
+                                                            Fulfilled: {new Date(payment.date_fulfilled).toLocaleDateString()}
                                                             {payment.date_deposited && (
                                                                 <span className="ml-2">• Deposited: {new Date(payment.date_deposited).toLocaleDateString()}</span>
                                                             )}
@@ -288,7 +288,7 @@ export function ViewPurchaseOrderModal({
                                 Download PDF
                             </Button>
                         )}
-                        {onEdit && purchaseOrder.status !== "received" && (
+                        {onEdit && customerOrder.status !== "fulfilled" && (
                             <Button onClick={onEdit}>
                                 Edit Order
                             </Button>
@@ -301,7 +301,7 @@ export function ViewPurchaseOrderModal({
             <PaymentFormModal
                 open={isPaymentModalOpen}
                 onOpenChange={setIsPaymentModalOpen}
-                defaultPurchaseOrderId={String(purchaseOrder.id)}
+                defaultCustomerOrderId={String(customerOrder.id)}
                 onSuccess={() => {
                     // Refresh the PO data to show new payment
                     onRefresh?.();
