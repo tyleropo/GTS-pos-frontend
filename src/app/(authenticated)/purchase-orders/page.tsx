@@ -23,6 +23,8 @@ import { adaptPurchaseOrder } from "@/src/lib/adapters";
 import { toast } from "sonner";
 import { generatePurchaseOrderPDF } from "./utils/pdf-generator";
 
+
+//TODO:  Add feature where the incoming stocks are automatically added to the inventory but will prompt for more details like stocks etc. when an existing product it would add 
 function PurchaseOrdersPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [apiPurchaseOrders, setApiPurchaseOrders] = useState<APIPurchaseOrder[]>([]);

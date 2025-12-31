@@ -23,6 +23,13 @@ import { adaptCustomerOrder } from "@/src/lib/adapters";
 import { toast } from "sonner";
 import { generateCustomerOrderPDF } from "./utils/pdf-generator";
 
+// TODO add a functionaility where a customer order is created it would automatically deduct the stocks from the inventory  
+// we need to implement a feature where 
+// 1. when a customer order is created it would automatically deduct the stocks from the inventory
+// 2. when a customer order is fulfilled it would automatically add the stocks to the inventory 
+// we also need to convert product  to cash ,
+// check if the custom price affects the inventory
+// how to resolve if there is a customer order but we dont have the product in the inventory and it is needed to be ordered 
 function CustomerOrdersPage() {
   const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
   const [apiCustomerOrders, setApiCustomerOrders] = useState<APICustomerOrder[]>([]);
