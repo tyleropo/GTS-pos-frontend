@@ -197,7 +197,7 @@ export default function DashboardPage() {
         ))
       ) : (
         <Badge variant="outline" className="rounded-full">
-          {user.role}
+          No Role
         </Badge>
       )}
     </div>

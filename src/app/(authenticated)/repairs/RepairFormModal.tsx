@@ -19,7 +19,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
+} from "@/src/components/ui/form";
 import {
     Select,
     SelectContent,
@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
 import { Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/src/lib/utils";
