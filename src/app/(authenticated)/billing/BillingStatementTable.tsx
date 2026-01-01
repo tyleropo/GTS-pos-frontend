@@ -37,8 +37,8 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
         const showLineTotal = settings?.showLineTotal !== false;
 
         // Calculate columns span for subtotal row
-        // Date + Ref + Desc + (Qty?) + (Price?) = 3 + ... 
-        let colSpan = 3;
+        // Date + Ref + Product + Desc + (Qty?) + (Price?) = 4 + ... 
+        let colSpan = 4;
         if (showQuantity) colSpan++;
         if (showUnitPrice) colSpan++;
 
@@ -106,15 +106,10 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                         <TableRow>
                                             <TableHead className="w-[100px]">Date</TableHead>
                                             <TableHead className="w-[120px]">Reference</TableHead>
-                                            <TableHead>Description</TableHead>
-                                            {/* Repairs usually don't have qty/unit price in this context, just cost. 
-                                                But let's respect columns if we want consistency, 
-                                                though repair items might not have qty popualted. 
-                                                Let's keep repairs simple as just Amount? 
-                                                Or align columns? Aligning is better for visual consistency if mixed.
-                                                But for now, repairs are distinct. Let's keep repairs simple or check usage.
-                                                Repair item has 'cost'.
-                                            */}
+                                            <TableHead>Service</TableHead>
+                                            <TableHead>Resolution</TableHead>
+                                            {showQuantity && <TableHead className="text-right w-[80px]"></TableHead>}
+                                            {showUnitPrice && <TableHead className="text-right w-[100px]"></TableHead>}
                                             <TableHead className="text-right w-[120px]">Amount</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -124,13 +119,16 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                                 <TableCell>{format(new Date(item.date), "MM/dd/yyyy")}</TableCell>
                                                 <TableCell className="font-mono text-xs">{item.referenceId}</TableCell>
                                                 <TableCell>{item.description}</TableCell>
+                                                <TableCell>{item.itemDescription || "-"}</TableCell>
+                                                {showQuantity && <TableCell></TableCell>}
+                                                {showUnitPrice && <TableCell></TableCell>}
                                                 <TableCell className="text-right font-medium">
                                                     {formatCurrency(item.amount)}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
                                         <TableRow className="bg-muted/50">
-                                            <TableCell colSpan={3} className="text-right font-semibold">
+                                            <TableCell colSpan={colSpan} className="text-right font-semibold">
                                                 Subtotal (Repairs):
                                             </TableCell>
                                             <TableCell className="text-right font-semibold">
@@ -151,6 +149,7 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                         <TableRow>
                                             <TableHead className="w-[100px]">Date</TableHead>
                                             <TableHead className="w-[120px]">Reference</TableHead>
+                                            <TableHead>Product</TableHead>
                                             <TableHead>Description</TableHead>
                                             {showQuantity && <TableHead className="text-right w-[80px]">Qty</TableHead>}
                                             {showUnitPrice && <TableHead className="text-right w-[100px]">Unit Price</TableHead>}
@@ -163,6 +162,7 @@ const BillingStatementTable = forwardRef<HTMLDivElement, BillingStatementTablePr
                                                 <TableCell>{format(new Date(item.date), "MM/dd/yyyy")}</TableCell>
                                                 <TableCell className="font-mono text-xs">{item.referenceId}</TableCell>
                                                 <TableCell>{item.description}</TableCell>
+                                                <TableCell>{item.itemDescription || "-"}</TableCell>
                                                 {showQuantity && (
                                                     <TableCell className="text-right">
                                                         {item.quantity || 1}

@@ -98,7 +98,7 @@ export function ExportButtons({
                 onSettingsChange={onFormatSettingsChange}
             />
             <div className="border-l h-6 mx-1" />
-            <Button
+            {/* <Button
                 onClick={handlePrint}
                 disabled={disabled}
                 variant="outline"
@@ -124,7 +124,7 @@ export function ExportButtons({
             >
                 <Download className="h-4 w-4" />
                 {isExportingDocx ? "Exporting..." : "Export DOCX"}
-            </Button>
+            </Button> */}
             <Button
                 onClick={handleExportXlsx}
                 disabled={disabled || isExportingXlsx}
