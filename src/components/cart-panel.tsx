@@ -40,7 +40,7 @@ type CartPanelProps = {
   items: CartLineItem[];
   onClear: () => void;
   onCheckout: (
-    method: "cash" | "card" | "gcash", 
+    method: "cash" | "Bank transfer/Cheque/Card"  | "online_wallet", 
     customer: Customer | null,
     meta?: Record<string, unknown>
   ) => void;
@@ -54,19 +54,19 @@ const currency = new Intl.NumberFormat("en-PH", {
 });
 
 const PAYMENT_METHODS: Array<{
-  id: "cash" | "card" | "gcash";
+  id: "cash" | "Bank transfer/Cheque/Card"  | "online_wallet";
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }> = [
   { id: "cash", label: "Cash", icon: Banknote },
-  { id: "card", label: "Card", icon: CreditCard },
-  { id: "gcash", label: "GCash", icon: Wallet },
+  { id: "Bank transfer/Cheque/Card", label: "Bank transfer/Cheque/Card", icon: CreditCard },
+  { id: "online_wallet", label: "Online Wallet", icon: Wallet },
 ];
 
 export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemoveItem }: CartPanelProps) {
   const [vatPercentage, setVatPercentage] = useState(12);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "card" | "gcash" | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "Bank transfer/Cheque/Card" | "online_wallet" | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
@@ -132,12 +132,14 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
 
   const [amountTendered, setAmountTendered] = useState<string>("");
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [bankName, setBankName] = useState("");
 
-  const handlePaymentMethodClick = (method: "cash" | "card" | "gcash") => {
+  const handlePaymentMethodClick = (method: "cash" | "Bank transfer/Cheque/Card" | "online_wallet") => {
     setSelectedPaymentMethod(method);
     setAmountTendered(""); // Reset tendered amount
     setDiscountValue(""); // Reset discount
     setReferenceNumber(""); // Reset reference number
+    setBankName(""); // Reset bank name
     setIsConfirmModalOpen(true);
   };
 
@@ -156,11 +158,13 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
         discount_value: discountAmount > 0 ? parseFloat(discountValue) : undefined,
         discount_amount: discountAmount > 0 ? discountAmount : undefined,
         reference_number: referenceNumber || undefined,
+        bank_name: selectedPaymentMethod !== "cash" ? bankName : undefined,
       });
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);
       setAmountTendered("");
       setDiscountValue(""); 
+      setBankName("");
     }
   };
 
@@ -168,6 +172,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
     setIsConfirmModalOpen(false);
     setSelectedPaymentMethod(null);
     setAmountTendered("");
+    setBankName("");
   };
 
   const selectedPaymentMethodLabel = PAYMENT_METHODS.find(
@@ -483,20 +488,32 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
             <div className="flex flex-col gap-3 rounded-lg border bg-primary/5 p-3">
               <div className="flex items-center gap-2 text-sm font-medium">
                 {selectedPaymentMethod === "cash" && <Banknote className="h-4 w-4" />}
-                {selectedPaymentMethod === "card" && <CreditCard className="h-4 w-4" />}
-                {selectedPaymentMethod === "gcash" && <Wallet className="h-4 w-4" />}
+                {selectedPaymentMethod === "Bank transfer/Cheque/Card" && <CreditCard className="h-4 w-4" />}
+                {selectedPaymentMethod === "online_wallet" && <Wallet className="h-4 w-4" />}
                 <span>Payment via {selectedPaymentMethodLabel}</span>
               </div>
 
-              {(selectedPaymentMethod === "card" || selectedPaymentMethod === "gcash") && (
-                <div className="space-y-2 pt-2 border-t border-primary/10">
+              {selectedPaymentMethod !== "cash" && (
+                <div className="space-y-3 pt-2 border-t border-primary/10">
+                   {/* Bank/Wallet Name Input */}
+                   <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">
+                        {selectedPaymentMethod === "online_wallet" ? "Wallet Name (e.g. GCash/Maya)" : "Bank Name"}
+                      </label>
+                      <Input 
+                        placeholder={selectedPaymentMethod === "online_wallet" ? "e.g. GCash" : "e.g. BDO"}
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        autoFocus
+                      />
+                   </div>
+
                    <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium">Reference Number</label>
                       <Input 
-                        placeholder={selectedPaymentMethod === "card" ? "Last 4 digits or ref number" : "GCash reference number"}
+                        placeholder="Transaction/Reference number"
                         value={referenceNumber}
                         onChange={(e) => setReferenceNumber(e.target.value)}
-                        autoFocus
                       />
                    </div>
                 </div>

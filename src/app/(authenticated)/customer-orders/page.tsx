@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Card,
   CardDescription,
@@ -10,18 +11,21 @@ import {
 import { SiteHeader } from "@/src/components/site-header";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import CustomerOrderStats from "./CustomerOrderStats";
 import CustomerOrderTable from "./CustomerOrderTable";
 import { CustomerOrderFormModal } from "./CustomerOrderFormModal";
 import { DeleteCustomerOrderDialog } from "./DeleteCustomerOrderDialog";
 import { FulfillCustomerOrderModal } from "./FulfillCustomerOrderModal";
-import { fetchCustomerOrders, updateCustomerOrder, fetchCustomerOrder } from "@/src/lib/api/customer-orders";
-import { useEffect, useState } from "react";
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+import { fetchCustomerOrders, fetchCustomerOrder, cancelCustomerOrder } from "@/src/lib/api/customer-orders";
 import type { CustomerOrder } from "@/src/types/customerOrder";
 import type { CustomerOrder as APICustomerOrder } from "@/src/lib/api/customer-orders";
 import { adaptCustomerOrder } from "@/src/lib/adapters";
-import { toast } from "sonner";
-import { generateCustomerOrderPDF } from "./utils/pdf-generator";
+import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+
+
 
 // TODO add a functionaility where a customer order is created it would automatically deduct the stocks from the inventory  
 // we need to implement a feature where 
@@ -35,8 +39,30 @@ function CustomerOrdersPage() {
   const [apiCustomerOrders, setApiCustomerOrders] = useState<APICustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Modal states
+// ...
+  
+  // Filter customer orders based on date range
+  const filteredCustomerOrders = customerOrders.filter((order) => {
+    if (!dateRange?.from) return true;
+    
+    const orderDate = new Date(order.date);
+    if (dateRange.to) {
+      return isWithinInterval(orderDate, {
+        start: startOfDay(dateRange.from),
+        end: endOfDay(dateRange.to)
+      });
+    } else {
+      return isWithinInterval(orderDate, {
+         start: startOfDay(dateRange.from),
+         end: endOfDay(dateRange.from)
+      });
+    }
+  });
+
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
@@ -70,8 +96,8 @@ function CustomerOrdersPage() {
   const handleEditCustomerOrder = async (order: CustomerOrder) => {
     try {
       // Find the ID from the local list first to verify it exists or get the ID string
-      // The passed 'order' is the adapted one, so order.id is the string ID
-      const data = await fetchCustomerOrder(order.id);
+      // The passed 'order' is the adapted one (now direct), so order.id is the ID
+      const data = await fetchCustomerOrder(String(order.id));
       setSelectedCustomerOrder(data);
       setIsFormModalOpen(true);
     } catch (error) {
@@ -99,7 +125,7 @@ function CustomerOrdersPage() {
     if (!apiOrder) return;
 
     try {
-      await updateCustomerOrder(String(apiOrder.id), { status: "cancelled" });
+      await cancelCustomerOrder(String(apiOrder.id));
       toast.success("Customer order cancelled");
       loadCustomerOrders();
     } catch (error) {
@@ -108,13 +134,14 @@ function CustomerOrdersPage() {
     }
   };
 
-  const handleDownloadPDF = (order: CustomerOrder) => {
-    const apiOrder = apiCustomerOrders.find(p => String(p.id) === order.id);
-    if (!apiOrder) return;
+  const handleDownloadPDF = (_order: CustomerOrder) => {
+    // const apiOrder = apiCustomerOrders.find(p => String(p.id) === order.id);
+    // if (!apiOrder) return;
 
     try {
-      generateCustomerOrderPDF(apiOrder);
-      toast.success("PDF downloaded successfully");
+      // generateCustomerOrderPDF(apiOrder);
+      console.log(_order);
+      toast.info("PDF generation not yet implemented");
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to generate PDF");
@@ -130,6 +157,18 @@ function CustomerOrdersPage() {
   };
 
   const handleFulfillSuccess = () => {
+    loadCustomerOrders();
+  };
+
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPaymentOrder, setSelectedPaymentOrder] = useState<CustomerOrder | null>(null);
+
+  const handleAddPayment = (order: CustomerOrder) => {
+    setSelectedPaymentOrder(order);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
     loadCustomerOrders();
   };
 
@@ -171,7 +210,7 @@ function CustomerOrdersPage() {
         subtitle="Manage customer orders and track fulfillment status."
       />
       <div className="p-4">
-        <CustomerOrderStats customerOrders={customerOrders} />
+        <CustomerOrderStats customerOrders={filteredCustomerOrders} />
         <Card className="mt-5">
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex justify-between">
@@ -187,12 +226,15 @@ function CustomerOrdersPage() {
           </CardHeader>
           <CardContent>
             <CustomerOrderTable
-              customerOrders={customerOrders}
+              customerOrders={filteredCustomerOrders}
               onEdit={handleEditCustomerOrder}
               onDelete={handleDeleteCustomerOrder}
               onFulfill={handleFulfillCustomerOrder}
               onCancel={handleCancelOrder}
               onDownloadPDF={handleDownloadPDF}
+              onAddPayment={handleAddPayment}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
           </CardContent>
         </Card>
@@ -218,6 +260,14 @@ function CustomerOrdersPage() {
         onOpenChange={setIsFulfillModalOpen}
         customerOrder={selectedCustomerOrder}
         onSuccess={handleFulfillSuccess}
+      />
+
+      <PaymentFormModal
+        open={isPaymentModalOpen}
+        onOpenChange={setIsPaymentModalOpen}
+        defaultPayableId={selectedPaymentOrder ? String(selectedPaymentOrder.id) : undefined}
+        defaultPayableType="customer_order"
+        onSuccess={handlePaymentSuccess}
       />
     </div>
   );

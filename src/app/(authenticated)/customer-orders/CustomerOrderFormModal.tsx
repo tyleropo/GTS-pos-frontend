@@ -152,7 +152,8 @@ export function CustomerOrderFormModal({
             try {
                 const customersRes = await fetchCustomers({ 
                     search: debouncedCustomerQuery,
-                    per_page: 50 
+                    per_page: 50,
+                    exclude_suppliers: true 
                 });
                 setCustomers(customersRes.data);
             } catch (error) {
@@ -198,7 +199,7 @@ export function CustomerOrderFormModal({
                      
                     const [productsRes, customersRes] = await Promise.all([
                         fetchProducts({ per_page: 50 }),
-                        fetchCustomers({ per_page: 50 })
+                        fetchCustomers({ per_page: 50, exclude_suppliers: true })
                     ]);
                     setProducts(productsRes.data);
                     setCustomers(customersRes.data);

@@ -97,12 +97,31 @@ export function CustomerTable({ customers, customerTypes = [], onEdit, onDelete,
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <Tabs defaultValue="all-customers" >
+      <Tabs defaultValue="all-customers" onValueChange={value => {
+            if (value === 'all-customers') {
+                setTypeFilter('all');
+                setStatusFilter('all');
+            } else if (value === 'active') {
+                setStatusFilter('Active');
+                setTypeFilter('all');
+            } else if (value === 'inactive') {
+                setStatusFilter('Inactive');
+                setTypeFilter('all');
+            } else if (value === 'vip') {
+                setTypeFilter('VIP');
+                setStatusFilter('all');
+            } else if (value === 'government') {
+                setTypeFilter('Government');
+                setStatusFilter('all');
+            }
+      }}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList>
             <TabsTrigger value="all-customers">All Customers</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="inactive">Inactive</TabsTrigger>
             <TabsTrigger value="vip">VIP</TabsTrigger>
+            <TabsTrigger value="government">Government</TabsTrigger>
           </TabsList>
 
           <div className="flex flex-1 items-center gap-2 max-w-md ml-auto">
@@ -204,9 +223,9 @@ export function CustomerTable({ customers, customerTypes = [], onEdit, onDelete,
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="icon">
+            {/* <Button variant="outline" size="icon">
               <Download className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
 

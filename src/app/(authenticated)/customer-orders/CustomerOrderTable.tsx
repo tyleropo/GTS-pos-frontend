@@ -1,15 +1,17 @@
 import React, { useState } from 'react'
-import { format } from 'date-fns'
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2, CreditCard } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { CustomerOrder } from '@/src/types/customerOrder'
 import Link from 'next/link'
+import { DateRangePicker } from '@/src/components/date-range-picker'
+import { DateRange } from 'react-day-picker'
 
 interface CustomerOrderTableProps {
   customerOrders: CustomerOrder[];
@@ -18,6 +20,9 @@ interface CustomerOrderTableProps {
   onFulfill?: (order: CustomerOrder) => void;
   onCancel?: (order: CustomerOrder) => void;
   onDownloadPDF?: (order: CustomerOrder) => void;
+  onAddPayment?: (order: CustomerOrder) => void;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 const CustomerOrderTable = ({
@@ -27,6 +32,9 @@ const CustomerOrderTable = ({
   onFulfill,
   onCancel,
   onDownloadPDF,
+  onAddPayment,
+  dateRange,
+  onDateRangeChange,
 }: CustomerOrderTableProps) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -46,6 +54,23 @@ const CustomerOrderTable = ({
     // Payment status filter
     const matchesPayment = paymentFilter === "all" || order.paymentStatus.toLowerCase() === paymentFilter.toLowerCase()
 
+    // Date range filter
+    let matchesDate = true
+    if (dateRange?.from) {
+      const orderDate = new Date(order.date)
+      if (dateRange.to) {
+        matchesDate = isWithinInterval(orderDate, {
+          start: startOfDay(dateRange.from),
+          end: endOfDay(dateRange.to)
+        })
+      } else {
+         matchesDate = isWithinInterval(orderDate, {
+           start: startOfDay(dateRange.from),
+           end: endOfDay(dateRange.from)
+        })
+      }
+    }
+
     // Tab filter - filter by status based on active tab
     let matchesTab = true
     if (activeTab === "pending") {
@@ -57,7 +82,7 @@ const CustomerOrderTable = ({
     }
     // activeTab === "all-orders" matches everything
 
-    return matchesSearch && matchesStatus && matchesPayment && matchesTab
+    return matchesSearch && matchesStatus && matchesPayment && matchesTab && matchesDate
   })
   return (
     
@@ -82,6 +107,10 @@ const CustomerOrderTable = ({
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
+                <DateRangePicker 
+                    date={dateRange} 
+                    onDateChange={onDateRangeChange}
+                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon">
@@ -207,8 +236,7 @@ const CustomerOrderTable = ({
                         </TableCell>
                         <TableCell>{order.deliveryDate ? format(new Date(order.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
-                          {order.status !== "Cancelled" && (
-                            <Button 
+                          <Button 
                               variant="outline" 
                               size="sm" 
                               className="h-8 w-8 p-0"
@@ -217,7 +245,6 @@ const CustomerOrderTable = ({
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                          )}
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon">
@@ -239,14 +266,20 @@ const CustomerOrderTable = ({
                                 Download PDF
                                 </DropdownMenuItem>
                                 
-                                {/* {order.status !== "Fulfilled" && order.status !== "Cancelled" && (
+                                {order.status !== "Delivered" && order.status !== "Completed" && order.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => onFulfill?.(order)}>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Fulfill Items
+                                    Mark as Delivered
                                     </DropdownMenuItem>
                                 </>
+                                )}
+                                {order.paymentStatus !== "Paid" && order.paymentStatus !== "paid" && (
+                                    <DropdownMenuItem onSelect={() => onAddPayment?.(order)}>
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Add Payment
+                                    </DropdownMenuItem>
                                 )}
                                 {order.status === "Draft" && (
                                     <>
@@ -260,7 +293,7 @@ const CustomerOrderTable = ({
                                         </DropdownMenuItem>
                                     </>
                                 )}
-                                {order.status !== "Cancelled" && order.status !== "Fulfilled" && order.status !== "Draft" && (
+                                {order.status !== "Cancelled" && order.status !== "Delivered" && order.status !== "Completed" && order.status !== "Draft" && (
                                 <DropdownMenuItem 
                                     className="text-destructive"
                                     onSelect={() => onCancel?.(order)}
@@ -268,7 +301,7 @@ const CustomerOrderTable = ({
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancel Order
                                 </DropdownMenuItem>
-                                )} */}
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

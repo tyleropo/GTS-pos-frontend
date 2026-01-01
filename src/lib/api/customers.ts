@@ -40,6 +40,7 @@ export type FetchCustomersParams = {
   search?: string;
   page?: number;
   per_page?: number;
+  exclude_suppliers?: boolean;
 };
 
 export type CreateCustomerPayload = {

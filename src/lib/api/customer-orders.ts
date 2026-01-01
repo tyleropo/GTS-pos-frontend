@@ -81,6 +81,10 @@ export type CustomerOrderItem = z.infer<typeof customerOrderItemSchema>;
 export type FetchCustomerOrdersParams = {
   search?: string;
   status?: "draft" | "submitted" | "fulfilled" | "cancelled";
+  customer_id?: string;
+  customer_ids?: string[];
+  date_from?: string;
+  date_to?: string;
   page?: number;
   per_page?: number;
 };
@@ -187,6 +191,16 @@ export async function fulfillCustomerOrder(
   const { data } = await apiClient.post(
     `/customer-orders/${customerOrderId}/fulfill`,
     payload
+  );
+  return customerOrderSchema.parse(data);
+}
+
+/**
+ * Cancel a customer order
+ */
+export async function cancelCustomerOrder(customerOrderId: string) {
+  const { data } = await apiClient.post(
+    `/customer-orders/${customerOrderId}/cancel`
   );
   return customerOrderSchema.parse(data);
 }
