@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Printer, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
 import { Badge } from '@/src/components/ui/badge'
 import { Repair } from '@/src/types/repair'
 import { DateRangePicker } from '@/src/components/date-range-picker'
@@ -18,6 +18,9 @@ interface RepairsTableProps {
   onEdit?: (repair: Repair) => void;
   onDelete?: (repair: Repair) => void;
   onUpdateStatus?: (repair: Repair, status: "pending" | "in_progress" | "completed" | "cancelled") => void;
+  onPrint?: (repair: Repair) => void;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 const RepairsTable = ({
@@ -26,7 +29,10 @@ const RepairsTable = ({
   onView,
   onEdit,
   onDelete,
-  onUpdateStatus
+  onUpdateStatus,
+  onPrint,
+  dateRange,
+  onDateRangeChange
 }: RepairsTableProps) => {
   // 1. React state for search + filters + active tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +104,11 @@ const RepairsTable = ({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          
+          <DateRangePicker 
+            date={dateRange} 
+            onDateChange={onDateRangeChange}
+          />
 
           {/* 4b. Filter dropdown (status + device) */}
           <DropdownMenu>
@@ -296,9 +307,20 @@ const RepairsTable = ({
                           size="icon"
                           onClick={() => onEdit(repair)}
                         >
+
                           <Edit className="h-4 w-4" />
                         </Button>
                       )}
+                      
+                      {/* visible Print Button */}
+                      <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onPrint?.(repair)}
+                          title="Print Ticket"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
 
                       {/* Dropdown for more actions */}
                       <DropdownMenu modal={false}>
@@ -313,6 +335,10 @@ const RepairsTable = ({
                           <DropdownMenuItem onClick={() => onView?.(repair)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onPrint?.(repair)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Print Ticket
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onEdit?.(repair)}>
                             <Edit className="h-4 w-4 mr-2" />

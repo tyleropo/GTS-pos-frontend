@@ -18,8 +18,10 @@ import { DeleteRepairDialog } from "./DeleteRepairDialog";
 import { fetchRepairs, fetchRepair, updateRepair } from "@/src/lib/api/repairs";
 import { fetchUsers, type User } from "@/src/lib/api/users";
 import type { Repair as APIRepair } from "@/src/lib/api/repairs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Repair } from "@/src/types/repair";
+import { RepairTicket } from "@/src/components/print/RepairTicket";
+import { useReactToPrint } from "react-to-print";
 import { adaptRepair } from "@/src/lib/adapters";
 import { toast } from "sonner";
 
@@ -97,6 +99,23 @@ function RepairsPage() {
     setIsFormModalOpen(true);
   };
 
+  // Print state
+  const [printingRepair, setPrintingRepair] = useState<Repair | null>(null);
+  const repairPrintRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintTrigger = useReactToPrint({
+    contentRef: repairPrintRef,
+    documentTitle: printingRepair ? `Repair_${printingRepair.ticketNumber || printingRepair.id}` : "Repair_Ticket",
+  });
+
+  const handlePrint = (repair: Repair) => {
+    setPrintingRepair(repair);
+    // Allow state to update and ref to populate
+    setTimeout(() => {
+        handlePrintTrigger();
+    }, 100);
+  };
+
   const handleViewRepair = (repair: Repair) => {
     const apiRepair = apiRepairs.find((r) => String(r.id) === repair.id);
     setSelectedRepair(apiRepair || null);
@@ -160,7 +179,7 @@ function RepairsPage() {
     return (
       <div className="flex flex-col gap-5 p-4">
         <SiteHeader
-          title="Repairs"
+          title="Repairs and Service Tickets"
           subtitle="Track service tickets and keep technicians aligned."
         />
         <p className="text-muted-foreground">Loading repairs...</p>
@@ -172,7 +191,7 @@ function RepairsPage() {
     return (
       <div className="flex flex-col gap-5 p-4">
         <SiteHeader
-          title="Repairs"
+          title="Repairs and Service Tickets"
           subtitle="Track service tickets and keep technicians aligned."
         />
         <p className="text-destructive">Error: {error}</p>
@@ -183,7 +202,7 @@ function RepairsPage() {
   return (
     <div className="flex flex-col gap-5 p-4">
       <SiteHeader
-        title="Repairs"
+        title="Repairs and Service Tickets"
         subtitle="Track service tickets and keep technicians aligned."
       />
 
@@ -192,7 +211,7 @@ function RepairsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between text-2xl font-bold">
-            Repair tickets
+            Repair and Service Tickets
             <Button onClick={handleAddRepair}>
               <Plus className="mr-2 h-4 w-4" />
               New repair
@@ -210,9 +229,15 @@ function RepairsPage() {
             onEdit={handleEditRepair}
             onDelete={handleDeleteRepair}
             onUpdateStatus={handleUpdateStatus}
+            onPrint={handlePrint}
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
           />
+
+          {/* Hidden Print Component */}
+          <div className="hidden">
+            <RepairTicket ref={repairPrintRef} repair={printingRepair} />
+          </div>
         </CardContent>
       </Card>
 
