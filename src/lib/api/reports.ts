@@ -6,23 +6,23 @@ import type { AxiosRequestConfig } from "axios";
 
 // Sales Report Schema
 export const salesReportSchema = z.object({
-  total_revenue: z.number(),
-  total_transactions: z.number(),
-  total_tax: z.number(),
-  total_discount: z.number(),
-  average_transaction: z.number().nullable(),
+  total_revenue: z.coerce.number(),
+  total_transactions: z.coerce.number(),
+  total_tax: z.coerce.number(),
+  total_discount: z.coerce.number(),
+  average_transaction: z.coerce.number().nullable(),
   transactions_by_status: z.array(
     z.object({
       status: z.string().nullable(),
-      count: z.number(),
-      total: z.number(),
+      count: z.coerce.number(),
+      total: z.coerce.number(),
     })
   ),
   daily_sales: z.array(
     z.object({
       date: z.string(),
-      count: z.number(),
-      total: z.number(),
+      count: z.coerce.number(),
+      total: z.coerce.number(),
     })
   ),
 });

@@ -36,7 +36,7 @@ export const transactionSchema = z.object({
   subtotal: priceNumber,
   tax: priceNumber,
   total: priceNumber,
-  payment_method: z.enum(["cash", "card", "gcash"]),
+  payment_method: z.enum(["cash", "card", "gcash", "Bank transfer/Cheque/Card", "online_wallet"]),
   items: z.array(transactionItemSchema).optional(),
   meta: z
     .union([z.record(z.unknown()), z.array(z.unknown())])
@@ -67,7 +67,7 @@ export type FetchTransactionsParams = {
   search?: string;
   customer_id?: string;
   customer_ids?: string[];
-  payment_method?: "cash" | "card" | "gcash";
+  payment_method?: "cash" | "card" | "gcash" | "Bank transfer/Cheque/Card" | "online_wallet";
   start_date?: string;
   end_date?: string;
   page?: number;
@@ -83,7 +83,7 @@ export type CreateTransactionPayload = {
     discount?: number;
     line_total: number;
   }>;
-  payment_method: "cash" | "card" | "gcash";
+  payment_method: "cash" | "card" | "gcash" | "Bank transfer/Cheque/Card" | "online_wallet";
   subtotal: number;
   tax: number;
   total: number;

@@ -317,7 +317,7 @@ export default function ReportsPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">${salesData.total_revenue.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">₱{salesData.total_revenue.toFixed(2)}</p>
                     </div>
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Transactions</p>
@@ -325,7 +325,7 @@ export default function ReportsPage() {
                     </div>
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Avg Transaction</p>
-                      <p className="text-2xl font-bold">${(salesData.average_transaction || 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">₱{(salesData.average_transaction || 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -362,7 +362,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Stock Value</p>
-                    <p className="text-2xl font-bold">${inventoryData.total_stock_value.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{inventoryData.total_stock_value.toFixed(2)}</p>
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Out of Stock</p>
@@ -432,7 +432,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">${governmentData.total_government_revenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{governmentData.total_government_revenue.toFixed(2)}</p>
                   </div>
                 </div>
               ) : (
@@ -464,7 +464,7 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Total Collected</p>
-                    <p className="text-2xl font-bold">${paymentData.total_payments_collected.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{paymentData.total_payments_collected.toFixed(2)}</p>
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Payment Count</p>
@@ -472,7 +472,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Outstanding</p>
-                    <p className="text-2xl font-bold text-warning">${paymentData.outstanding_balance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-warning">₱{paymentData.outstanding_balance.toFixed(2)}</p>
                   </div>
                 </div>
               ) : (

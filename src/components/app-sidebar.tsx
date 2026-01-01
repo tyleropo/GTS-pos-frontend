@@ -57,7 +57,7 @@ const data = {
       icon: IconFileText,
       items: [
         { title: "Customer Orders", url: "/customer-orders" },
-        { title: "Purchase Orders", url: "/purchase-orders" },
+        { title: "Purchases", url: "/purchase-orders" },
         { title: "Billing", url: "/billing" },
         { title: "Payments", url: "/payments" },
       ],

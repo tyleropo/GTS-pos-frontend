@@ -12,7 +12,8 @@ import type { Repair as APIRepair } from "@/src/lib/api/repairs";
 import type { Customer } from "@/src/types/customer";
 import type { Transaction } from "@/src/types/transactions";
 import type { PurchaseOrder } from "@/src/types/purchaseOrder";
-import type { Repair } from "@/src/types/repair";
+import type { CustomerOrder } from "@/src/types/customerOrder";
+import type { Repair, RepairProduct } from "@/src/types/repair";
 
 /**
  * Convert API customer to component customer
@@ -109,7 +110,7 @@ export function adaptPurchaseOrder(
  */
 export function adaptCustomerOrder(
   apiCustomerOrder: APICustomerOrder
-): any {
+): CustomerOrder {
   const created = apiCustomerOrder.created_at || new Date().toISOString();
   const date = created.split("T")[0];
 
@@ -123,13 +124,15 @@ export function adaptCustomerOrder(
       "Unknown Customer",
     items: apiCustomerOrder.items?.length || 0,
     total: apiCustomerOrder.total,
-    status:
+    status: (
       apiCustomerOrder.status.charAt(0).toUpperCase() +
-      apiCustomerOrder.status.slice(1),
-    paymentStatus: 
+      apiCustomerOrder.status.slice(1)
+    ) as CustomerOrder["status"],
+    paymentStatus: (
       apiCustomerOrder.payments && apiCustomerOrder.payments.length > 0 
         ? "Paid" 
-        : "Pending",
+        : "Pending"
+    ) as CustomerOrder["paymentStatus"],
     deliveryDate: apiCustomerOrder.expected_at || date,
   };
 }
@@ -164,5 +167,13 @@ export function adaptRepair(apiRepair: APIRepair): Repair {
     cost: apiRepair.cost || 0,
     technician: apiRepair.technician || "Unassigned",
     completionDate: apiRepair.promised_at?.split("T")[0] || date,
+    products: apiRepair.products ? apiRepair.products.map(p => ({
+      ...p,
+      pivot: p.pivot ? {
+        quantity: p.pivot.quantity,
+        unit_price: p.pivot.unit_price,
+        total_price: p.pivot.total_price
+      } : undefined
+    } as RepairProduct)) : [],
   };
 }
