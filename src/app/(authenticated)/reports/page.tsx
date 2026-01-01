@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { Download, BarChart3, Package, Users, BadgeDollarSign } from "lucide-react";
 import { subDays, subMonths, subQuarters, subYears, startOfDay, endOfDay, format } from "date-fns";
 import { SiteHeader } from "@/src/components/site-header";
+import { formatCurrency } from "@/src/lib/format-currency";
 
 
 type DateRangeType = "today" | "yesterday" | "last_7_days" | "last_30_days" | "this_month" | "last_month" | "this_quarter" | "last_quarter" | "this_year" | "last_year" | "custom";
@@ -317,7 +318,7 @@ export default function ReportsPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">₱{salesData.total_revenue.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">₱{formatCurrency(salesData.total_revenue)}</p>
                     </div>
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Transactions</p>
@@ -325,7 +326,7 @@ export default function ReportsPage() {
                     </div>
                     <div className="border p-4 rounded">
                       <p className="text-sm text-muted-foreground">Avg Transaction</p>
-                      <p className="text-2xl font-bold">₱{(salesData.average_transaction || 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">₱{formatCurrency(salesData.average_transaction || 0)}</p>
                     </div>
                   </div>
                 </div>
@@ -362,7 +363,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Stock Value</p>
-                    <p className="text-2xl font-bold">₱{inventoryData.total_stock_value.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{formatCurrency(inventoryData.total_stock_value)}</p>
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Out of Stock</p>
@@ -432,7 +433,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">₱{governmentData.total_government_revenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{formatCurrency(governmentData.total_government_revenue)}</p>
                   </div>
                 </div>
               ) : (
@@ -464,7 +465,7 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Total Collected</p>
-                    <p className="text-2xl font-bold">₱{paymentData.total_payments_collected.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">₱{formatCurrency(paymentData.total_payments_collected)}</p>
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Payment Count</p>
@@ -472,7 +473,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="border p-4 rounded">
                     <p className="text-sm text-muted-foreground">Outstanding</p>
-                    <p className="text-2xl font-bold text-warning">₱{paymentData.outstanding_balance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-warning">₱{formatCurrency(paymentData.outstanding_balance)}</p>
                   </div>
                 </div>
               ) : (

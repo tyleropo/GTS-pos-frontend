@@ -44,7 +44,7 @@ export async function exportToXlsx(
   worksheet.addRow([]);
 
   // 4. Table Header
-  const headerRowValues = ["Date", "Reference", "Description"];
+  const headerRowValues = ["Date", "Reference", "Product", "Description"];
   if (settings.showQuantity !== false) headerRowValues.push("Qty");
   if (settings.showUnitPrice !== false) headerRowValues.push("Unit Price");
   if (settings.showLineTotal !== false) headerRowValues.push("Amount");
@@ -61,6 +61,7 @@ export async function exportToXlsx(
       new Date(item.date).toLocaleDateString(),
       item.referenceId,
       item.description,
+      item.itemDescription || "", // Add secondary description
     ];
     
     if (settings.showQuantity !== false) {
@@ -79,9 +80,8 @@ export async function exportToXlsx(
     const row = worksheet.addRow(rowValues);
     
     // Formatting numbers
-    // Assuming Quantity is at index 4 (E), Price at 5 (F), Amount at 6 (G) if they exist
-    // Need to dynamically determine column index
-    let colIndex = 4;
+    // Assuming Quantity is at index 5 (E), Price at 6 (F), Amount at 7 (G) with new column
+    let colIndex = 5;
     if (settings.showQuantity !== false) colIndex++;
     if (settings.showUnitPrice !== false) {
        row.getCell(colIndex).numFmt = '"₱"#,##0.00'; 
@@ -96,13 +96,7 @@ export async function exportToXlsx(
   worksheet.addRow([]);
   
   // Calculate column index for total
-  let totalColIndex = 3; // Date, Ref, Desc usually first 3
-  if (settings.showQuantity !== false) totalColIndex++;
-  if (settings.showUnitPrice !== false) totalColIndex++;
-  if (settings.showLineTotal !== false) totalColIndex++; // Amount is the last one if visible, else...?
-  // Actually, Total should align with Amount column.
-  // If Amount is hidden, where do we put it? Usually Amount is required.
-  // Let's assume Amount is always last.
+  // Date, Ref, Prod, Desc = 4 columns
   const amountColIndex = headerRowValues.length;
 
   // Add Grand Total
@@ -117,7 +111,8 @@ export async function exportToXlsx(
   worksheet.columns.forEach((column) => {
     column.width = 15;
   });
-  worksheet.getColumn(3).width = 40; // Description
+  worksheet.getColumn(3).width = 30; // Product
+  worksheet.getColumn(4).width = 40; // Description
 
   // Save file
   const buffer = await workbook.xlsx.writeBuffer();
