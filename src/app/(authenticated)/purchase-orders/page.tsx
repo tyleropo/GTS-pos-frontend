@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import { OrderPrint } from "@/src/components/print/OrderPrint";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -18,6 +20,8 @@ import PurchaseOrderTable from "./PurchaseOrderTable";
 import { PurchaseOrderFormModal } from "./PurchaseOrderFormModal";
 import { DeletePurchaseOrderDialog } from "./DeletePurchaseOrderDialog";
 import { FulfillPurchaseOrderModal } from "./FulfillPurchaseOrderModal";
+import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+import { BulkPaymentModal } from "@/src/app/(authenticated)/payments/BulkPaymentModal";
 
 import { fetchPurchaseOrders, updatePurchaseOrder, fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
 import type { PurchaseOrder } from "@/src/types/purchaseOrder";
@@ -61,7 +65,10 @@ function PurchaseOrdersPage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<APIPurchaseOrder | null>(null);
+  const [selectedOrdersForBulkPayment, setSelectedOrdersForBulkPayment] = useState<PurchaseOrder[]>([]);
 
   const loadPurchaseOrders = async () => {
     try {
@@ -143,6 +150,29 @@ function PurchaseOrdersPage() {
     }
   };
 
+  // Print Logic
+  // Print Logic
+  const [printingOrder, setPrintingOrder] = useState<PurchaseOrder | APIPurchaseOrder | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintTrigger = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: printingOrder ? `PO_${printingOrder.po_number || (printingOrder as any).id}` : "Purchase_Order",
+  });
+
+  const handlePrint = async (po: PurchaseOrder) => {
+    try {
+        const fullOrder = await fetchPurchaseOrder(po.id);
+        setPrintingOrder(fullOrder);
+        setTimeout(() => {
+            handlePrintTrigger();
+        }, 500); // Increased timeout significantly to ensure rendering
+    } catch (error) {
+        console.error("Error fetching PO for print:", error);
+        toast.error("Failed to prepare print view");
+    }
+  };
+
   const handleFormSuccess = () => {
     loadPurchaseOrders();
   };
@@ -153,6 +183,17 @@ function PurchaseOrdersPage() {
 
   const handleFulfillSuccess = () => {
     loadPurchaseOrders();
+  };
+
+  const handleAddPayment = (po: PurchaseOrder) => {
+    const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
+    setSelectedPurchaseOrder(apiPO || null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleBulkPayment = (orders: PurchaseOrder[]) => {
+    setSelectedOrdersForBulkPayment(orders);
+    setIsBulkPaymentModalOpen(true);
   };
 
   if (loading) {
@@ -197,7 +238,7 @@ function PurchaseOrdersPage() {
         <Card className="mt-5">
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex justify-between">
-              Supplier order list
+              Purchases list
               <Button onClick={handleAddPurchaseOrder}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Purchases
@@ -215,10 +256,17 @@ function PurchaseOrdersPage() {
               onReceive={handleFulfillPurchaseOrder}
               onCancel={handleCancelOrder}
               onDownloadPDF={handleDownloadPDF}
+              onAddPayment={handleAddPayment}
+              onBulkPayment={handleBulkPayment}
               initialSearchQuery={supplierParam || ""}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
+              onPrint={handlePrint}
             />
+            {/* Hidden Print Component */}
+            <div className="hidden">
+                <OrderPrint ref={printRef} order={printingOrder} type="purchase" />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -243,6 +291,29 @@ function PurchaseOrdersPage() {
         onOpenChange={setIsFulfillModalOpen}
         purchaseOrder={selectedPurchaseOrder}
         onSuccess={handleFulfillSuccess}
+      />
+
+      <PaymentFormModal
+        open={isPaymentModalOpen}
+        onOpenChange={setIsPaymentModalOpen}
+        defaultPayableId={selectedPurchaseOrder ? String(selectedPurchaseOrder.id) : undefined}
+        defaultPayableType="purchase_order"
+        onSuccess={() => {
+          setIsPaymentModalOpen(false);
+          loadPurchaseOrders();
+        }}
+      />
+
+      <BulkPaymentModal
+        open={isBulkPaymentModalOpen}
+        onOpenChange={setIsBulkPaymentModalOpen}
+        orders={selectedOrdersForBulkPayment}
+        orderType="purchase_order"
+        onSuccess={() => {
+          setIsBulkPaymentModalOpen(false);
+          setSelectedOrdersForBulkPayment([]);
+          loadPurchaseOrders();
+        }}
       />
     </div>
   );

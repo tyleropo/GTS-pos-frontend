@@ -39,6 +39,7 @@ export const purchaseOrderSchema = z.object({
   subtotal: priceNumber,
   tax: priceNumber,
   total: priceNumber,
+  payment_status: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   items: z.array(purchaseOrderItemSchema).optional(),
   meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
@@ -64,6 +65,7 @@ export const purchaseOrderSchema = z.object({
     date_received: z.string(),
     is_deposited: z.boolean(),
     date_deposited: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
   })).optional(),
 });
 

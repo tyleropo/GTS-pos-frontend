@@ -312,15 +312,21 @@ export default function PurchaseOrderDetailPage({
                             <p className="font-medium">
                               ₱{payment.amount.toFixed(2)}
                             </p>
-                            {payment.is_deposited ? (
-                              <Badge variant="default" className="bg-green-600">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Deposited
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending Deposit
+                            {payment.status && (
+                              <Badge 
+                                variant="outline" 
+                                className={
+                                  ['deposited', 'cleared', 'verified', 'confirmed', 'settled', 'transferred', 'sent', 'charged', 'received', 'paid'].includes(payment.status)
+                                    ? "bg-green-600 text-white border-green-700"
+                                    : "bg-amber-100 text-amber-700 border-amber-300"
+                                }
+                              >
+                                {['deposited', 'cleared', 'verified', 'confirmed', 'settled', 'transferred', 'sent', 'charged', 'received', 'paid'].includes(payment.status) ? (
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                ) : (
+                                  <Clock className="h-3 w-3 mr-1" />
+                                )}
+                                {payment.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                               </Badge>
                             )}
                           </div>
