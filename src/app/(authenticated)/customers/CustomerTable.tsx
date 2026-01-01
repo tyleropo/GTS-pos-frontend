@@ -36,6 +36,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
 import type { Customer } from "@/src/types/customer"
+import { formatCurrency } from "@/src/lib/format-currency";
 import {
   Pagination,
   PaginationContent,
@@ -267,7 +268,7 @@ export function CustomerTable({ customers, customerTypes = [], onEdit, onDelete,
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{customer.orders || 0}</TableCell>
-                    <TableCell className="text-right font-medium">₱{(customer.totalSpent || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">₱{formatCurrency(customer.totalSpent || 0)}</TableCell>
                     <TableCell>{customer.lastPurchase || "N/A"}</TableCell>
                     <TableCell>
                       {customer.status && (

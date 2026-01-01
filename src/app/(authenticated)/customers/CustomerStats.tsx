@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 import { Customer } from '@/src/types/customer';
+import { formatCurrency } from "@/src/lib/format-currency";
 
 const CustomerStats = ({customers}: {customers: Customer[]}) => {
   const totalCustomers = customers.length
@@ -54,7 +55,7 @@ const CustomerStats = ({customers}: {customers: Customer[]}) => {
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">₱{totalRevenue.toFixed(2)}</div>
+          <div className="text-3xl font-bold">₱{formatCurrency(totalRevenue)}</div>
           <p className="text-xs text-muted-foreground">From all customer purchases</p>
         </CardContent>
       </Card>
