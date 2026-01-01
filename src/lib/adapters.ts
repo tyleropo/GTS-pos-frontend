@@ -42,7 +42,7 @@ export function adaptCustomer(apiCustomer: APICustomer): Customer {
 /**
  * Convert API transaction to component transaction
  */
-export function adaptTransaction(apiTransaction: APITransaction): Transaction {
+export function adaptTransaction(apiTransaction: APITransaction, userName?: string): Transaction {
   const created = apiTransaction.created_at || new Date().toISOString();
   const [date, timeWithMs] = created.split("T");
   const time = timeWithMs ? timeWithMs.split(".")[0] : "00:00:00";
@@ -57,7 +57,7 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
     lineItems:
       apiTransaction.items?.map((item) => ({
         product_id: item.product_id,
-        product_name: item.product_name || "Unknown Product",
+        product_name: item.product_name || "Item",
         quantity: item.quantity,
         unit_price: Number(item.unit_price),
         line_total: Number(item.line_total),
@@ -70,7 +70,7 @@ export function adaptTransaction(apiTransaction: APITransaction): Transaction {
         ? "Credit Card"
         : "GCash",
     status: "Completed", // Transactions from backend are completed
-    cashier: "System", // Can be enhanced if backend provides this
+    cashier: userName || "System",
     meta: apiTransaction.meta,
   };
 }
@@ -97,10 +97,13 @@ export function adaptPurchaseOrder(
     status:
       apiPurchaseOrder.status.charAt(0).toUpperCase() +
       apiPurchaseOrder.status.slice(1),
-    paymentStatus: 
-      apiPurchaseOrder.payments && apiPurchaseOrder.payments.length > 0 
-        ? "Paid" 
-        : "Pending",
+    paymentStatus: (
+      apiPurchaseOrder.payment_status 
+        ? apiPurchaseOrder.payment_status.charAt(0).toUpperCase() + apiPurchaseOrder.payment_status.slice(1)
+        : apiPurchaseOrder.payments && apiPurchaseOrder.payments.length > 0 
+          ? "Paid" 
+          : "Pending"
+    ) as PurchaseOrder["paymentStatus"],
     deliveryDate: apiPurchaseOrder.expected_at || date,
   };
 }
@@ -129,9 +132,11 @@ export function adaptCustomerOrder(
       apiCustomerOrder.status.slice(1)
     ) as CustomerOrder["status"],
     paymentStatus: (
-      apiCustomerOrder.payments && apiCustomerOrder.payments.length > 0 
-        ? "Paid" 
-        : "Pending"
+      apiCustomerOrder.payment_status 
+        ? apiCustomerOrder.payment_status.charAt(0).toUpperCase() + apiCustomerOrder.payment_status.slice(1)
+        : apiCustomerOrder.payments && apiCustomerOrder.payments.length > 0 
+          ? "Paid" 
+          : "Pending"
     ) as CustomerOrder["paymentStatus"],
     deliveryDate: apiCustomerOrder.expected_at || date,
   };

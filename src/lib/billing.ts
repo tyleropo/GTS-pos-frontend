@@ -66,6 +66,7 @@ export function aggregateCustomerData(
             description: `${repair.device} - ${repair.issue} (Labor/Service)`,
             referenceId: repair.ticketNumber || String(repair.id),
             amount: repair.cost,
+            itemDescription: repair.resolution || undefined
         });
     }
 
@@ -96,6 +97,7 @@ export function aggregateCustomerData(
             description: `${repair.device} - ${repair.issue}`,
             referenceId: repair.ticketNumber || String(repair.id),
             amount: 0,
+            itemDescription: repair.resolution || undefined
         });
     }
   });
@@ -141,7 +143,8 @@ export function aggregateCustomerData(
             referenceId: order.co_number || String(order.id),
             amount: lineTotal,
             quantity: qty,
-            unitPrice: price
+            unitPrice: price,
+            itemDescription: item.description || undefined
           });
         });
     } else {

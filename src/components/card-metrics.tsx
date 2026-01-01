@@ -95,11 +95,11 @@ export function CardMetric({
         </div>
         {percentage ? (
           <CardDescription className={`flex items-center gap-1 ${color}`}>
-            {TrendIcon ? <TrendIcon className="h-4 w-4" /> : null}
+            {/* {TrendIcon ? <TrendIcon className="h-4 w-4" /> : null}
             <span className="font-medium">
               {typeof percentage === "number" ? `${percentage}%` : percentage}
             </span>
-            <span className="text-muted-foreground text-xs">vs yesterday</span>
+            <span className="text-muted-foreground text-xs">vs yesterday</span> */}
           </CardDescription>
         ) : null}
       </CardHeader>
