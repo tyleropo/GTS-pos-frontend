@@ -58,7 +58,7 @@ export const paymentSchema = z.object({
   type: z.enum(["inbound", "outbound"]),
   reference_number: z.string().nullable().optional(),
   amount: priceNumber,
-  payment_method: z.enum(["cash", "cheque", "bank_transfer", "credit_card"]),
+  payment_method: z.enum(["cash", "cheque", "bank_transfer", "credit_card", "online_wallet"]),
   bank_name: z.string().nullable().optional(),
   account_number: z.string().nullable().optional(),
   date_received: z.string(),
@@ -93,7 +93,7 @@ export type CreatePaymentPayload = {
   payable_type: "purchase_order" | "customer_order";
   reference_number?: string | null;
   amount: number;
-  payment_method: "cash" | "cheque" | "bank_transfer" | "credit_card";
+  payment_method: "cash" | "cheque" | "bank_transfer" | "credit_card" | "online_wallet";
   bank_name?: string | null;
   account_number?: string | null;
   date_received: string;

@@ -245,7 +245,7 @@ export function PaymentFormModal({
                     setForm(f => ({ ...f, payable_id: "" }));
                   }}
                 >
-                  Outbound (Supplier)
+                  Payable (Supplier)
                 </Button>
                 <Button
                   type="button"
@@ -256,7 +256,7 @@ export function PaymentFormModal({
                      setForm(f => ({ ...f, payable_id: "" }));
                   }}
                 >
-                  Inbound (Customer)
+                  Receivable (Customer)
                 </Button>
               </div>
             )}
@@ -282,14 +282,7 @@ export function PaymentFormModal({
                         : customerOrders.find(co => String(co.id) === form.payable_id)?.co_number) +
                       " - " +
                       (orderType === "purchase_order" 
-                        ? (purchaseOrders.find(po => String(po.id) === form.payable_id)?.customer?.name || // Note: adapter maps supplier to customer prop currently? No, I fixed adapter.
-                           // Wait, check adapter. PurchaseOrder has 'supplier'.
-                           // But I only updated the type definition! The validation in `payment.ts` was updated. 
-                           // `purchaseOrdersData` comes from `fetchPurchaseOrders`. 
-                           // `fetchPurchaseOrders` uses `purchaseOrderSchema`? 
-                           // Let's assume standard API response.
-                           // Using optional chaining safe access.
-                           purchaseOrders.find(po => String(po.id) === form.payable_id)?.supplier?.company_name || "Unknown")
+                        ? (purchaseOrders.find(po => String(po.id) === form.payable_id)?.supplier?.company_name || "Unknown")
                         : (customerOrders.find(co => String(co.id) === form.payable_id)?.customer?.name || "Unknown")) +
                       " (₱" +
                       currentOrders
@@ -402,12 +395,15 @@ export function PaymentFormModal({
                   <SelectItem value="cheque">Cheque</SelectItem>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="credit_card">Credit Card</SelectItem>
+                  <SelectItem value="online_wallet">Online Wallet</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date_received">Date Received *</Label>
+              <Label htmlFor="date_received">
+                {orderType === "purchase_order" ? "Date Paid *" : "Date Received *"}
+              </Label>
               <Input
                 id="date_received"
                 type="date"
@@ -421,28 +417,37 @@ export function PaymentFormModal({
           </div>
 
           {form.payment_method !== "cash" && (
-            <div className="grid grid-cols-2 gap-4 bg-muted/50 p-3 rounded-md">
-              <div className="space-y-2">
-                <Label htmlFor="bank_name">Bank Name</Label>
-                <Input
-                  id="bank_name"
-                  placeholder="e.g. BDO, BPI"
-                  value={form.bank_name || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, bank_name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="account_number">Account Number</Label>
-                <Input
-                  id="account_number"
-                  placeholder="e.g. 1234-5678-90"
-                  value={form.account_number || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, account_number: e.target.value })
-                  }
-                />
+            <div className="bg-muted/50 p-3 rounded-md space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                {orderType === "purchase_order" ? "Recipient's Bank Details (Supplier)" : "Bank Details"}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bank_name">
+                    {orderType === "purchase_order" ? "Bank Name" : "Bank Name"}
+                  </Label>
+                  <Input
+                    id="bank_name"
+                    placeholder="e.g. BDO, BPI"
+                    value={form.bank_name || ""}
+                    onChange={(e) =>
+                      setForm({ ...form, bank_name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="account_number">
+                    {orderType === "purchase_order" ? "Account Number" : "Account Number"}
+                  </Label>
+                  <Input
+                    id="account_number"
+                    placeholder="e.g. 1234-5678-90"
+                    value={form.account_number || ""}
+                    onChange={(e) =>
+                      setForm({ ...form, account_number: e.target.value })
+                    }
+                  />
+                </div>
               </div>
             </div>
           )}

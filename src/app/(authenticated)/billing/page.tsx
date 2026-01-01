@@ -23,8 +23,9 @@ import {
 } from "@/src/types/billing";
 import { fetchCustomers } from "@/src/lib/api/customers";
 import { type Customer } from "@/src/types/customer";
-import { fetchTransactions } from "@/src/lib/api/transactions";
+import { fetchCustomerOrders } from "@/src/lib/api/customer-orders";
 import { fetchRepairs } from "@/src/lib/api/repairs";
+import { adaptRepair } from "@/src/lib/adapters";
 import { getSetting, upsertSetting } from "@/src/lib/api/settings";
 import { DateRange } from "react-day-picker";
 
@@ -37,10 +38,19 @@ import {
 import { X } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/src/components/ui/select";
+
 export default function BillingPage() {
     const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
     const [customerTabs, setCustomerTabs] = useState<CustomerBillingTab[]>([]);
     const [activeTab, setActiveTab] = useState<string>("");
+    const [itemFilter, setItemFilter] = useState<"all" | "products" | "repairs">("all");
 
     // Default to quarterly period with current quarter
     const currentQuarter = getCurrentQuarter();
@@ -139,17 +149,17 @@ export default function BillingPage() {
             setActiveTab(newTabs[0]?.customerId ?? "");
 
             // Fetch data for all selected customers
-            const [txResponse, repairsResponse] = await Promise.all([
-                fetchTransactions({
+            const [ordersResponse, repairsResponse] = await Promise.all([
+                fetchCustomerOrders({
                     customer_ids: selectedCustomerIds,
-                    start_date: dateRange.from.toISOString(),
-                    end_date: dateRange.to.toISOString(),
+                    date_from: dateRange.from.toISOString(),
+                    date_to: dateRange.to.toISOString(),
                     per_page: 1000 // Fetch all
                 }),
                 fetchRepairs({
                     customer_ids: selectedCustomerIds,
-                    start_date: dateRange.from.toISOString(),
-                    end_date: dateRange.to.toISOString(),
+                    date_from: dateRange.from.toISOString(),
+                    date_to: dateRange.to.toISOString(),
                     per_page: 1000
                 })
             ]);
@@ -160,23 +170,26 @@ export default function BillingPage() {
                 const customer = availableCustomers.find(c => c.id.toString() === customerId);
                 if (!customer) return;
 
+                // Adapt repairs to domain type
+                const adaptedRepairs = (repairsResponse.data || []).map(adaptRepair);
+
                 // Filter transactions/repairs for this customer in memory
-                const custTransactions = txResponse.data.filter(t => 
-                   String(t.customer_id) === customerId
+                // Although API filtered by ID list, we separate them per customer for the statement
+                const custOrders = ordersResponse.data.filter(o => 
+                   String(o.customer_id) === customerId
                 );
                 
-                // Use type assertion for repairs as the API typing might be imperfect or mismatching
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const repairsData = (repairsResponse.data || []) as any[];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const custRepairs = repairsData.filter((r: any) => 
-                    String(r.customer_id) === customerId
+                const custRepairs = adaptedRepairs.filter((r) => 
+                    r.customerId === customerId
                 );
+
+                const finalOrders = itemFilter === "repairs" ? [] : custOrders;
+                const finalRepairs = itemFilter === "products" ? [] : custRepairs;
 
                 newStatements[customerId] = generateBillingStatement(
                     customer,
-                    custRepairs,
-                    custTransactions as any, // Temporary cast until Transaction type unification
+                    finalRepairs,
+                    finalOrders, 
                     {
                         startDate: dateRange.from!,
                         endDate: dateRange.to!,
@@ -191,7 +204,7 @@ export default function BillingPage() {
         } finally {
             setIsLoadingData(false);
         }
-    }, [dateRange, selectedCustomerIds, availableCustomers]);
+    }, [dateRange, selectedCustomerIds, availableCustomers, itemFilter]);
 
 
     const handleCloseTab = useCallback(
@@ -251,6 +264,26 @@ export default function BillingPage() {
                             dateRange={dateRange}
                             onDateRangeChange={setDateRange}
                         />
+
+                        {/* Item Type Filter */}
+                        <div className="grid gap-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Include Items
+                            </label>
+                            <Select 
+                                value={itemFilter} 
+                                onValueChange={(value: "all" | "products" | "repairs") => setItemFilter(value)}
+                            >
+                                <SelectTrigger className="w-[280px]">
+                                    <SelectValue placeholder="Select items to include" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Items (Products & Repairs)</SelectItem>
+                                    <SelectItem value="products">Products Only</SelectItem>
+                                    <SelectItem value="repairs">Repairs Only</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardContent>
                 </Card>
 

@@ -1,7 +1,7 @@
 import { Customer } from "@/src/types/customer";
 import { Repair } from "@/src/types/repair";
-// Use the API transaction type which is more complete, or valid "any" for now to support migration
-import { Transaction } from "@/src/lib/api/transactions";
+// Use CustomerOrder for billing
+import { CustomerOrder } from "@/src/lib/api/customer-orders";
 import {
   BillingLineItem,
   BillingStatement,
@@ -31,22 +31,21 @@ export function filterByDateRange<T>(
 }
 
 /**
- * Aggregate repairs and transactions for a customer within a date range
+ * Aggregate repairs and customer orders for a customer within a date range
  */
 export function aggregateCustomerData(
   customer: Customer,
   repairs: Repair[],
-  transactions: Transaction[],
+  orders: CustomerOrder[],
   period: BillingPeriod
 ): BillingLineItem[] {
   const lineItems: BillingLineItem[] = [];
 
   // Filter repairs for this customer within date range
   const customerRepairs = repairs.filter(
-    (repair) => repair.customer === customer.name 
-    // Note: If API doesn't return customer name in repair, this check might fail. 
-    // Ideally we filter by customer_id if available, but for now name match.
-    // Or we rely on the caller passing already filtered list.
+    (repair) => 
+        (repair.customerId && String(repair.customerId) === String(customer.id)) || 
+        repair.customer === customer.name
   );
   
   const filteredRepairs = filterByDateRange(
@@ -58,76 +57,102 @@ export function aggregateCustomerData(
 
   // Add repair line items
   filteredRepairs.forEach((repair) => {
-    lineItems.push({
-      id: String(repair.id),
-      date: repair.date,
-      type: "repair",
-      description: `${repair.device} - ${repair.issue}`,
-      referenceId: String(repair.id),
-      amount: repair.cost,
-    });
+    // 1. Add labor cost as a repair line item if > 0
+    if (repair.cost > 0) {
+        lineItems.push({
+            id: String(repair.id) + "-labor",
+            date: repair.date,
+            type: "repair",
+            description: `${repair.device} - ${repair.issue} (Labor/Service)`,
+            referenceId: repair.ticketNumber || String(repair.id),
+            amount: repair.cost,
+        });
+    }
+
+    // 2. Add parts as product line items
+    if (repair.products && repair.products.length > 0) {
+        repair.products.forEach((product, index) => {
+            const qty = product.pivot?.quantity || 1;
+            const price = product.pivot?.unit_price || product.selling_price || 0;
+            const lineTotal = product.pivot?.total_price || (qty * price);
+
+            lineItems.push({
+                id: String(repair.id) + "-part-" + (product.id || index),
+                date: repair.date,
+                type: "product", // Classify as product so it appears in the products section
+                description: `Part: ${product.name} (Ticket: ${repair.ticketNumber})`,
+                referenceId: repair.ticketNumber,
+                quantity: qty,
+                unitPrice: price,
+                amount: lineTotal
+            });
+        });
+    } else if (repair.cost === 0 && (!repair.products || repair.products.length === 0)) {
+        // Fallback for empty repair with 0 cost - just to show it exists
+        lineItems.push({
+            id: String(repair.id),
+            date: repair.date,
+            type: "repair",
+            description: `${repair.device} - ${repair.issue}`,
+            referenceId: repair.ticketNumber || String(repair.id),
+            amount: 0,
+        });
+    }
   });
 
-  // Filter transactions for this customer within date range
-  // We assume transactions are already filtered by customer_id/ids from API if passed.
-  // But let's keep name check if possible, or skip it if we blindly trust caller.
-  // Checking transaction.customer_id vs customer.id is better.
-  const customerTransactions = transactions.filter(
-    (transaction) => {
+  // Filter orders for this customer within date range
+  const customerOrders = orders.filter(
+    (order) => {
        // Check ID match if available
-       if (transaction.customer_id && String(transaction.customer_id) === String(customer.id)) return true;
+       if (order.customer_id && String(order.customer_id) === String(customer.id)) return true;
        // Fallback to name match if populated
-       if (transaction.customer && transaction.customer.name === customer.name) return true;
+       if (order.customer && order.customer.name === customer.name) return true;
        return false;
     }
   );
   
-  const filteredTransactions = filterByDateRange(
-    customerTransactions,
+  const filteredOrders = filterByDateRange(
+    customerOrders,
     period.startDate,
     period.endDate,
-    (t) => t.created_at || (t as any).date || "" // Handle API created_at or mock date
+    (o) => o.created_at || "" // Handle API created_at
   );
 
-  // Add transaction/product line items
-  filteredTransactions.forEach((transaction) => {
-    // Check if items is array or number (handling both mock and API structure)
-    // We expect API to return items array now
-    const items = (transaction as any).items || transaction.items;
+  // Add order/product line items
+  filteredOrders.forEach((order) => {
+    const items = order.items || [];
 
     // Get date string safely
-    const txDate = transaction.created_at || (transaction as any).date || "";
-    const formattedDate = txDate.split('T')[0]; // Ensure YYYY-MM-DD
+    const orderDate = order.created_at || "";
+    const formattedDate = orderDate.split('T')[0]; // Ensure YYYY-MM-DD
     
     if (Array.isArray(items) && items.length > 0) {
         // Explode items into individual line items
         items.forEach((item: any, index: number) => {
-            const qty = item.quantity || 1;
-            const price = item.unit_price || 0;
+            const qty = item.quantity_ordered || 1;
+            const price = item.unit_cost || 0;
             const lineTotal = item.line_total || (qty * price);
 
-           lineItems.push({
-            id: String(transaction.id) + "-" + index,
+            lineItems.push({
+            id: String(order.id) + "-" + index,
             date: formattedDate,
             type: "product",
             description: item.product_name || `Product ${index + 1}`,
-            referenceId: transaction.invoice_number || String(transaction.id),
+            referenceId: order.co_number || String(order.id),
             amount: lineTotal,
             quantity: qty,
             unitPrice: price
           });
         });
     } else {
-        // Fallback for transactions without items (legacy/mock or summary only)
-        const itemCount = typeof items === 'number' ? items : 0;
-        
+        // Fallback for orders without items
         lineItems.push({
-          id: String(transaction.id),
+          id: String(order.id),
           date: formattedDate,
           type: "product",
-          description: `Products (${itemCount} items) - [Summary]`,
-          referenceId: transaction.invoice_number || String(transaction.id),
-          amount: typeof transaction.total === 'number' ? transaction.total : parseFloat(String(transaction.total) || '0'),
+          description: `Order ${order.co_number} [Summary]`,
+          referenceId: order.co_number || String(order.id),
+          amount: typeof order.total === 'number' ? order.total : parseFloat(String(order.total) || '0'),
         });
     }
   });
@@ -148,13 +173,13 @@ export function aggregateCustomerData(
 export function generateBillingStatement(
   customer: Customer,
   repairs: Repair[],
-  transactions: Transaction[],
+  orders: CustomerOrder[],
   period: BillingPeriod
 ): BillingStatement {
   const lineItems = aggregateCustomerData(
     customer,
     repairs,
-    transactions,
+    orders,
     period
   );
 

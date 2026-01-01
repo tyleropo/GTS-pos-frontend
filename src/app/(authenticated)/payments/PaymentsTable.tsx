@@ -5,6 +5,8 @@ import {
   fetchPayments,
   deletePayment,
 } from "@/src/lib/api/payments";
+import type { CustomerOrder } from "@/src/lib/api/customer-orders";
+import type { PurchaseOrder } from "@/src/lib/api/purchase-orders";
 import {
   Table,
   TableBody,
@@ -94,7 +96,7 @@ export default function PaymentsTable() {
                       ? "bg-green-100 text-green-700 hover:bg-green-100 border-green-200" 
                       : "bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200"
                   }>
-                    {payment.type === 'inbound' ? 'Inbound' : 'Outbound'}
+                    {payment.type === 'inbound' ? 'Receivable' : 'Payable'}
                   </Badge>
                 </TableCell>
                 <TableCell className="font-medium">
@@ -111,11 +113,10 @@ export default function PaymentsTable() {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {payment.payable?.supplier?.company_name || 
-                   payment.payable?.supplier?.contact_person ||
-                   payment.payable?.customer?.name || 
-                   payment.payable?.customer?.company ||
-                   "-"}
+                  {payment.type === 'inbound' 
+                    ? ((payment.payable as CustomerOrder)?.customer?.name || (payment.payable as CustomerOrder)?.customer?.company || "-")
+                    : ((payment.payable as PurchaseOrder)?.supplier?.company_name || (payment.payable as PurchaseOrder)?.supplier?.contact_person || "-")
+                  }
                 </TableCell>
                 <TableCell>
                   {new Intl.NumberFormat("en-US", {
