@@ -1,6 +1,11 @@
+
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { updateProduct, deleteProduct, archiveProduct, type Product, type Category, type Supplier } from "@/src/lib/api/products";
+import { ProductFormModal } from "./ProductFormModal";
+import { AdjustStockModal } from "./AdjustStockModal";
 import type { InventoryItem } from "@/src/types/inventory";
-import type { Category } from "@/src/lib/api/products";
 import {
   Table,
   TableBody,
@@ -53,6 +58,7 @@ import {
 type InventoryTableProps = {
   items: InventoryItem[];
   categories: Category[];
+  suppliers: Supplier[];
   isLoading?: boolean;
   onProductUpdated?: () => void;
   onEdit?: (product: InventoryItem) => void;
@@ -68,6 +74,7 @@ type InventoryTableProps = {
 };
 
 const deriveStatus = (item: InventoryItem) => {
+  if (item.status === 'draft') return "draft";
   if (item.stock_quantity <= 0) return "out-of-stock";
   if (item.stock_quantity <= item.reorder_level) return "low-stock";
   return "in-stock";
@@ -77,12 +84,15 @@ const statusLabel: Record<string, string> = {
   "in-stock": "In Stock",
   "low-stock": "Low Stock",
   "out-of-stock": "Out of Stock",
+  "draft": "Draft",
 };
 
 export function InventoryTable({
   items,
   categories,
+  suppliers,
   isLoading,
+  onProductUpdated,
   onEdit,
   page = 1,
   totalPages = 1,
@@ -140,6 +150,49 @@ export function InventoryTable({
     });
   }, [items, statusFilter, categoryFilter, searchQuery, propSearchQuery]);
 
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productFormOpen, setProductFormOpen] = useState(false);
+  const [adjustStockOpen, setAdjustStockOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleEdit = (product: InventoryItem) => {
+      // If props onEdit is provided, usage depends on parent, but here we want to handle local modal too?
+      // The current code uses onEdit prop. 
+      // User requested flow for "Adjust stock" and "Archive".
+      // handleEdit is already used in the table: onSelect={() => onEdit?.(item)}
+      // We should probably keep using onEdit for the main edit action if it's passed.
+      // But for Adjust Stock and Archive, we implement locally.
+      if (onEdit) {
+          onEdit(product);
+      } else {
+        setSelectedProduct(product);
+        setProductFormOpen(true);
+      }
+  };
+
+  const handleAdjustStock = (product: InventoryItem) => {
+    setSelectedProduct(product);
+    setAdjustStockOpen(true);
+  };
+
+  const handleArchive = (product: InventoryItem) => {
+    // Wrap in setTimeout to avoid conflict with dropdown close animation
+    setTimeout(async () => {
+      if (!confirm("Are you sure you want to archive this product? It will be marked as discontinued.")) {
+        return;
+      }
+      try {
+        await archiveProduct(String(product.id));
+        toast.success("Product archived successfully");
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        onProductUpdated?.();
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to archive product");
+      }
+    }, 100);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -151,6 +204,29 @@ export function InventoryTable({
 
   return (
     <div className="space-y-4">
+      <ProductFormModal
+        open={productFormOpen}
+        onOpenChange={setProductFormOpen}
+        product={selectedProduct || undefined}
+        categories={categories || []}
+        suppliers={suppliers || []}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["products"] });
+          onProductUpdated?.();
+        }}
+      />
+
+      {selectedProduct && (
+        <AdjustStockModal
+          open={adjustStockOpen}
+          onOpenChange={setAdjustStockOpen}
+          product={selectedProduct}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["products"] });
+            onProductUpdated?.();
+          }}
+        />
+      )}
       <Tabs
         defaultValue="all"
         value={statusFilter}
@@ -160,6 +236,7 @@ export function InventoryTable({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <TabsList className="w-full max-w-xl justify-start">
             <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="draft">Draft Products</TabsTrigger>
             <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
             <TabsTrigger value="out-of-stock">Out of Stock</TabsTrigger>
           </TabsList>
@@ -232,6 +309,7 @@ export function InventoryTable({
                       <SelectItem value="out-of-stock">
                         Out of Stock
                       </SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -264,13 +342,23 @@ export function InventoryTable({
                 </TableRow>
               ) : (
                 filteredItems.map((item) => {
+                  // Derive status for display
                   const status = deriveStatus(item);
+                  
+                  // Determine stock badge variant
                   const stockBadgeVariant =
                     status === "in-stock"
                       ? "outline"
                       : status === "low-stock"
                         ? "secondary"
-                        : "destructive";
+                        : status === "draft"
+                          ? "default"
+                          : "destructive";
+                  
+                  // Custom styling for draft badge
+                  const badgeClassName = status === "draft" 
+                    ? "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200" 
+                    : "";
 
                   return (
                     <TableRow key={item.id}>
@@ -299,7 +387,7 @@ export function InventoryTable({
                         ) : null}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={stockBadgeVariant}>
+                        <Badge variant={stockBadgeVariant} className={badgeClassName}>
                           {statusLabel[status]}
                         </Badge>
                       </TableCell>
@@ -315,17 +403,20 @@ export function InventoryTable({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onSelect={() => onEdit?.(item)}
+                              onSelect={() => handleEdit(item)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAdjustStock(item)}>
                               <Plus className="mr-2 h-4 w-4" />
                               Adjust stock
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onSelect={() => handleArchive(item)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Archive product
                             </DropdownMenuItem>

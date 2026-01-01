@@ -23,9 +23,9 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Check } from "lucide-react";
+import { Loader2, Plus, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, type Product, type Category, type Supplier } from "@/src/lib/api/products";
+import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, approveProduct, type Product, type Category, type Supplier } from "@/src/lib/api/products";
 import { useState } from "react";
 import { ImageUpload } from "@/src/components/image-upload";
 import {
@@ -43,6 +43,7 @@ import {
 } from "@/src/components/ui/popover";
 import { cn } from "@/src/lib/utils";
 import { ChevronsUpDown } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/src/components/ui/alert";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required").max(255, "Name is too long"),
@@ -87,7 +88,7 @@ export function ProductFormModal({
 }: ProductFormModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!product;
-
+  const isDraft = product?.status === 'draft';
 
 
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -177,8 +178,16 @@ export function ProductFormModal({
       };
 
       if (product) {
-        await updateProduct(String(product.id), payload);
-        toast.success("Product updated successfully");
+        if (isDraft) {
+            // First update the product with changes
+            await updateProduct(String(product.id), payload);
+            // Then approve it
+            await approveProduct(String(product.id));
+            toast.success("Product finalized and activated successfully");
+        } else {
+            await updateProduct(String(product.id), payload);
+            toast.success("Product updated successfully");
+        }
       } else {
         await createProduct(payload);
         toast.success("Product created successfully");
@@ -213,14 +222,24 @@ export function ProductFormModal({
       <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Product" : "Add New Product"}
+            {isEditing ? (isDraft ? "Finalize Draft Product" : "Edit Product") : "Add New Product"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update product information below."
+              ? (isDraft ? "Review and finalize this draft product to make it available for sale." : "Update product information below.")
               : "Fill in the product details below."}
           </DialogDescription>
         </DialogHeader>
+
+        {isDraft && (
+            <Alert className="mb-4 bg-amber-50 text-amber-900 border-amber-200">
+                <AlertTriangle className="h-4 w-4 stroke-amber-600" />
+                <AlertTitle>Draft Product</AlertTitle>
+                <AlertDescription>
+                    This product was created from a purchase order and needs to be finalized before it can be used in sales.
+                </AlertDescription>
+            </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -708,7 +727,7 @@ export function ProductFormModal({
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isEditing ? "Update product" : "Create"}
+                {isEditing ? (isDraft ? "Finalize Product" : "Update product") : "Create"}
               </Button>
             </DialogFooter>
           </form>

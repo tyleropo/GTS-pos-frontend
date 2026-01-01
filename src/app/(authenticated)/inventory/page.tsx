@@ -51,6 +51,7 @@ export default function InventoryPage() {
     () => ({
       page,
       per_page: perPage,
+      include_drafts: true,
     }),
     [page, perPage]
   );
@@ -160,6 +161,7 @@ export default function InventoryPage() {
             <InventoryTable
               items={products}
               categories={categories}
+              suppliers={suppliers}
               isLoading={isLoading}
               onProductUpdated={refreshProducts}
               onEdit={handleEditProduct}

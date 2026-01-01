@@ -166,7 +166,7 @@ export function SupplierTable({ suppliers, onEdit, onDelete, page = 1, totalPage
                             }}
                           >
                             <FileText className="h-4 w-4 mr-2" />
-                            View Purchase Orders
+                            View Purchases
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

@@ -54,6 +54,7 @@ export const productSchema = z.object({
   max_stock_level: z.coerce.number().nullish(),
   image_url: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
+  status: z.enum(['draft', 'active', 'discontinued']).default('active'),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   category: categorySchema.nullable().optional(),
@@ -68,6 +69,16 @@ const paginatedProductSchema = z.object({
 });
 
 export type Product = z.infer<typeof productSchema>;
+
+export interface DraftProductApproval {
+  product_id: string;
+  selling_price: number;
+  markup_percentage?: number;
+  brand?: string;
+  model?: string;
+  barcode?: string;
+  category_id?: string;
+}
 export type Category = z.infer<typeof categorySchema>;
 export type Supplier = z.infer<typeof supplierSchema>;
 
@@ -77,6 +88,8 @@ export type FetchProductsParams = {
   page?: number;
   per_page?: number;
   low_stock?: boolean;
+  include_drafts?: boolean;
+  status?: 'draft' | 'active' | 'discontinued';
 };
 
 export async function fetchProducts(
@@ -130,7 +143,10 @@ export async function updateProduct(
   const { data } = await apiClient.put(`/products/${productId}`, payload);
   return productSchema.parse(data);
 }
-
+export async function deleteProduct(productId: string) {
+  const { data } = await apiClient.delete(`/products/${productId}`);
+  return data;
+}
 export async function uploadProductImage(file: File) {
   const formData = new FormData();
   formData.append("image", file);
@@ -149,9 +165,35 @@ export async function createCategory(name: string) {
   return categorySchema.parse(data);
 }
 
+export async function approveProduct(productId: string): Promise<Product> {
+  const { data } = await apiClient.post(`/products/${productId}/approve`);
+  return productSchema.parse(data);
+}
+
 export async function createSupplier(name: string) {
   const { data } = await apiClient.post("/suppliers", { company_name: name });
   return supplierSchema.parse(data);
+}
+
+export async function adjustStock(
+  productId: string,
+  data: {
+    quantity: number;
+    type: 'add' | 'subtract' | 'set';
+    reason: string;
+    notes?: string;
+  }
+) {
+  const { data: response } = await apiClient.post(
+    `/products/${productId}/adjust-stock`,
+    data
+  );
+  return productSchema.parse(response);
+}
+
+export async function archiveProduct(productId: string) {
+  const { data } = await apiClient.post(`/products/${productId}/archive`);
+  return productSchema.parse(data);
 }
 
 
