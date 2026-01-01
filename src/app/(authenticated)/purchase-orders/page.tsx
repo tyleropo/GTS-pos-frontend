@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardDescription,
@@ -10,28 +12,52 @@ import {
 import { SiteHeader } from "@/src/components/site-header";
 import { Button } from "@/src/components/ui/button";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import PurchaseOrderStats from "./PurchaseOrderStats";
 import PurchaseOrderTable from "./PurchaseOrderTable";
 import { PurchaseOrderFormModal } from "./PurchaseOrderFormModal";
 import { DeletePurchaseOrderDialog } from "./DeletePurchaseOrderDialog";
 import { FulfillPurchaseOrderModal } from "./FulfillPurchaseOrderModal";
+
 import { fetchPurchaseOrders, updatePurchaseOrder, fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
-import { useEffect, useState } from "react";
 import type { PurchaseOrder } from "@/src/types/purchaseOrder";
 import type { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
 import { adaptPurchaseOrder } from "@/src/lib/adapters";
-import { toast } from "sonner";
-import { generatePurchaseOrderPDF } from "./utils/pdf-generator";
+import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
-
-//TODO:  Add feature where the incoming stocks are automatically added to the inventory but will prompt for more details like stocks etc. when an existing product it would add 
 function PurchaseOrdersPage() {
+  const searchParams = useSearchParams();
+  const supplierParam = searchParams.get('supplier');
+
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [apiPurchaseOrders, setApiPurchaseOrders] = useState<APIPurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Modal states
+// ...
+  
+  // Filter purchase orders based on date range
+  const filteredPurchaseOrders = purchaseOrders.filter((po) => {
+    if (!dateRange?.from) return true;
+    
+    const poDate = new Date(po.date);
+    if (dateRange.to) {
+      return isWithinInterval(poDate, {
+        start: startOfDay(dateRange.from),
+        end: endOfDay(dateRange.to)
+      });
+    } else {
+      return isWithinInterval(poDate, {
+         start: startOfDay(dateRange.from),
+         end: endOfDay(dateRange.from)
+      });
+    }
+  });
+
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
@@ -103,13 +129,14 @@ function PurchaseOrdersPage() {
     }
   };
 
-  const handleDownloadPDF = (po: PurchaseOrder) => {
-    const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
-    if (!apiPO) return;
+  const handleDownloadPDF = (_po: PurchaseOrder) => {
+    // const apiPO = apiPurchaseOrders.find(p => String(p.id) === po.id);
+    // if (!apiPO) return;
 
     try {
-      generatePurchaseOrderPDF(apiPO);
-      toast.success("PDF downloaded successfully");
+      // generatePurchaseOrderPDF(apiPO);
+      console.log(_po);
+      toast.info("PDF generation not yet implemented");
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to generate PDF");
@@ -132,11 +159,11 @@ function PurchaseOrdersPage() {
     return (
       <div className="flex flex-col">
         <SiteHeader
-          title="Purchase orders"
+          title="Purchases"
           subtitle="Review vendor commitments and initiate new replenishment orders."
         />
         <div className="p-4">
-          <p className="text-muted-foreground">Loading purchase orders...</p>
+          <p className="text-muted-foreground">Loading purchases...</p>
         </div>
       </div>
     );
@@ -146,7 +173,7 @@ function PurchaseOrdersPage() {
     return (
       <div className="flex flex-col">
         <SiteHeader
-          title="Purchase orders"
+          title="Purchases"
           subtitle="Review vendor commitments and initiate new replenishment orders."
         />
         <div className="p-4">
@@ -162,32 +189,35 @@ function PurchaseOrdersPage() {
   return (
     <div className="flex flex-col">
       <SiteHeader
-        title="Purchase orders"
-        subtitle="Manage purchase orders and track fulfillment status."
+        title="Purchases"
+        subtitle="Manage purchases and track fulfillment status."
       />
       <div className="p-4">
-        <PurchaseOrderStats purchaseOrders={purchaseOrders} />
+        <PurchaseOrderStats purchaseOrders={filteredPurchaseOrders} />
         <Card className="mt-5">
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex justify-between">
               Supplier order list
               <Button onClick={handleAddPurchaseOrder}>
                 <Plus className="mr-2 h-4 w-4" />
-                New Purchase order
+                New Purchases
               </Button>
             </CardTitle>
             <CardDescription>
-              Manage your purchase orders and fulfillment
+              Manage your purchases and fulfillment
             </CardDescription>
           </CardHeader>
           <CardContent>
             <PurchaseOrderTable
-              purchaseOrders={purchaseOrders}
+              purchaseOrders={filteredPurchaseOrders}
               onEdit={handleEditPurchaseOrder}
               onDelete={handleDeletePurchaseOrder}
               onReceive={handleFulfillPurchaseOrder}
               onCancel={handleCancelOrder}
               onDownloadPDF={handleDownloadPDF}
+              initialSearchQuery={supplierParam || ""}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
           </CardContent>
         </Card>

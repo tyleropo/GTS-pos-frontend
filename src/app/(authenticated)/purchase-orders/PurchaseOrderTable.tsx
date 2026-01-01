@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { format } from 'date-fns'
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
@@ -10,6 +10,8 @@ import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { PurchaseOrder } from '@/src/types/purchaseOrder'
 import Link from 'next/link'
+import { DateRangePicker } from '@/src/components/date-range-picker'
+import { DateRange } from 'react-day-picker'
 
 interface PurchaseOrderTableProps {
   purchaseOrders: PurchaseOrder[];
@@ -18,6 +20,9 @@ interface PurchaseOrderTableProps {
   onReceive?: (po: PurchaseOrder) => void;
   onCancel?: (po: PurchaseOrder) => void;
   onDownloadPDF?: (po: PurchaseOrder) => void;
+  initialSearchQuery?: string;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 const PurchaseOrderTable = ({
@@ -27,8 +32,11 @@ const PurchaseOrderTable = ({
   onReceive,
   onCancel,
   onDownloadPDF,
+  initialSearchQuery = "",
+  dateRange,
+  onDateRangeChange,
 }: PurchaseOrderTableProps) => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("all-orders")
@@ -46,6 +54,26 @@ const PurchaseOrderTable = ({
     // Payment status filter
     const matchesPayment = paymentFilter === "all" || (po.paymentStatus || "").toLowerCase() === paymentFilter.toLowerCase()
 
+    // Date range filter
+    let matchesDate = true
+    if (dateRange?.from) {
+      const poDate = new Date(po.date) // Assuming po.date is YYYY-MM-DD or parsable
+      if (dateRange.to) {
+        matchesDate = isWithinInterval(poDate, {
+          start: startOfDay(dateRange.from),
+          end: endOfDay(dateRange.to)
+        })
+      } else {
+        // If only start date is selected, exact match or after? Usually single date pick means that day.
+        // But date picker range usually enforces to if logic checks range.
+        // For single date match (from == to effectively):
+        matchesDate = isWithinInterval(poDate, {
+           start: startOfDay(dateRange.from),
+           end: endOfDay(dateRange.from)
+        })
+      }
+    }
+
     // Tab filter - filter by status based on active tab
     let matchesTab = true
     if (activeTab === "pending") {
@@ -55,9 +83,8 @@ const PurchaseOrderTable = ({
     } else if (activeTab === "completed") {
       matchesTab = po.status === "Completed" || po.status === "Received" || po.status === "Delivered"
     }
-    // activeTab === "all-orders" matches everything
 
-    return matchesSearch && matchesStatus && matchesPayment && matchesTab
+    return matchesSearch && matchesStatus && matchesPayment && matchesTab && matchesDate
   })
   return (
     
@@ -72,6 +99,7 @@ const PurchaseOrderTable = ({
               </TabsList>
 
               <div className="flex flex-1 items-center gap-2 max-w-md ml-auto">
+                 {/* ... Search Input ... */}
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -82,7 +110,13 @@ const PurchaseOrderTable = ({
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
+                <DateRangePicker 
+                    date={dateRange} 
+                    onDateChange={onDateRangeChange}
+                />
                 <DropdownMenu>
+                  {/* ... Filter Button ... */}
+
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon">
                       <Filter className="h-4 w-4" />
@@ -235,7 +269,7 @@ const PurchaseOrderTable = ({
                                 Download PDF
                                 </DropdownMenuItem>
                                 
-                                {/* {po.status !== "Received" && po.status !== "Cancelled" && (
+                                {po.status !== "Received" && po.status !== "Cancelled" && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => onReceive?.(po)}>
@@ -264,7 +298,7 @@ const PurchaseOrderTable = ({
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancel Order
                                 </DropdownMenuItem>
-                                )} */}
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

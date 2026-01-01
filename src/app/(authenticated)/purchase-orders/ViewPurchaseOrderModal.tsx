@@ -93,8 +93,8 @@ export function ViewPurchaseOrderModal({
                                 Supplier
                             </div>
                             <p className="font-medium">
-                                {purchaseOrder.customer?.company ||
-                                    purchaseOrder.customer?.name ||
+                                {purchaseOrder.supplier?.company_name ||
+                                    purchaseOrder.supplier?.contact_person ||
                                     "Unknown Supplier"}
                             </p>
                         </div>

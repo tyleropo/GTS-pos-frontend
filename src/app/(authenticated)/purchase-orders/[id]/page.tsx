@@ -139,8 +139,8 @@ export default function PurchaseOrderDetailPage({
               Supplier
             </div>
             <p className="font-medium">
-              {purchaseOrder.customer?.company ||
-                purchaseOrder.customer?.name ||
+              {purchaseOrder.supplier?.company_name ||
+                purchaseOrder.supplier?.contact_person ||
                 "Unknown Supplier"}
             </p>
           </div>
@@ -363,9 +363,11 @@ export default function PurchaseOrderDetailPage({
         onOpenChange={setIsPaymentModalOpen}
         payment={purchaseOrder.payments && purchaseOrder.payments.length > 0 ? {
           ...purchaseOrder.payments[0],
-          purchase_order_id: purchaseOrder.id,
-          payment_method: purchaseOrder.payments[0].payment_method as "cash" | "cheque" | "bank_transfer" | "credit_card",
-        } : null}
+          payable_id: String(purchaseOrder.id),
+          payable_type: "purchase_order",
+          type: "outbound",
+          payment_method: purchaseOrder.payments[0].payment_method as "cash" | "cheque" | "bank_transfer" | "credit_card" | "online_wallet",
+        } : undefined}
         defaultPurchaseOrderId={String(purchaseOrder.id)}
         onSuccess={() => {
           handleRefresh();

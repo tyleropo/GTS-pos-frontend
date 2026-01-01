@@ -110,6 +110,15 @@ export type ReceivePurchaseOrderPayload = {
     product_id: string;
     quantity_received: number;
   }>;
+  approved_products?: Array<{
+    product_id: string;
+    selling_price: number;
+    markup_percentage?: number;
+    brand?: string;
+    model?: string;
+    barcode?: string;
+    category_id?: string;
+  }>;
 };
 
 /**

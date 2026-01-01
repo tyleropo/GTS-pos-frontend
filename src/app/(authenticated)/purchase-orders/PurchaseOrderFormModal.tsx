@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,13 +9,12 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/src/components/ui/dialog";
 import {
     Form,
     FormControl,
     FormField,
-    FormItem,
+   FormItem,
     FormLabel,
     FormMessage,
 } from "@/src/components/ui/form";
@@ -25,19 +24,12 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-}
-from "@/src/components/ui/select";
+} from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/src/components/ui/textarea"; // Assuming you have this component, or use Input if not
+import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
-import { Loader2, Plus, Trash2, Check, ChevronsUpDown, Pencil, Percent, Coins } from "lucide-react";
-import { Switch } from "@/src/components/ui/switch";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/src/components/ui/accordion";
+import { Badge } from "@/src/components/ui/badge";
+import { Loader2, Plus, Trash2, Check, ChevronsUpDown, PackagePlus } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import {
     Command,
@@ -64,13 +56,12 @@ import { fetchSuppliers, type Supplier } from "@/src/lib/api/suppliers";
 import { useDebounce } from "@/src/hooks/use-debounce";
 
 const purchaseOrderItemSchema = z.object({
-    product_id: z.union([z.string(), z.number()]).refine((val) => val !== "", {
-        message: "Product is required",
-    }),
-    product_name: z.string().optional(),
+    product_id: z.union([z.string(), z.number()]).optional(),
+    product_name: z.string().min(1, "Product name is required"),
     quantity_ordered: z.coerce.number().min(1, "Quantity must be at least 1"),
     unit_cost: z.coerce.number().min(0, "Unit cost must be positive"),
     description: z.string().nullable().optional(),
+    is_new_product: z.boolean().default(false),
 });
 
 const purchaseOrderFormSchema = z.object({
@@ -108,12 +99,6 @@ export function PurchaseOrderFormModal({
     const debouncedSupplierQuery = useDebounce(supplierQuery, 300);
     const [productQuery, setProductQuery] = useState("");
     const debouncedProductQuery = useDebounce(productQuery, 300);
-
-    // Tax & Discount States
-    const [taxRate, setTaxRate] = useState<number>(12);
-    const [taxType, setTaxType] = useState<"inclusive" | "exclusive">("inclusive"); // inclusive = VAT included in price, exclusive = Markup
-    const [discountType, setDiscountType] = useState<"percentage" | "amount">("percentage");
-    const [discountValue, setDiscountValue] = useState<string>("");
     
     const isEditing = !!purchaseOrder;
 
@@ -125,14 +110,30 @@ export function PurchaseOrderFormModal({
             status: (purchaseOrder?.status as "draft" | "submitted" | "received" | "cancelled") || "draft",
             notes: purchaseOrder?.notes || "",
             items: purchaseOrder?.items
-                ? purchaseOrder.items.map(item => ({
-                    product_id: item.product_id,
-                    product_name: item.product_name,
-                    quantity_ordered: item.quantity_ordered,
-                    unit_cost: item.unit_cost,
-                    description: item.description || "",
-                }))
-                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "" }],
+                ? purchaseOrder.items.map(item => {
+                    // Check if this is a new product by examining the product_id pattern OR the meta.new_products array
+                    const isNewProductFromId = typeof item.product_id === 'string' && item.product_id.startsWith('new_');
+                    // Check if this product's name is in the meta.new_products array
+                    const meta = purchaseOrder?.meta as Record<string, unknown> | undefined;
+                    const newProductsRaw = meta?.new_products;
+                    const newProductsArray = Array.isArray(newProductsRaw) 
+                        ? newProductsRaw 
+                        : (newProductsRaw ? [newProductsRaw] : []);
+                    const isNewProductFromMeta = newProductsArray.some( 
+                        (np) => (np as { name?: string })?.name === item.product_name
+                    );
+                    const isNewProduct = isNewProductFromId || isNewProductFromMeta;
+                    
+                    return {
+                        product_id: isNewProduct ? undefined : item.product_id,
+                        product_name: item.product_name || "",
+                        quantity_ordered: item.quantity_ordered,
+                        unit_cost: item.unit_cost,
+                        description: item.description || "",
+                        is_new_product: isNewProduct,
+                    };
+                })
+                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "", is_new_product: false }],
         },
     });
 
@@ -141,7 +142,7 @@ export function PurchaseOrderFormModal({
         name: "items",
     });
 
-    // Load customers on search
+    // Load suppliers on search
     useEffect(() => {
         const loadSuppliers = async () => {
             if (debouncedSupplierQuery.length < 2 && !purchaseOrder) {
@@ -156,7 +157,7 @@ export function PurchaseOrderFormModal({
                 });
                 setSuppliers(suppliersRes.data);
             } catch (error) {
-                console.error("Error loading customers:", error);
+                console.error("Error loading suppliers:", error);
             } 
         };
         loadSuppliers();
@@ -188,14 +189,6 @@ export function PurchaseOrderFormModal({
         const loadInitialData = async () => {
             if (purchaseOrder) {
                 try {
-                     // Load the specific supplier
-                     // Assuming we have an ID, we might need to search by it or load all if API doesn't support getById in search endpoint easily
-                     // For now, load default set or search by name if available, but ID is safest. 
-                     // Since we don't have getById exposed here easily, let's load a small batch or if we have the supplier name in the order object use that.
-                     // A better approach if the API supports it: fetchSuppliers({ ids: [purchaseOrder.supplier_id] })
-                     // Creating a workaround: fetch customers without filter to get initial list, or if we have the name, search it.
-                     // Just loading initial batch for now so the form isn't empty-looking.
-                     
                     const [productsRes, suppliersRes] = await Promise.all([
                         fetchProducts({ per_page: 50 }),
                         fetchSuppliers({ per_page: 50 })
@@ -221,84 +214,41 @@ export function PurchaseOrderFormModal({
                 status: (purchaseOrder?.status as any) || "draft",
                 notes: purchaseOrder?.notes || "",
                 items: purchaseOrder?.items
-                ? purchaseOrder.items.map(item => ({
-                    product_id: item.product_id,
-                    product_name: item.product_name,
-                    quantity_ordered: item.quantity_ordered,
-                    unit_cost: item.unit_cost,
-                    description: item.description || "",
-                }))
-                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "" }],
+                ? purchaseOrder.items.map(item => {
+                    // Check if this is a new product by examining the product_id pattern OR the meta.new_products array
+                    const isNewProductFromId = typeof item.product_id === 'string' && item.product_id.startsWith('new_');
+                    // Check if this product's name is in the meta.new_products array
+                    const meta = purchaseOrder?.meta as Record<string, unknown> | undefined;
+                    const newProductsRaw = meta?.new_products;
+                    const newProductsArray = Array.isArray(newProductsRaw) 
+                        ? newProductsRaw 
+                        : (newProductsRaw ? [newProductsRaw] : []);
+                    const isNewProductFromMeta = newProductsArray.some( 
+                        (np) => (np as { name?: string })?.name === item.product_name
+                    );
+                    const isNewProduct = isNewProductFromId || isNewProductFromMeta;
+                    
+                    return {
+                        product_id: isNewProduct ? undefined : item.product_id,
+                        product_name: item.product_name || "",
+                        quantity_ordered: item.quantity_ordered,
+                        unit_cost: item.unit_cost,
+                        description: item.description || "",
+                        is_new_product: isNewProduct,
+                    };
+                })
+                : [{ product_id: "", product_name: "", quantity_ordered: 1, unit_cost: 0, description: "", is_new_product: false }],
             });
-
-            // Initialize Tax & Discount from saved meta or defaults
-            if (purchaseOrder && purchaseOrder.meta) {
-                 const meta = purchaseOrder.meta as any;
-                 if (meta.taxRate !== undefined) setTaxRate(Number(meta.taxRate));
-                 if (meta.taxType) setTaxType(meta.taxType);
-                 if (meta.discountType) setDiscountType(meta.discountType);
-                 if (meta.discountValue) setDiscountValue(String(meta.discountValue));
-            } else {
-                // Reset to defaults if new
-                setTaxRate(12);
-                setTaxType("inclusive");
-                setDiscountType("percentage");
-                setDiscountValue("");
-            }
         }
     }, [open, purchaseOrder, form]);
-
-    // Auto-set tax logic based on customer type
-    // Supplier type logic removed as it does not exist in the schema currently
-    useEffect(() => {
-        // Logic reserved for future implementation if suppliers get categories/types
-    }, [form.watch("supplier_id"), suppliers, isEditing, purchaseOrder]);
 
     // Calculations
     const items = form.watch("items");
     
-    const rawSubtotal = items.reduce(
+    const total = items.reduce(
         (sum, item) => sum + (item.quantity_ordered || 0) * (item.unit_cost || 0),
         0
     );
-
-    // Discount Calculation
-    const discountAmount = useMemo(() => {
-        const value = parseFloat(discountValue);
-        if (isNaN(value) || value < 0) return 0;
-   
-        if (discountType === "percentage") {
-           return rawSubtotal * (Math.min(value, 100) / 100);
-        } else {
-           return Math.min(value, rawSubtotal);
-        }
-     }, [discountType, discountValue, rawSubtotal]);
-    
-    const discountedSubtotal = Math.max(0, rawSubtotal - discountAmount);
-
-    // Tax Calculation
-    const taxRateDecimal = taxRate / 100;
-    let tax = 0;
-    let total = 0;
-    let subtotalDisplay = 0; // The base amount to show
-
-    if (taxType === "inclusive") {
-        // POS Style: Price includes Tax. 
-        // Total = Discounted Subtotal
-        // Net = Total / (1 + Rate)
-        // Tax = Total - Net
-        total = discountedSubtotal;
-        const netOfTax = total / (1 + taxRateDecimal);
-        tax = total - netOfTax;
-        subtotalDisplay = total; // In inclusive, subtotal usually means the full amount before tax separation
-    } else {
-        // Exclusive/Markup: Tax is added on top
-        // Total = Discounted Subtotal * (1 + Rate)
-        // Tax = Total - Discounted Subtotal
-        subtotalDisplay = discountedSubtotal;
-        total = discountedSubtotal * (1 + taxRateDecimal);
-        tax = total - discountedSubtotal;
-    }
 
     const onSubmit = async (values: PurchaseOrderFormValues) => {
         try {
@@ -307,25 +257,25 @@ export function PurchaseOrderFormModal({
             const payload: CreatePurchaseOrderPayload = {
                 supplier_id: values.supplier_id,
                 items: values.items.map(item => ({
-                    product_id: item.product_id,
+                    product_id: item.product_id || `new_${item.product_name}`,
                     quantity_ordered: item.quantity_ordered,
                     unit_cost: item.unit_cost,
                     line_total: (item.quantity_ordered || 0) * (item.unit_cost || 0),
-                    tax: 0, // Assuming 0 for now as tax is calculated globally or handled by backend if per-item is needed
+                    tax: 0,
                     description: item.description,
                 })),
                 expected_at: values.delivery_date || undefined,
                 status: values.status,
-                subtotal: subtotalDisplay, 
-                tax,
+                subtotal: total,
+                tax: 0,
                 total,
                 notes: values.notes || undefined,
                 meta: {
-                    taxRate,
-                    taxType,
-                    discountType: discountAmount > 0 ? discountType : undefined,
-                    discountValue: discountAmount > 0 ? Number(discountValue) : undefined,
-                    discountAmount
+                    new_products: values.items.filter(i => i.is_new_product).map(i => ({
+                        name: i.product_name,
+                        cost: i.unit_cost,
+                        description: i.description
+                    }))
                 }
             };
 
@@ -347,9 +297,6 @@ export function PurchaseOrderFormModal({
                     ? `Failed to update purchase order: ${error instanceof Error ? error.message : "Unknown error"}`
                     : `Failed to create purchase order: ${error instanceof Error ? error.message : "Unknown error"}`
             );
-            if ((error as any).response?.data?.errors) {
-                console.log("Validation errors:", (error as any).response.data.errors);
-            }
         } finally {
             setIsSubmitting(false);
         }
@@ -362,6 +309,18 @@ export function PurchaseOrderFormModal({
             form.setValue(`items.${index}.product_id`, productId);
             form.setValue(`items.${index}.product_name`, product.name);
             form.setValue(`items.${index}.unit_cost`, product.cost_price);
+            form.setValue(`items.${index}.is_new_product`, false);
+        }
+    };
+
+    // Toggle between existing product and new product entry
+    const toggleNewProduct = (index: number) => {
+        const isNew = form.watch(`items.${index}.is_new_product`);
+        form.setValue(`items.${index}.is_new_product`, !isNew);
+        if (!isNew) {
+            // Switching to new product mode
+            form.setValue(`items.${index}.product_id`, undefined);
+            form.setValue(`items.${index}.product_name`, "");
         }
     };
 
@@ -370,12 +329,12 @@ export function PurchaseOrderFormModal({
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? "Edit Purchase Order" : "New Purchase Order"}
+                        {isEditing ? "Edit Purchases" : "New Purchases"}
                     </DialogTitle>
                     <DialogDescription>
                         {isEditing
-                            ? "Update purchase order information below."
-                            : "Create a new purchase order for your supplier."}
+                            ? "Update purchases information below."
+                            : "Create a new purchases for your supplier."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -482,122 +441,49 @@ export function PurchaseOrderFormModal({
                                 )}
                             />
 
+                            {/* Status */}
                             <FormField
                                 control={form.control}
-                                name="notes"
+                                name="status"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Notes</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Additional notes..." {...field} />
-                                        </FormControl>
+                                        <FormLabel>Order Status</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select status" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="draft">Pending</SelectItem>
+                                                <SelectItem value="submitted">Processing</SelectItem>
+                                                <SelectItem value="received">Delivered</SelectItem>
+                                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Status */}
+                        {/* Notes */}
                         <FormField
                             control={form.control}
-                            name="status"
+                            name="notes"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Order Status</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select status" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="draft">Pending</SelectItem>
-                                            <SelectItem value="submitted">Processing</SelectItem>
-                                            <SelectItem value="received">Delivered</SelectItem>
-                                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <FormLabel>Notes</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Additional notes..." {...field} />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        </div>
-
-                        {/* Tax & Discount Configuration */}
-                        <div className="rounded-lg border p-4 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <FormLabel className="text-base font-semibold">Tax Settings</FormLabel>
-                                <div className="flex items-center space-x-2">
-                                    <Switch
-                                        checked={taxType === "inclusive"}
-                                        onCheckedChange={(checked) => setTaxType(checked ? "inclusive" : "exclusive")}
-                                        id="tax-mode"
-                                    />
-                                    <FormLabel htmlFor="tax-mode" className="cursor-pointer">
-                                        {taxType === "inclusive" ? "Tax Inclusive (VAT)" : "Tax Exclusive (Markup)"}
-                                    </FormLabel>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormItem>
-                                    <FormLabel>Tax Rate (%)</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                step="0.1"
-                                                value={taxRate}
-                                                onChange={(e) => setTaxRate(Number(e.target.value))}
-                                                className="pl-8"
-                                            />
-                                            <Percent className="h-4 w-4 absolute left-2.5 top-2.5 text-muted-foreground" />
-                                        </div>
-                                    </FormControl>
-                                </FormItem>
-                            </div>
-                            
-                             <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value="discount" className="border-b-0">
-                                    <AccordionTrigger className="py-2 hover:no-underline text-sm font-medium">
-                                        Discount Options
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div className="flex gap-4 items-end pt-2">
-                                             <div className="w-1/3">
-                                                <FormLabel className="text-xs">Type</FormLabel>
-                                                <Select
-                                                    value={discountType}
-                                                    onValueChange={(val: any) => setDiscountType(val)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                                        <SelectItem value="amount">Fixed Amount (₱)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                             </div>
-                                             <div className="flex-1">
-                                                 <FormLabel className="text-xs">Value</FormLabel>
-                                                 <Input
-                                                    type="number"
-                                                    min="0"
-                                                    value={discountValue}
-                                                    onChange={(e) => setDiscountValue(e.target.value)}
-                                                    placeholder={discountType === "percentage" ? "10" : "100.00"}
-                                                 />
-                                             </div>
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                             </Accordion>
-                        </div>
 
                         {/* Line Items */}
                         <div className="space-y-3">
@@ -616,6 +502,7 @@ export function PurchaseOrderFormModal({
                                             quantity_ordered: 1,
                                             unit_cost: 0,
                                             description: "",
+                                            is_new_product: false,
                                         })
                                     }
                                 >
@@ -624,191 +511,218 @@ export function PurchaseOrderFormModal({
                                 </Button>
                             </div>
 
-                            {fields.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className="grid grid-cols-12 gap-2 items-start border p-3 rounded-lg"
-                                >
-                                    {/* Product Selection */}
-                                    <div className="col-span-5">
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.product_id`}
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-col">
-                                                    <FormLabel className="text-xs">Product</FormLabel>
-                                                    <Popover 
-                                                        open={productOpenStates[index] || false} 
-                                                        onOpenChange={(open) => setProductOpenStates(prev => ({...prev, [index]: open}))} 
-                                                        modal={true}
-                                                    >
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn(
-                                                                        "w-full justify-between",
-                                                                        !field.value && "text-muted-foreground"
-                                                                    )}
+                            {fields.map((field, index) => {
+                                const isNewProduct = form.watch(`items.${index}.is_new_product`);
+                                
+                                return (
+                                    <div
+                                        key={field.id}
+                                        className="border p-3 rounded-lg space-y-3"
+                                    >
+                                        {/* Header with New Product Toggle */}
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                {isNewProduct && (
+                                                    <Badge variant="secondary">
+                                                        <PackagePlus className="h-3 w-3 mr-1" />
+                                                        New Product
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => toggleNewProduct(index)}
+                                                >
+                                                    {isNewProduct ? "Use Existing" : "Add New Product"}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => remove(index)}
+                                                    disabled={fields.length === 1}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-12 gap-2">
+                                            {/* Product Selection or Name Input */}
+                                            <div className="col-span-6">
+                                                {isNewProduct ? (
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`items.${index}.product_name`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs">Product Name</FormLabel>
+                                                                <FormControl>
+                                                                    <Input 
+                                                                        placeholder="Enter new product name..." 
+                                                                        {...field} 
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`items.${index}.product_id`}
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex flex-col">
+                                                                <FormLabel className="text-xs">Product</FormLabel>
+                                                                <Popover 
+                                                                    open={productOpenStates[index] || false} 
+                                                                    onOpenChange={(open) => setProductOpenStates(prev => ({...prev, [index]: open}))} 
+                                                                    modal={true}
                                                                 >
-                                                                    {field.value
-                                                                        ? products.find(
-                                                                            (product) => String(product.id) === String(field.value)
-                                                                        )?.name || "Selected Product"
-                                                                        : "Select product"}
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
-                                                            <Command shouldFilter={false}>
-                                                                <CommandInput 
-                                                                    placeholder="Search product (min 2 chars)..." 
-                                                                    autoFocus 
-                                                                    value={productQuery}
-                                                                    onValueChange={setProductQuery}
-                                                                />
-                                                                <CommandList>
-                                                                    {products.length === 0 && (
-                                                                        <div className="py-6 text-center text-sm text-muted-foreground">
-                                                                            {debouncedProductQuery.length < 2 
-                                                                                ? "Type at least 2 characters..." 
-                                                                                : "No product found."}
-                                                                        </div>
-                                                                    )}
-                                                                    <CommandGroup>
-                                                                        {products.map((product) => (
-                                                                            <CommandItem
-                                                                                value={product.name + " " + product.sku}
-                                                                                key={product.id}
-                                                                                onSelect={() => {
-                                                                                    handleProductChange(index, String(product.id));
-                                                                                    setProductOpenStates(prev => ({...prev, [index]: false}));
-                                                                                }}
+                                                                    <PopoverTrigger asChild>
+                                                                        <FormControl>
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                role="combobox"
+                                                                                className={cn(
+                                                                                    "w-full justify-between text-xs h-9",
+                                                                                    !field.value && "text-muted-foreground"
+                                                                                )}
                                                                             >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        String(product.id) === String(field.value)
-                                                                                            ? "opacity-100"
-                                                                                            : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {product.name} ({product.sku})
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                                                                {field.value
+                                                                                    ? products.find(
+                                                                                        (product) => String(product.id) === String(field.value)
+                                                                                    )?.name || "Selected Product"
+                                                                                    : "Select product"}
+                                                                                <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                                                                            </Button>
+                                                                        </FormControl>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[200]">
+                                                                        <Command shouldFilter={false}>
+                                                                            <CommandInput 
+                                                                                placeholder="Search product (min 2 chars)..." 
+                                                                                autoFocus 
+                                                                                value={productQuery}
+                                                                                onValueChange={setProductQuery}
+                                                                            />
+                                                                            <CommandList>
+                                                                                {products.length === 0 && (
+                                                                                    <div className="py-6 text-center text-sm text-muted-foreground">
+                                                                                        {debouncedProductQuery.length < 2 
+                                                                                            ? "Type at least 2 characters..." 
+                                                                                            : "No product found."}
+                                                                                    </div>
+                                                                                )}
+                                                                                <CommandGroup>
+                                                                                    {products.map((product) => (
+                                                                                        <CommandItem
+                                                                                            value={product.name + " " + product.sku}
+                                                                                            key={product.id}
+                                                                                            onSelect={() => {
+                                                                                                handleProductChange(index, String(product.id));
+                                                                                                setProductOpenStates(prev => ({...prev, [index]: false}));
+                                                                                            }}
+                                                                                        >
+                                                                                            <Check
+                                                                                                className={cn(
+                                                                                                    "mr-2 h-4 w-4",
+                                                                                                    String(product.id) === String(field.value)
+                                                                                                        ? "opacity-100"
+                                                                                                        : "opacity-0"
+                                                                                                )}
+                                                                                            />
+                                                                                            {product.name} ({product.sku})
+                                                                                        </CommandItem>
+                                                                                    ))}
+                                                                                </CommandGroup>
+                                                                            </CommandList>
+                                                                        </Command>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                )}
+                                            </div>
 
-                                    {/* Quantity */}
-                                    <div className="col-span-3">
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.quantity_ordered`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Quantity</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            min="1"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                            {/* Quantity */}
+                                            <div className="col-span-3">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.quantity_ordered`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs">Quantity</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    className="h-9"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
 
-                                    {/* Unit Cost */}
-                                    <div className="col-span-3">
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.unit_cost`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Unit Cost</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            min="0"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                            {/* Unit Cost */}
+                                            <div className="col-span-3">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.unit_cost`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs">Unit Cost</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    className="h-9"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
 
-                                    {/* Remove Button */}
-                                    <div className="col-span-1 flex items-end pb-2">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => remove(index)}
-                                            disabled={fields.length === 1}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
+                                            {/* Description (Full Width) */}
+                                            <div className="col-span-12">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.description`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormControl>
+                                                                <Input
+                                                                    placeholder="Description (optional)"
+                                                                    {...field}
+                                                                    value={field.value ?? ""}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    {/* Description (Full Width) */}
-                                    <div className="col-span-12">
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.description`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Description (optional)"
-                                                            {...field}
-                                                            value={field.value ?? ""}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Totals Summary */}
                         <div className="bg-muted p-4 rounded-lg space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span>Subtotal:</span>
-                                <span className="font-medium">₱{rawSubtotal.toFixed(2)}</span>
-                            </div>
-                            {discountAmount > 0 && (
-                                <div className="flex justify-between text-sm text-emerald-600">
-                                    <span>Discount ({discountType === "percentage" ? `${discountValue}%` : "Fixed"}):</span>
-                                    <span>-₱{discountAmount.toFixed(2)}</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Tax Base:</span>
-                                <span>₱{discountedSubtotal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span>Tax ({taxRate}% {taxType === "inclusive" ? "Incl." : "Excl."}):</span>
-                                <span className="font-medium">₱{tax.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-base font-bold border-t pt-2">
+                            <div className="flex justify-between text-base font-bold">
                                 <span>Total:</span>
                                 <span>₱{total.toFixed(2)}</span>
                             </div>
