@@ -228,7 +228,7 @@ export function ViewRepairModal({
                                     Estimated Cost:
                                 </span>
                                 <p className="font-medium">
-                                    ${(repair.cost || 0).toFixed(2)}
+                                    ₱{(repair.cost || 0).toFixed(2)}
                                 </p>
                             </div>
                             <div>
@@ -248,6 +248,43 @@ export function ViewRepairModal({
                                 <p className="font-medium">
                                     {repair.promised_at?.split("T")[0] || "Not set"}
                                 </p>
+                        </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Labor / Service:</span>
+                                <span>₱{(repair.cost || 0).toFixed(2)}</span>
+                            </div>
+                            {repair.products && repair.products.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium">Parts Used</div>
+                                    <div className="border rounded-md divide-y">
+                                        {repair.products.map((product) => (
+                                            <div key={product.id} className="p-2 text-sm flex justify-between items-center">
+                                                <div className="flex flex-col">
+                                                    <span>{product.name}</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {product.pivot?.quantity} x ₱{(product.pivot?.unit_price || 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <span>₱{((product.pivot?.quantity || 0) * (product.pivot?.unit_price || 0)).toFixed(2)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between text-sm pt-2">
+                                        <span className="text-muted-foreground">Parts & Materials Total:</span>
+                                        <span>
+                                            ₱{repair.products.reduce((sum, p) => sum + ((p.pivot?.quantity || 0) * (p.pivot?.unit_price || 0)), 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                                <span>Total Estimated Cost:</span>
+                                <span>
+                                    ₱{((repair.cost || 0) + (repair.products?.reduce((sum, p) => sum + ((p.pivot?.quantity || 0) * (p.pivot?.unit_price || 0)), 0) || 0)).toFixed(2)}
+                                </span>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,7 @@
 import { apiClient } from "@/src/lib/api-client";
 import { z } from "zod";
 import type { AxiosRequestConfig } from "axios";
+import { productSchema } from "./products";
 
 const paginationMetaSchema = z
   .object({
@@ -44,6 +45,13 @@ export const repairSchema = z.object({
     })
     .nullable()
     .optional(),
+  products: z.array(productSchema.extend({
+    pivot: z.object({
+        quantity: z.coerce.number(),
+        unit_price: z.coerce.number(),
+        total_price: z.coerce.number().optional(),
+    })
+  })).optional().default([]),
 });
 
 const paginatedRepairSchema = z.object({
@@ -56,10 +64,17 @@ export type Repair = z.infer<typeof repairSchema>;
 export type FetchRepairsParams = {
   status?: string;
   customer_id?: string;
+  customer_ids?: string[];
   date_from?: string;
   date_to?: string;
   page?: number;
   per_page?: number;
+};
+
+export type RepairProductPayload = {
+  id: string;
+  quantity: number;
+  unit_price: number;
 };
 
 export type CreateRepairPayload = {
@@ -71,6 +86,7 @@ export type CreateRepairPayload = {
   cost?: number;
   technician?: string | null;
   promised_at?: string | null;
+  products?: RepairProductPayload[];
 };
 
 export type UpdateRepairPayload = Partial<CreateRepairPayload> & {

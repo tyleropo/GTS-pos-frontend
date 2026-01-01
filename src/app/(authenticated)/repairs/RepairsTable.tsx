@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
 import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
 import { Badge } from '@/src/components/ui/badge'
 import { Repair } from '@/src/types/repair'
+import { DateRangePicker } from '@/src/components/date-range-picker'
+import { DateRange } from 'react-day-picker'
 
 interface RepairsTableProps {
   repairs: Repair[];
@@ -185,6 +187,7 @@ const RepairsTable = ({
           <TableHeader>
             <TableRow>
               <TableHead>Ticket ID</TableHead>
+              <TableHead>Date Created</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Device</TableHead>
               <TableHead>Issue</TableHead>
@@ -199,7 +202,7 @@ const RepairsTable = ({
           <TableBody>
             {filteredRepairs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   No results found.
                 </TableCell>
               </TableRow>
@@ -208,6 +211,9 @@ const RepairsTable = ({
                 <TableRow key={repair.id}>
                   {/* Ticket ID */}
                   <TableCell className="font-medium">{repair.ticketNumber || repair.id}</TableCell>
+
+                  {/* Date Created */}
+                  <TableCell>{repair.date}</TableCell>
 
                   {/* Customer */}
                   <TableCell>{repair.customer}</TableCell>

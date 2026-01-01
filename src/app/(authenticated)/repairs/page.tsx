@@ -23,18 +23,41 @@ import type { Repair } from "@/src/types/repair";
 import { adaptRepair } from "@/src/lib/adapters";
 import { toast } from "sonner";
 
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+
 function RepairsPage() {
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [apiRepairs, setApiRepairs] = useState<APIRepair[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [technicians, setTechnicians] = useState<User[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRepair, setSelectedRepair] = useState<APIRepair | null>(null);
+
+  // Filter repairs based on date range
+  const filteredRepairs = repairs.filter((repair) => {
+    if (!dateRange?.from) return true;
+    
+    // repair.date is a string, assumed to be parsable
+    const repairDate = new Date(repair.date);
+    if (dateRange.to) {
+      return isWithinInterval(repairDate, {
+        start: startOfDay(dateRange.from),
+        end: endOfDay(dateRange.to)
+      });
+    } else {
+      return isWithinInterval(repairDate, {
+         start: startOfDay(dateRange.from),
+         end: endOfDay(dateRange.from)
+      });
+    }
+  });
 
   const loadRepairs = async () => {
     try {
@@ -164,7 +187,7 @@ function RepairsPage() {
         subtitle="Track service tickets and keep technicians aligned."
       />
 
-      <RepairsStats repairs={repairs} />
+      <RepairsStats repairs={filteredRepairs} />
 
       <Card>
         <CardHeader>
@@ -181,12 +204,14 @@ function RepairsPage() {
         </CardHeader>
         <CardContent>
           <RepairsTable
-            repairs={repairs}
+            repairs={filteredRepairs}
             technicians={technicians}
             onView={handleViewRepair}
             onEdit={handleEditRepair}
             onDelete={handleDeleteRepair}
             onUpdateStatus={handleUpdateStatus}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
           />
         </CardContent>
       </Card>
