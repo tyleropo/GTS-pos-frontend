@@ -20,7 +20,8 @@ import {
     ReceiptSettings, 
     DEFAULT_RECEIPT_SETTINGS 
 } from "@/src/components/modals/receipt-settings-modal";
-import { TransactionReceipt } from "@/src/components/receipts/transaction-receipt";
+import { PosPrint } from "@/src/components/print/PosPrint";
+import { useAuth } from "@/src/providers/auth-provider";
 
 interface TransactionSuccessModalProps {
   open: boolean;
@@ -38,6 +39,7 @@ export function TransactionSuccessModal({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>(DEFAULT_RECEIPT_SETTINGS);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
       const saved = localStorage.getItem("pos_receipt_settings");
@@ -75,9 +77,8 @@ export function TransactionSuccessModal({
   const amountTendered = meta.amount_tendered;
   const change = meta.change;
 
-  // Adapt transaction for receipt component
-  const receiptTransaction = transaction ? adaptTransaction(transaction) : null;
-
+  // Adapt transaction for receipt component with user's first name
+  const receiptTransaction = transaction ? adaptTransaction(transaction, user?.first_name) : null;
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,8 +104,28 @@ export function TransactionSuccessModal({
                     <span className="font-medium capitalize">{payment_method}</span>
                 </div>
                 <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between text-base font-semibold">
-                        <span>Total Paid</span>
+                    {(() => {
+                        const computedSubtotal = total / 1.12;
+                        const computedTax = total - computedSubtotal;
+                        return (
+                            <>
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Total Sales (VAT Inclusive)</span>
+                                    <span>{currency.format(total)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Less: VAT 12%</span>
+                                    <span>{currency.format(computedTax)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Net of VAT</span>
+                                    <span>{currency.format(computedSubtotal)}</span>
+                                </div>
+                            </>
+                        );
+                    })()}
+                    <div className="flex justify-between text-base font-semibold pt-1 border-t">
+                        <span>TOTAL</span>
                         <span>{currency.format(total)}</span>
                     </div>
                 </div>
@@ -157,7 +178,7 @@ export function TransactionSuccessModal({
     
     <div className="hidden">
         {receiptTransaction && (
-            <TransactionReceipt ref={receiptRef} transaction={receiptTransaction} settings={receiptSettings} />
+            <PosPrint ref={receiptRef} transaction={receiptTransaction} settings={receiptSettings} />
         )}
     </div>
     </>

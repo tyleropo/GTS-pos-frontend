@@ -46,6 +46,7 @@ import {
   PaginationPrevious,
 } from "@/src/components/ui/pagination";
 import { toast } from "sonner";
+import { formatCurrency } from "@/src/lib/format-currency";
 
 import { TransactionDetailsModal } from "@/src/components/modals/transaction-details-modal";
 import { RefundModal } from "@/src/components/modals/refund-modal";
@@ -223,7 +224,7 @@ const TransactionsTable = ({
                     <TableCell className="text-right">{transaction.items}</TableCell>
                    
                     <TableCell className="text-right font-bold">
-                      ₱{transaction.total.toFixed(2)}
+                      ₱{formatCurrency(transaction.total)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">

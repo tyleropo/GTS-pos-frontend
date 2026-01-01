@@ -28,12 +28,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/src/components/ui/accordion";
+import { toast } from "sonner";
 
 export type CartLineItem = {
   id: string;
   name: string;
   price: number;
   quantity: number;
+  stock: number; // Available stock quantity
 };
 
 type CartPanelProps = {
@@ -121,6 +123,13 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
   };
 
   const handleIncrement = (id: string, currentQuantity: number) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    
+    if (currentQuantity >= item.stock) {
+      toast.error(`Cannot add more. Only ${item.stock} available in stock.`);
+      return;
+    }
     onUpdateQuantity(id, currentQuantity + 1);
   };
 
@@ -252,6 +261,7 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => handleIncrement(item.id, item.quantity)}
+                            disabled={item.quantity >= item.stock}
                             aria-label="Increase quantity"
                           >
                             <Plus className="h-3 w-3" />
@@ -260,6 +270,11 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
                         <span className="text-xs text-muted-foreground">
                           {currency.format(item.price)} each
                         </span>
+                        {item.quantity >= item.stock && (
+                          <span className="text-xs text-amber-600">
+                            (Max: {item.stock} in stock)
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span className="font-medium whitespace-nowrap">

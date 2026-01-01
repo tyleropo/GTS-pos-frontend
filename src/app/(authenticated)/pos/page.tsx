@@ -59,6 +59,7 @@ function cartReducer(state: CartLineItem[], action: CartAction) {
           name: action.product.name,
           price: action.product.selling_price,
           quantity: 1,
+          stock: action.product.stock_quantity,
         },
       ];
     }
@@ -162,7 +163,7 @@ export default function POSPage() {
 
   const handleCheckout = useCallback(
     async (
-      method: "cash" | "card" | "gcash", 
+      method: "cash" | "Bank transfer/Cheque/Card" | "online_wallet", 
       customer: Customer | null,
       meta?: Record<string, unknown>
     ) => {
@@ -174,15 +175,23 @@ export default function POSPage() {
       const toastId = toast.loading("Processing transaction...");
 
       try {
+        // Map frontend payment methods to database enum values
+        const paymentMethodMap: Record<string, "cash" | "card" | "gcash"> = {
+          "cash": "cash",
+          "Bank transfer/Cheque/Card": "card",
+          "online_wallet": "gcash"
+        };
+        
         const payload = {
           customer_id: customer?.id ? String(customer.id) : undefined,
           items: cartItems.map((item) => ({
             product_id: item.id,
+            product_name: item.name,
             quantity: item.quantity,
             unit_price: item.price,
             line_total: item.price * item.quantity,
           })),
-          payment_method: method,
+          payment_method: paymentMethodMap[method],
           subtotal: cartTotals.subtotal,
           tax: cartTotals.tax,
           total: cartTotals.total,
