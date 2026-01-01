@@ -9,6 +9,7 @@ export interface BillingLineItem {
   amount: number;
   quantity?: number;
   unitPrice?: number;
+  itemDescription?: string;
 }
 
 export interface BillingPeriod {

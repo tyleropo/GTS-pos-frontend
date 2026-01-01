@@ -14,7 +14,6 @@ import { Separator } from "@/src/components/ui/separator";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
-import { Checkbox } from "@/src/components/ui/checkbox";
 import { Textarea } from "@/src/components/ui/textarea";
 import {
   Select,
@@ -83,8 +82,6 @@ export function PaymentFormModal({
     amount: 0,
     payment_method: "cash",
     date_received: new Date().toISOString().split("T")[0],
-    is_deposited: false,
-    date_deposited: null,
     notes: "",
   });
 
@@ -114,8 +111,7 @@ export function PaymentFormModal({
         bank_name: payment.bank_name || "",
         account_number: payment.account_number || "",
         date_received: payment.date_received.split("T")[0],
-        is_deposited: payment.is_deposited,
-        date_deposited: payment.date_deposited?.split("T")[0] || null,
+        status: payment.status || undefined,
         notes: payment.notes || "",
       });
       setOrderType(payment.payable_type === 'App\\Models\\PurchaseOrder' ? 'purchase_order' : 'customer_order');
@@ -174,8 +170,6 @@ export function PaymentFormModal({
       bank_name: "",
       account_number: "",
       date_received: new Date().toISOString().split("T")[0],
-      is_deposited: false,
-      date_deposited: null,
       notes: "",
     });
     setOrderType(resolvedDefaultType);
@@ -198,14 +192,7 @@ export function PaymentFormModal({
       bank_name: form.bank_name || null,
       account_number: form.account_number || null,
       date_received: form.date_received,
-      is_deposited: 
-        orderType === "purchase_order" 
-          ? false 
-          : (form.payment_method === "cash" ? true : (form.is_deposited || false)),
-      date_deposited: 
-        orderType === "purchase_order"
-          ? null 
-          : (form.payment_method === "cash" ? form.date_received : (form.is_deposited ? form.date_deposited : null)),
+      status: form.status || null, // Let backend set default if not provided
       notes: form.notes || null,
     };
 
@@ -218,7 +205,11 @@ export function PaymentFormModal({
 
   const purchaseOrders = purchaseOrdersData?.data || [];
   const customerOrders = customerOrdersData?.data || [];
-  const currentOrders = orderType === "purchase_order" ? purchaseOrders : customerOrders;
+  
+  // Filter out cancelled orders
+  const activePurchaseOrders = purchaseOrders.filter(po => po.status !== "cancelled");
+  const activeCustomerOrders = customerOrders.filter(co => co.status !== "cancelled");
+  const currentOrders = orderType === "purchase_order" ? activePurchaseOrders : activeCustomerOrders;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -373,19 +364,9 @@ export function PaymentFormModal({
               <Label htmlFor="payment_method">Payment Method *</Label>
               <Select
                 value={form.payment_method}
-                onValueChange={(value: any) => {
-                  const isCash = value === "cash";
-                  setForm({ 
-                    ...form, 
-                    payment_method: value,
-                    // If switching to Cash: Auto-deposit handled in submit or visually hidden?
-                    // User requirement: "if it is cash we dont need it to be pending deposited".
-                    // Implies: Cash = Deposited (or simply not pending).
-                    // We will set is_deposited = true and date_deposited = date_received (or today) if user selects Cash.
-                    is_deposited: isCash ? true : form.is_deposited,
-                    date_deposited: isCash ? (form.date_received || new Date().toISOString().split("T")[0]) : form.date_deposited
-                  });
-                }}
+                onValueChange={(value: any) =>
+                  setForm({ ...form, payment_method: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -452,40 +433,76 @@ export function PaymentFormModal({
             </div>
           )}
 
-          {orderType === "customer_order" && form.payment_method !== "cash" && (
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_deposited"
-                  checked={form.is_deposited}
-                  onCheckedChange={(checked) =>
-                    setForm({
-                      ...form,
-                      is_deposited: checked as boolean,
-                      date_deposited: checked ? form.date_deposited || form.date_received : null,
-                    })
-                  }
-                />
-                <Label htmlFor="is_deposited" className="font-normal cursor-pointer">
-                  Payment has been deposited
-                </Label>
-              </div>
+          {/* Status Selector */}
+          <div className="space-y-2">
+            <Label htmlFor="status">Payment Status</Label>
+            <Select
+              value={form.status || "auto"}
+              onValueChange={(value) => setForm({ ...form, status: value === "auto" ? null : value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Auto (based on payment method)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto (based on payment method)</SelectItem>
+                {orderType === "customer_order" ? (
+                  // Receivables
+                  form.payment_method === "cheque" ? (
+                    <>
+                      <SelectItem value="pending_deposit">Pending Deposit</SelectItem>
+                      <SelectItem value="deposited">Deposited</SelectItem>
+                    </>
+                  ) : form.payment_method === "bank_transfer" ? (
+                    <>
+                      <SelectItem value="pending_verification">Pending Verification</SelectItem>
+                      <SelectItem value="verified">Verified</SelectItem>
+                    </>
+                  ) : form.payment_method === "credit_card" ? (
+                    <>
+                      <SelectItem value="pending_settlement">Pending Settlement</SelectItem>
+                      <SelectItem value="settled">Settled</SelectItem>
+                    </>
+                  ) : form.payment_method === "online_wallet" ? (
+                    <>
+                      <SelectItem value="pending_confirmation">Pending Confirmation</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                    </>
+                  ) : (
+                    <SelectItem value="received">Received</SelectItem>
+                  )
+                ) : (
+                  // Payables
+                  form.payment_method === "cheque" ? (
+                    <>
+                      <SelectItem value="issued">Issued</SelectItem>
+                      <SelectItem value="cleared">Cleared</SelectItem>
+                    </>
+                  ) : form.payment_method === "bank_transfer" ? (
+                    <>
+                      <SelectItem value="pending_transfer">Pending Transfer</SelectItem>
+                      <SelectItem value="transferred">Transferred</SelectItem>
+                    </>
+                  ) : form.payment_method === "credit_card" ? (
+                    <>
+                      <SelectItem value="pending_charge">Pending Charge</SelectItem>
+                      <SelectItem value="charged">Charged</SelectItem>
+                    </>
+                  ) : form.payment_method === "online_wallet" ? (
+                    <>
+                      <SelectItem value="pending_send">Pending Send</SelectItem>
+                      <SelectItem value="sent">Sent</SelectItem>
+                    </>
+                  ) : (
+                    <SelectItem value="paid">Paid</SelectItem>
+                  )
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Leave as "Auto" to let the system set the default status
+            </p>
+          </div>
 
-              {form.is_deposited && (
-                <div className="space-y-2 ml-6">
-                  <Label htmlFor="date_deposited">Date Deposited</Label>
-                  <Input
-                    id="date_deposited"
-                    type="date"
-                    value={form.date_deposited || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, date_deposited: e.target.value })
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>

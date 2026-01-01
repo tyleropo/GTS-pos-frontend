@@ -62,8 +62,16 @@ export const paymentSchema = z.object({
   bank_name: z.string().nullable().optional(),
   account_number: z.string().nullable().optional(),
   date_received: z.string(),
-  is_deposited: z.boolean(),
+  is_deposited: z.boolean().nullable().optional(),
   date_deposited: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  status_updated_at: z.string().nullable().optional(),
+  is_consolidated: z.boolean().nullable().optional(),
+  related_orders: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    amount: z.number().optional(),
+  })).nullable().optional(),
   notes: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
@@ -99,6 +107,7 @@ export type CreatePaymentPayload = {
   date_received: string;
   is_deposited?: boolean;
   date_deposited?: string | null;
+  status?: string | null;
   notes?: string | null;
 };
 
