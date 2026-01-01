@@ -1,13 +1,15 @@
+
 import React, { useState } from 'react'
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2, CreditCard } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, CreditCard, Clock, Printer, Trash2, DollarSign } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
+import { Checkbox } from '@/src/components/ui/checkbox'
 import { CustomerOrder } from '@/src/types/customerOrder'
 import Link from 'next/link'
 import { DateRangePicker } from '@/src/components/date-range-picker'
@@ -20,7 +22,9 @@ interface CustomerOrderTableProps {
   onFulfill?: (order: CustomerOrder) => void;
   onCancel?: (order: CustomerOrder) => void;
   onDownloadPDF?: (order: CustomerOrder) => void;
+  onPrint?: (order: CustomerOrder) => void;
   onAddPayment?: (order: CustomerOrder) => void;
+  onBulkPayment?: (orders: CustomerOrder[]) => void;
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange | undefined) => void;
 }
@@ -32,7 +36,9 @@ const CustomerOrderTable = ({
   onFulfill,
   onCancel,
   onDownloadPDF,
+  onPrint,
   onAddPayment,
+  onBulkPayment,
   dateRange,
   onDateRangeChange,
 }: CustomerOrderTableProps) => {
@@ -40,6 +46,7 @@ const CustomerOrderTable = ({
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("all-orders")
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set())
 
   // Filter customer orders based on search query, filters, and active tab
   const filteredOrders = customerOrders.filter((order) => {
@@ -84,6 +91,49 @@ const CustomerOrderTable = ({
 
     return matchesSearch && matchesStatus && matchesPayment && matchesTab && matchesDate
   })
+
+  // Get selected orders details
+  const getSelectedOrders = () => {
+    return filteredOrders.filter(order => selectedOrders.has(order.id))
+  }
+
+  const selectedOrdersList = getSelectedOrders()
+  const selectedTotal = selectedOrdersList.reduce((sum, order) => sum + order.total, 0)
+
+  // Handle checkbox toggle
+  const toggleOrderSelection = (orderId: string) => {
+    const newSelected = new Set(selectedOrders)
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId)
+    } else {
+      newSelected.add(orderId)
+    }
+    setSelectedOrders(newSelected)
+  }
+
+  // Select all from same customer
+  const selectAllFromCustomer = () => {
+    if (selectedOrdersList.length === 0) return
+    
+    const firstOrder = selectedOrdersList[0]
+    const customer = firstOrder.customer
+    
+    const ordersFromSameCustomer = filteredOrders.filter(
+      order => order.customer === customer && order.status !== "Cancelled"
+    )
+    
+    const newSelected = new Set<string>()
+    ordersFromSameCustomer.forEach(order => newSelected.add(order.id))
+    setSelectedOrders(newSelected)
+  }
+
+  // Handle bulk payment
+  const handleBulkPayment = () => {
+    if (onBulkPayment && selectedOrdersList.length > 0) {
+      onBulkPayment(selectedOrdersList)
+    }
+  }
+
   return (
     
    
@@ -95,6 +145,38 @@ const CustomerOrderTable = ({
                 <TabsTrigger value="processing">Processing</TabsTrigger>
                 <TabsTrigger value="completed">Delivered</TabsTrigger>
               </TabsList>
+
+              {/* Bulk Actions Bar */}
+              {selectedOrders.size > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-md">
+                  <span className="text-sm font-medium">
+                    {selectedOrders.size} selected • Total: ₱{selectedTotal.toFixed(2)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllFromCustomer}
+                    disabled={selectedOrdersList.length === 0}
+                  >
+                    Select All from Customer
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleBulkPayment}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Create Bulk Payment
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedOrders(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
 
               <div className="flex flex-1 items-center gap-2 max-w-md ml-auto">
                 <div className="relative flex-1">
@@ -165,6 +247,9 @@ const CustomerOrderTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <span className="sr-only">Select</span>
+                    </TableHead>
                     <TableHead>Customer Order Number</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Customer</TableHead>
@@ -179,13 +264,21 @@ const CustomerOrderTable = ({
                 <TableBody>
                   {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
+                      <TableCell colSpan={10} className="h-24 text-center">
                         No results found.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredOrders.map((order) => (
                       <TableRow key={order.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={() => toggleOrderSelection(order.id)}
+                            disabled={order.status === "Cancelled"}
+                            aria-label={`Select order ${order.id}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{order.co_number}</TableCell>
                         <TableCell>{order.date}</TableCell>
                         <TableCell>{order.customer}</TableCell>
@@ -217,22 +310,24 @@ const CustomerOrderTable = ({
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              order.paymentStatus === "Paid" || order.paymentStatus === "paid"
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : order.paymentStatus === "Partial" || order.paymentStatus === "partial"
-                                  ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                                  : "bg-amber-100 text-amber-700 hover:bg-amber-100"
-                            }
-                          >
-                            {(order.paymentStatus === "pending" || order.paymentStatus === "Pending") 
-                              ? "Pending" 
-                              : (order.paymentStatus === "partial" || order.paymentStatus === "Partial")
-                                ? "Partial"
-                                : "Paid"}
-                          </Badge>
+                          {order.status !== "Cancelled" && order.paymentStatus && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                order.paymentStatus === "Paid" || order.paymentStatus === "paid"
+                                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                  : order.paymentStatus === "Partial" || order.paymentStatus === "partial"
+                                    ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                                    : "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                              }
+                            >
+                              {(order.paymentStatus === "pending" || order.paymentStatus === "Pending") 
+                                ? "Pending" 
+                                : (order.paymentStatus === "partial" || order.paymentStatus === "Partial")
+                                  ? "Partial"
+                                  : "Paid"}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>{order.deliveryDate ? format(new Date(order.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
@@ -244,6 +339,15 @@ const CustomerOrderTable = ({
                               title="Edit Order"
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => onPrint?.(order)}
+                              title="Print Order"
+                            >
+                              <Printer className="h-4 w-4" />
                             </Button>
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
@@ -264,6 +368,11 @@ const CustomerOrderTable = ({
                                 <DropdownMenuItem onSelect={() => onDownloadPDF?.(order)}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem onSelect={() => onPrint?.(order)}>
+                                <span className="h-4 w-4 mr-2">🖨️</span>
+                                Print Order
                                 </DropdownMenuItem>
                                 
                                 {order.status !== "Delivered" && order.status !== "Completed" && order.status !== "Cancelled" && (

@@ -28,6 +28,19 @@ const customerOrderItemSchema = z.object({
   tax: priceNumber.optional(),
   line_total: priceNumber,
   description: z.string().nullable().optional(),
+  is_voided: z.boolean().optional(),
+  void_reason: z.string().nullable().optional(),
+});
+
+const customerOrderAdjustmentSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  customer_order_id: z.string(),
+  type: z.string(),
+  amount: priceNumber,
+  description: z.string().nullable().optional(),
+  related_product_id: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 export const customerOrderSchema = z.object({
@@ -44,6 +57,7 @@ export const customerOrderSchema = z.object({
   outstanding_balance: priceNumber.optional(),
   notes: z.string().nullable().optional(),
   items: z.array(customerOrderItemSchema).optional(),
+  adjustments: z.array(customerOrderAdjustmentSchema).optional(),
   meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
@@ -67,6 +81,7 @@ export const customerOrderSchema = z.object({
     date_received: z.string(),
     is_deposited: z.boolean(),
     date_deposited: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
   })).optional(),
 });
 
@@ -77,6 +92,7 @@ const paginatedCustomerOrderSchema = z.object({
 
 export type CustomerOrder = z.infer<typeof customerOrderSchema>;
 export type CustomerOrderItem = z.infer<typeof customerOrderItemSchema>;
+export type CustomerOrderAdjustment = z.infer<typeof customerOrderAdjustmentSchema>;
 
 export type FetchCustomerOrdersParams = {
   search?: string;
@@ -204,3 +220,32 @@ export async function cancelCustomerOrder(customerOrderId: string) {
   );
   return customerOrderSchema.parse(data);
 }
+
+/**
+ * Convert a product line to cash (voids the line and adds adjustment)
+ */
+export async function convertLineToCash(
+  customerOrderId: string,
+  productId: string
+) {
+  const { data } = await apiClient.post(
+    `/customer-orders/${customerOrderId}/convert-to-cash`,
+    { product_id: productId }
+  );
+  return customerOrderSchema.parse(data);
+}
+
+/**
+ * Revert a voided product line back to active (removes void and adjustment)
+ */
+export async function revertLineToCash(
+  customerOrderId: string,
+  productId: string
+) {
+  const { data } = await apiClient.post(
+    `/customer-orders/${customerOrderId}/revert-to-cash`,
+    { product_id: productId }
+  );
+  return customerOrderSchema.parse(data);
+}
+

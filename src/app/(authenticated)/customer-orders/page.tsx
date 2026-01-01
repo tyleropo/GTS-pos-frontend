@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import { OrderPrint } from "@/src/components/print/OrderPrint";
 import {
   Card,
   CardDescription,
@@ -18,6 +20,7 @@ import { CustomerOrderFormModal } from "./CustomerOrderFormModal";
 import { DeleteCustomerOrderDialog } from "./DeleteCustomerOrderDialog";
 import { FulfillCustomerOrderModal } from "./FulfillCustomerOrderModal";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+import { BulkPaymentModal } from "@/src/app/(authenticated)/payments/BulkPaymentModal";
 import { fetchCustomerOrders, fetchCustomerOrder, cancelCustomerOrder } from "@/src/lib/api/customer-orders";
 import type { CustomerOrder } from "@/src/types/customerOrder";
 import type { CustomerOrder as APICustomerOrder } from "@/src/lib/api/customer-orders";
@@ -148,6 +151,28 @@ function CustomerOrdersPage() {
     }
   };
 
+  // Print Logic
+  const [printingOrder, setPrintingOrder] = useState<CustomerOrder | APICustomerOrder | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintTrigger = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: printingOrder ? `Order_${printingOrder.co_number || (printingOrder as any).id}` : "Customer_Order",
+  });
+
+  const handlePrint = async (order: CustomerOrder) => {
+    try {
+        const fullOrder = await fetchCustomerOrder(String(order.id));
+        setPrintingOrder(fullOrder);
+        setTimeout(() => {
+            handlePrintTrigger();
+        }, 500);
+    } catch (error) {
+        console.error("Error fetching CO for print:", error);
+        toast.error("Failed to prepare print view");
+    }
+  };
+
   const handleFormSuccess = () => {
     loadCustomerOrders();
   };
@@ -162,10 +187,17 @@ function CustomerOrdersPage() {
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentOrder, setSelectedPaymentOrder] = useState<CustomerOrder | null>(null);
+  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
+  const [selectedOrdersForBulkPayment, setSelectedOrdersForBulkPayment] = useState<CustomerOrder[]>([]);
 
   const handleAddPayment = (order: CustomerOrder) => {
     setSelectedPaymentOrder(order);
     setIsPaymentModalOpen(true);
+  };
+
+  const handleBulkPayment = (orders: CustomerOrder[]) => {
+    setSelectedOrdersForBulkPayment(orders);
+    setIsBulkPaymentModalOpen(true);
   };
 
   const handlePaymentSuccess = () => {
@@ -233,9 +265,15 @@ function CustomerOrdersPage() {
               onCancel={handleCancelOrder}
               onDownloadPDF={handleDownloadPDF}
               onAddPayment={handleAddPayment}
+              onBulkPayment={handleBulkPayment}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
+              onPrint={handlePrint}
             />
+            {/* Hidden Print Component */}
+            <div className="hidden">
+                <OrderPrint ref={printRef} order={printingOrder} type="customer" />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -268,6 +306,18 @@ function CustomerOrdersPage() {
         defaultPayableId={selectedPaymentOrder ? String(selectedPaymentOrder.id) : undefined}
         defaultPayableType="customer_order"
         onSuccess={handlePaymentSuccess}
+      />
+
+      <BulkPaymentModal
+        open={isBulkPaymentModalOpen}
+        onOpenChange={setIsBulkPaymentModalOpen}
+        orders={selectedOrdersForBulkPayment}
+        orderType="customer_order"
+        onSuccess={() => {
+          setIsBulkPaymentModalOpen(false);
+          setSelectedOrdersForBulkPayment([]);
+          loadCustomerOrders();
+        }}
       />
     </div>
   );

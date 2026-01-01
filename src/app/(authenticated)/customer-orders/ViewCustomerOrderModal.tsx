@@ -24,10 +24,11 @@ import {
     TableHeader, 
     TableRow 
 } from "@/src/components/ui/table";
-import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus } from "lucide-react";
-import { CustomerOrder as APICustomerOrder } from "@/src/lib/api/customer-orders";
+import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus, Banknote, AlertTriangle, RotateCcw } from "lucide-react";
+import { CustomerOrder as APICustomerOrder, convertLineToCash, revertLineToCash } from "@/src/lib/api/customer-orders";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface ViewCustomerOrderModalProps {
     open: boolean;
@@ -47,6 +48,7 @@ export function ViewCustomerOrderModal({
     onRefresh,
 }: ViewCustomerOrderModalProps) {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isConvertingToCash, setIsConvertingToCash] = useState(false);
     
     if (!customerOrder) return null;
 
@@ -62,6 +64,38 @@ export function ViewCustomerOrderModal({
                 return "bg-rose-100 text-rose-700 hover:bg-rose-100";
             default:
                 return "bg-gray-100 text-gray-700 hover:bg-gray-100";
+        }
+    };
+
+    const handleConvertToCash = async (productId: string) => {
+        if (!customerOrder) return;
+        
+        try {
+            setIsConvertingToCash(true);
+            await convertLineToCash(String(customerOrder.id), String(productId));
+            toast.success("Product line converted to cash successfully");
+            onRefresh?.();
+        } catch (error) {
+            console.error("Error converting to cash:", error);
+            toast.error("Failed to convert to cash");
+        } finally {
+            setIsConvertingToCash(false);
+        }
+    };
+
+    const handleRevertToCash = async (productId: string) => {
+        if (!customerOrder) return;
+        
+        try {
+            setIsConvertingToCash(true);
+            await revertLineToCash(String(customerOrder.id), String(productId));
+            toast.success("Product line reverted successfully");
+            onRefresh?.();
+        } catch (error) {
+            console.error("Error reverting:", error);
+            toast.error("Failed to revert");
+        } finally {
+            setIsConvertingToCash(false);
         }
     };
 
@@ -155,35 +189,74 @@ export function ViewCustomerOrderModal({
                                         <TableHead className="text-right">Qty Shipped</TableHead>
                                         <TableHead className="text-right">Unit Cost</TableHead>
                                         <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {customerOrder.items && customerOrder.items.length > 0 ? (
                                         customerOrder.items.map((item, index) => (
-                                            <TableRow key={index}>
+                                            <TableRow key={index} className={item.is_voided ? "bg-muted/50" : ""}>
                                                 <TableCell className="font-medium">
-                                                    <div>{item.product_name || item.product_id}</div>
-                                                    {item.description && (
-                                                        <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={item.is_voided ? "line-through text-muted-foreground" : ""}>
+                                                            <div>{item.product_name || item.product_id}</div>
+                                                            {item.description && (
+                                                                <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
+                                                            )}
+                                                        </div>
+                                                        {item.is_voided && (
+                                                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                                                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                                                Voided
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    {item.void_reason && (
+                                                        <div className="text-xs text-muted-foreground mt-1">Reason: {item.void_reason}</div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                                                     {item.quantity_ordered}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                                                     {item.quantity_fulfilled || 0}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                                                     ₱{item.unit_cost.toFixed(2)}
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium">
+                                                <TableCell className={`text-right font-medium ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                                                     ₱{item.line_total.toFixed(2)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {!item.is_voided && customerOrder.status !== "fulfilled" && customerOrder.status !== "cancelled" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleConvertToCash(String(item.product_id))}
+                                                            disabled={isConvertingToCash}
+                                                        >
+                                                            <Banknote className="h-4 w-4 mr-1" />
+                                                            Convert
+                                                        </Button>
+                                                    )}
+                                                    {item.is_voided && customerOrder.status !== "fulfilled" && customerOrder.status !== "cancelled" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleRevertToCash(String(item.product_id))}
+                                                            disabled={isConvertingToCash}
+                                                            className="text-blue-600 hover:text-blue-700"
+                                                        >
+                                                            <RotateCcw className="h-4 w-4 mr-1" />
+                                                            Revert
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                            <TableCell colSpan={6} className="text-center text-muted-foreground">
                                                 No items
                                             </TableCell>
                                         </TableRow>
@@ -201,6 +274,19 @@ export function ViewCustomerOrderModal({
                             <span className="text-muted-foreground">Subtotal:</span>
                             <span className="font-medium">₱{customerOrder.subtotal.toFixed(2)}</span>
                         </div>
+                        {customerOrder.adjustments && customerOrder.adjustments.length > 0 && (
+                            <div className="ml-4 space-y-1">
+                                {customerOrder.adjustments.map((adj) => (
+                                    <div key={adj.id} className="flex justify-between text-sm text-orange-600">
+                                        <span className="flex items-center gap-1">
+                                            <Banknote className="h-3 w-3" />
+                                            {adj.description || adj.type}
+                                        </span>
+                                        <span>₱{adj.amount.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Tax:</span>
                             <span className="font-medium">₱{customerOrder.tax.toFixed(2)}</span>
@@ -262,7 +348,7 @@ export function ViewCustomerOrderModal({
                                                             <span className="capitalize">{payment.payment_method.replace(/_/g, ' ')}</span>
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Fulfilled: {new Date(payment.date_fulfilled).toLocaleDateString()}
+                                                            Received: {new Date(payment.date_received).toLocaleDateString()}
                                                             {payment.date_deposited && (
                                                                 <span className="ml-2">• Deposited: {new Date(payment.date_deposited).toLocaleDateString()}</span>
                                                             )}

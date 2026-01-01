@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchCustomerOrder } from "@/src/lib/api/customer-orders";
+import { fetchCustomerOrder, convertLineToCash, revertLineToCash } from "@/src/lib/api/customer-orders";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -30,12 +30,16 @@ import {
   Plus,
   ArrowLeft,
   Edit,
+  Banknote,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { CustomerOrderFormModal } from "@/src/app/(authenticated)/customer-orders/CustomerOrderFormModal";
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/src/lib/utils";
+import { toast } from "sonner";
 
 export default function CustomerOrderDetailPage({
   params,
@@ -47,6 +51,7 @@ export default function CustomerOrderDetailPage({
   const queryClient = useQueryClient();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isConvertingToCash, setIsConvertingToCash] = useState(false);
 
   const { data: customerOrder, isLoading, isError } = useQuery({
     queryKey: ["customer-order", id],
@@ -72,11 +77,43 @@ export default function CustomerOrderDetailPage({
     }
   };
 
+  const handleConvertToCash = async (productId: string) => {
+    if (!customerOrder) return;
+    
+    try {
+      setIsConvertingToCash(true);
+      await convertLineToCash(String(customerOrder.id), String(productId));
+      toast.success("Product line converted to cash successfully");
+      handleRefresh();
+    } catch (error) {
+      console.error("Error converting to cash:", error);
+      toast.error("Failed to convert to cash");
+    } finally {
+      setIsConvertingToCash(false);
+    }
+  };
+
+  const handleRevertToCash = async (productId: string) => {
+    if (!customerOrder) return;
+    
+    try {
+      setIsConvertingToCash(true);
+      await revertLineToCash(String(customerOrder.id), String(productId));
+      toast.success("Product line reverted successfully");
+      handleRefresh();
+    } catch (error) {
+      console.error("Error reverting:", error);
+      toast.error("Failed to revert");
+    } finally {
+      setIsConvertingToCash(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading purchase order details...</p>
+          <p className="text-muted-foreground">Loading purchases details...</p>
         </div>
       </div>
     );
@@ -86,7 +123,7 @@ export default function CustomerOrderDetailPage({
     return (
       <div className="container mx-auto p-6">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <p className="text-red-500">Failed to load purchase order details</p>
+          <p className="text-red-500">Failed to load purchases details</p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>
       </div>
@@ -203,38 +240,77 @@ export default function CustomerOrderDetailPage({
                   <TableHead className="text-right">Qty Shipped</TableHead>
                   <TableHead className="text-right">Unit Cost</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customerOrder.items && customerOrder.items.length > 0 ? (
                   customerOrder.items.map((item, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} className={item.is_voided ? "bg-muted/50" : ""}>
                       <TableCell className="font-medium">
-                        <div>{item.product_name || item.product_id}</div>
-                        {item.description && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {item.description}
+                        <div className="flex items-center gap-2">
+                          <div className={item.is_voided ? "line-through text-muted-foreground" : ""}>
+                            <div>{item.product_name || item.product_id}</div>
+                            {item.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {item.description}
+                              </div>
+                            )}
                           </div>
+                          {item.is_voided && (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Voided
+                            </Badge>
+                          )}
+                        </div>
+                        {item.void_reason && (
+                          <div className="text-xs text-muted-foreground mt-1">Reason: {item.void_reason}</div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                         {item.quantity_ordered}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                         {item.quantity_fulfilled || 0}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                         ₱{item.unit_cost.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className={`text-right font-medium ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
                         ₱{item.line_total.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!item.is_voided && customerOrder.status !== "fulfilled" && customerOrder.status !== "cancelled" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleConvertToCash(String(item.product_id))}
+                            disabled={isConvertingToCash}
+                          >
+                            <Banknote className="h-4 w-4 mr-1" />
+                            Convert
+                          </Button>
+                        )}
+                        {item.is_voided && customerOrder.status !== "fulfilled" && customerOrder.status !== "cancelled" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRevertToCash(String(item.product_id))}
+                            disabled={isConvertingToCash}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            Revert
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="text-center text-muted-foreground"
                     >
                       No items
@@ -256,6 +332,19 @@ export default function CustomerOrderDetailPage({
               ₱{customerOrder.subtotal.toFixed(2)}
             </span>
           </div>
+          {customerOrder.adjustments && customerOrder.adjustments.length > 0 && (
+            <div className="ml-4 space-y-1">
+              {customerOrder.adjustments.map((adj) => (
+                <div key={adj.id} className="flex justify-between text-sm text-orange-600">
+                  <span className="flex items-center gap-1">
+                    <Banknote className="h-3 w-3" />
+                    {adj.description || adj.type}
+                  </span>
+                  <span>₱{adj.amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Tax:</span>
             <span className="font-medium">₱{customerOrder.tax.toFixed(2)}</span>
@@ -352,15 +441,21 @@ export default function CustomerOrderDetailPage({
                             <p className="font-medium">
                               ₱{payment.amount.toFixed(2)}
                             </p>
-                            {payment.is_deposited ? (
-                              <Badge variant="default" className="bg-green-600">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Deposited
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending Deposit
+                            {payment.status && (
+                              <Badge 
+                                variant="outline" 
+                                className={
+                                  ['deposited', 'cleared', 'verified', 'confirmed', 'settled', 'transferred', 'sent', 'charged', 'received', 'paid'].includes(payment.status)
+                                    ? "bg-green-600 text-white border-green-700"
+                                    : "bg-amber-100 text-amber-700 border-amber-300"
+                                }
+                              >
+                                {payment.status === 'deposited' || payment.status === 'cleared' || payment.status === 'verified' || payment.status === 'confirmed' || payment.status === 'settled' || payment.status === 'transferred' || payment.status === 'sent' || payment.status === 'charged' || payment.status === 'received' || payment.status === 'paid' ? (
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                ) : (
+                                  <Clock className="h-3 w-3 mr-1" />
+                                )}
+                                {payment.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                               </Badge>
                             )}
                           </div>

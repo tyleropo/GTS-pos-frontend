@@ -51,7 +51,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/src/components/ui/popover";
-import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
+
 import { toast } from "sonner";
 import {
     createCustomerOrder,
@@ -97,7 +97,6 @@ export function CustomerOrderFormModal({
     onSuccess,
 }: CustomerOrderFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [customerOpen, setCustomerOpen] = useState(false);
@@ -536,34 +535,6 @@ export function CustomerOrderFormModal({
                                 </FormItem>
                             )}
                         />
-
-                            {/* Add Payment Button */}
-                            {isEditing && (
-                                <FormItem>
-                                    <FormLabel>Payment</FormLabel>
-                                    {customerOrder?.payments && customerOrder.payments.length > 0 ? (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full"
-                                            onClick={() => setIsPaymentModalOpen(true)}
-                                        >
-                                            <Pencil className="h-4 w-4 mr-2" />
-                                            Edit Payment
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full"
-                                            onClick={() => setIsPaymentModalOpen(true)}
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Payment
-                                        </Button>
-                                    )}
-                                </FormItem>
-                            )}
                         </div>
 
                         {/* Tax & Discount Configuration */}
@@ -873,24 +844,6 @@ export function CustomerOrderFormModal({
                 </Form>
             </DialogContent>
         </Dialog>
-
-        {/* Payment Modal */}
-        {customerOrder && (
-            <PaymentFormModal
-                open={isPaymentModalOpen}
-                onOpenChange={setIsPaymentModalOpen}
-                defaultCustomerOrderId={String(customerOrder.id)}
-                payment={
-                    customerOrder.payments && customerOrder.payments.length > 0
-                        ? { ...customerOrder.payments[0], customer_order_id: customerOrder.id } as any
-                        : undefined
-                }
-                onSuccess={() => {
-                    setIsPaymentModalOpen(false);
-                    onSuccess?.();
-                }}
-            />
-        )}
         </>
     );
 }

@@ -73,9 +73,12 @@ export function FulfillCustomerOrderModal({
     // Initialize form when purchase order changes
     useEffect(() => {
         if (open && customerOrder?.items) {
+            // Filter out voided items
+            const activeItems = customerOrder.items.filter(item => !item.is_voided);
+            
             form.reset({
-                items: customerOrder.items.map((item) => ({
-                    product_id: item.product_id,
+                items: activeItems.map((item) => ({
+                    product_id: String(item.product_id),
                     product_name: item.product_name,
                     quantity_ordered: item.quantity_ordered,
                     quantity_fulfilled: item.quantity_ordered, // Default to full quantity
