@@ -238,7 +238,13 @@ export function SupplierFormModal({
                                 <FormItem>
                                     <FormLabel>Address</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="123 Business Ave, City, State" {...field} />
+                                        <Input 
+                                            placeholder="123 Business Ave, City, State" 
+                                            value={field.value || ""}
+                                            onChange={field.onChange}
+                                            onBlur={field.onBlur}
+                                            name={field.name}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

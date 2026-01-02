@@ -45,6 +45,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/src/components/ui/popover";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { toast } from "sonner";
 import {
     createRepair,
@@ -545,7 +546,7 @@ export function RepairFormModal({
                                                                 );
                                                             }}
                                                         />
-                                                        <span className="w-16 text-right">₱{(item.quantity * item.unit_price).toFixed(2)}</span>
+                                                        <span className="w-16 text-right">₱{formatCurrency(item.quantity * item.unit_price)}</span>
                                                         <Button 
                                                             type="button" 
                                                             variant="ghost" 
@@ -560,7 +561,7 @@ export function RepairFormModal({
                                             ))}
                                             <div className="flex justify-between items-center pt-2 border-t font-medium">
                                                 <span>Total Parts Cost:</span>
-                                                <span>₱{selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
+                                                <span>₱{formatCurrency(selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0))}</span>
                                             </div>
                                         </div>
                                     )}

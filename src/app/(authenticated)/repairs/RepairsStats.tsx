@@ -1,4 +1,5 @@
 import { Repair } from '@/src/types/repair';
+import { formatCurrency } from '@/src/lib/format-currency';
 import React from 'react'
 import {
   Card,
@@ -62,7 +63,7 @@ const RepairsStats = ({repairs} : {repairs: Repair[]}) => {
           <CardTitle className="text-sm font-medium">Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">₱{totalRevenue.toFixed(2)}</div>
+          <div className="text-2xl font-bold">₱{formatCurrency(totalRevenue)}</div>
           <p className="text-xs text-muted-foreground">From completed repairs</p>
         </CardContent>
       </Card>
