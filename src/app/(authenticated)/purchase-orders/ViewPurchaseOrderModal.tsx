@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/src/components/ui/dialog";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -174,10 +175,10 @@ export function ViewPurchaseOrderModal({
                                                     {item.quantity_received || 0}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    ₱{item.unit_cost.toFixed(2)}
+                                                    ₱{formatCurrency(item.unit_cost)}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    ₱{item.line_total.toFixed(2)}
+                                                    ₱{formatCurrency(item.line_total)}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -199,16 +200,16 @@ export function ViewPurchaseOrderModal({
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Subtotal:</span>
-                            <span className="font-medium">₱{purchaseOrder.subtotal.toFixed(2)}</span>
+                            <span className="font-medium">₱{formatCurrency(purchaseOrder.subtotal)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Tax:</span>
-                            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
+                            <span className="font-medium">₱{formatCurrency(purchaseOrder.tax)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between text-base font-bold">
                             <span>Total:</span>
-                            <span>₱{purchaseOrder.total.toFixed(2)}</span>
+                            <span>₱{formatCurrency(purchaseOrder.total)}</span>
                         </div>
                     </div>
 
@@ -242,7 +243,7 @@ export function ViewPurchaseOrderModal({
                                                 <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border">
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-medium">₱{payment.amount.toFixed(2)}</p>
+                                                            <p className="font-medium">₱{formatCurrency(payment.amount)}</p>
                                                             {payment.is_deposited ? (
                                                                 <Badge variant="default" className="bg-green-600">
                                                                     <CheckCircle2 className="h-3 w-3 mr-1" />

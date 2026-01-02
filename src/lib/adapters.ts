@@ -105,6 +105,7 @@ export function adaptPurchaseOrder(
           : "Pending"
     ) as PurchaseOrder["paymentStatus"],
     deliveryDate: apiPurchaseOrder.expected_at || date,
+    payment_due_date: apiPurchaseOrder.payment_due_date || undefined,
   };
 }
 

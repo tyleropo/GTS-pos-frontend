@@ -115,7 +115,7 @@ const calendarEventSchema = z.object({
   start: z.string(),
   color: z.string(),
   extendedProps: z.object({
-    type: z.enum(["po", "repair", "co"]),
+    type: z.enum(["po", "repair", "co", "po-payment"]),
     id: z.union([z.string(), z.number()]),
     status: z.string(),
   }),

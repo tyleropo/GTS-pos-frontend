@@ -36,6 +36,7 @@ export const purchaseOrderSchema = z.object({
   supplier_id: z.string(),
   status: z.enum(["draft", "submitted", "received", "cancelled"]),
   expected_at: z.string().nullable().optional(),
+  payment_due_date: z.string().nullable().optional(),
   subtotal: priceNumber,
   tax: priceNumber,
   total: priceNumber,
@@ -95,6 +96,7 @@ export type CreatePurchaseOrderPayload = {
     description?: string | null;
   }>;
   expected_at?: string;
+  payment_due_date?: string;
   status?: "draft" | "submitted" | "received" | "cancelled";
   subtotal: number;
   tax: number;

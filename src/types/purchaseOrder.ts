@@ -9,4 +9,5 @@ export type PurchaseOrder = {
   status: string;
   paymentStatus: string;
   deliveryDate: string;
+  payment_due_date?: string;
 };

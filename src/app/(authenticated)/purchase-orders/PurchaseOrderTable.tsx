@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatCurrency } from '@/src/lib/format-currency'
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
@@ -152,7 +153,7 @@ const PurchaseOrderTable = ({
               {selectedOrders.size > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-md">
                   <span className="text-sm font-medium">
-                    {selectedOrders.size} selected • Total: ₱{selectedTotal.toFixed(2)}
+                    {selectedOrders.size} selected • Total: ₱{formatCurrency(selectedTotal)}
                   </span>
                   <Button
                     variant="outline"
@@ -263,13 +264,14 @@ const PurchaseOrderTable = ({
                     <TableHead>Status</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Delivery Date</TableHead>
+                    <TableHead>Payment Due</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPOs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="h-24 text-center">
+                      <TableCell colSpan={11} className="h-24 text-center">
                         No results found.
                       </TableCell>
                     </TableRow>
@@ -288,7 +290,7 @@ const PurchaseOrderTable = ({
                         <TableCell>{po.date}</TableCell>
                         <TableCell>{po.supplier}</TableCell>
                         <TableCell className="text-right">{po.items}</TableCell>
-                        <TableCell className="text-right font-medium">₱{po.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">₱{formatCurrency(po.total)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
@@ -331,6 +333,13 @@ const PurchaseOrderTable = ({
                           )}
                         </TableCell>
                         <TableCell>{po.deliveryDate ? format(new Date(po.deliveryDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                        <TableCell>
+                          {po.payment_due_date ? (
+                            <span className={new Date(po.payment_due_date) < new Date() && po.paymentStatus !== 'Paid' ? 'text-red-600 font-semibold' : ''}>
+                              {format(new Date(po.payment_due_date), 'MMM dd, yyyy')}
+                            </span>
+                          ) : 'N/A'}
+                        </TableCell>
                         <TableCell className="text-right flex justify-end gap-2 items-center">
                           {po.status !== "Cancelled" && (
                             <Button 

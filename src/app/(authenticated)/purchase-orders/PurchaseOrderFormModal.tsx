@@ -45,6 +45,7 @@ import {
 } from "@/src/components/ui/popover";
 
 import { toast } from "sonner";
+import { formatCurrency } from "@/src/lib/format-currency";
 import {
     createPurchaseOrder,
     updatePurchaseOrder,
@@ -67,6 +68,7 @@ const purchaseOrderItemSchema = z.object({
 const purchaseOrderFormSchema = z.object({
     supplier_id: z.string().min(1, "Supplier is required"),
     delivery_date: z.string().optional(),
+    payment_due_date: z.string().optional(),
     status: z.enum(["draft", "submitted", "received", "cancelled"]),
     items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
     notes: z.string().optional(),
@@ -107,6 +109,7 @@ export function PurchaseOrderFormModal({
         defaultValues: {
             supplier_id: purchaseOrder?.supplier_id || "",
             delivery_date: purchaseOrder?.expected_at || "",
+            payment_due_date: purchaseOrder?.payment_due_date || "",
             status: (purchaseOrder?.status as "draft" | "submitted" | "received" | "cancelled") || "draft",
             notes: purchaseOrder?.notes || "",
             items: purchaseOrder?.items
@@ -211,6 +214,7 @@ export function PurchaseOrderFormModal({
             form.reset({
                 supplier_id: purchaseOrder?.supplier_id || "",
                 delivery_date: purchaseOrder?.expected_at ? purchaseOrder.expected_at.split('T')[0] : "",
+                payment_due_date: purchaseOrder?.payment_due_date ? purchaseOrder.payment_due_date.split('T')[0] : "",
                 status: (purchaseOrder?.status as any) || "draft",
                 notes: purchaseOrder?.notes || "",
                 items: purchaseOrder?.items
@@ -265,6 +269,7 @@ export function PurchaseOrderFormModal({
                     description: item.description,
                 })),
                 expected_at: values.delivery_date || undefined,
+                payment_due_date: values.payment_due_date || undefined,
                 status: values.status,
                 subtotal: total,
                 tax: 0,
@@ -425,7 +430,7 @@ export function PurchaseOrderFormModal({
                             )}
                         />
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             {/* Delivery Date */}
                             <FormField
                                 control={form.control}
@@ -433,6 +438,21 @@ export function PurchaseOrderFormModal({
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Delivery Date</FormLabel>
+                                        <FormControl>
+                                            <Input type="date" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Payment Due Date */}
+                            <FormField
+                                control={form.control}
+                                name="payment_due_date"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Payment Due Date</FormLabel>
                                         <FormControl>
                                             <Input type="date" {...field} />
                                         </FormControl>
@@ -679,7 +699,7 @@ export function PurchaseOrderFormModal({
                                                     name={`items.${index}.unit_cost`}
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-xs">Unit Cost</FormLabel>
+                                                            <FormLabel className="text-xs">Product Cost</FormLabel>
                                                             <FormControl>
                                                                 <Input
                                                                     type="number"
@@ -724,7 +744,7 @@ export function PurchaseOrderFormModal({
                         <div className="bg-muted p-4 rounded-lg space-y-2">
                             <div className="flex justify-between text-base font-bold">
                                 <span>Total:</span>
-                                <span>₱{total.toFixed(2)}</span>
+                                <span>₱{formatCurrency(total)}</span>
                             </div>
                         </div>
 

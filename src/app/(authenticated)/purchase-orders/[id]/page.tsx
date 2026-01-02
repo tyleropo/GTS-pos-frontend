@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchPurchaseOrder } from "@/src/lib/api/purchase-orders";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -30,6 +31,7 @@ import {
   Plus,
   ArrowLeft,
   Edit,
+  AlertTriangle,
 } from "lucide-react";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { PurchaseOrderFormModal } from "@/src/app/(authenticated)/purchase-orders/PurchaseOrderFormModal";
@@ -159,6 +161,25 @@ export default function PurchaseOrderDetailPage({
 
           <div className="space-y-1">
             <div className="flex items-center text-sm text-muted-foreground">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Payment Due Date
+            </div>
+            <p className={`font-medium ${purchaseOrder.payment_due_date && new Date(purchaseOrder.payment_due_date) < new Date() && purchaseOrder.payment_status !== 'paid' ? 'text-red-600' : ''}`}>
+              {purchaseOrder.payment_due_date ? (
+                <>
+                  {purchaseOrder.payment_due_date && new Date(purchaseOrder.payment_due_date) < new Date() && purchaseOrder.payment_status !== 'paid' && (
+                    <AlertTriangle className="h-4 w-4 inline mr-1" />
+                  )}
+                  {new Date(purchaseOrder.payment_due_date).toLocaleDateString()}
+                </>
+              ) : (
+                "Not specified"
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
               <FileText className="h-4 w-4 mr-2" />
               Created Date
             </div>
@@ -222,10 +243,10 @@ export default function PurchaseOrderDetailPage({
                         {item.quantity_received || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₱{item.unit_cost.toFixed(2)}
+                        ₱{formatCurrency(item.unit_cost)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ₱{item.line_total.toFixed(2)}
+                        ₱{formatCurrency(item.line_total)}
                       </TableCell>
                     </TableRow>
                   ))
@@ -251,17 +272,17 @@ export default function PurchaseOrderDetailPage({
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-medium">
-              ₱{purchaseOrder.subtotal.toFixed(2)}
+              ₱{formatCurrency(purchaseOrder.subtotal)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Tax:</span>
-            <span className="font-medium">₱{purchaseOrder.tax.toFixed(2)}</span>
+            <span className="font-medium">₱{formatCurrency(purchaseOrder.tax)}</span>
           </div>
           <Separator />
           <div className="flex justify-between text-base font-bold">
             <span>Total:</span>
-            <span>₱{purchaseOrder.total.toFixed(2)}</span>
+            <span>₱{formatCurrency(purchaseOrder.total)}</span>
           </div>
         </div>
 
@@ -310,7 +331,7 @@ export default function PurchaseOrderDetailPage({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">
-                              ₱{payment.amount.toFixed(2)}
+                              ₱{formatCurrency(payment.amount)}
                             </p>
                             {payment.status && (
                               <Badge 
