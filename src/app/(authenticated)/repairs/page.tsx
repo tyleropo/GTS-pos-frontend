@@ -25,10 +25,14 @@ import { useReactToPrint } from "react-to-print";
 import { adaptRepair } from "@/src/lib/adapters";
 import { toast } from "sonner";
 
-import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { DateRange } from 'react-day-picker';
+import { useSearchParams } from "next/navigation";
 
 function RepairsPage() {
+  const searchParams = useSearchParams();
+  const search = searchParams.get('search');
+
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [apiRepairs, setApiRepairs] = useState<APIRepair[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +236,7 @@ function RepairsPage() {
             onPrint={handlePrint}
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            initialSearchQuery={search || ""}
           />
 
           {/* Hidden Print Component */}

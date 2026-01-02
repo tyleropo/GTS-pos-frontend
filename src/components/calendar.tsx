@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
-import { Package, Wrench, Calendar as CalendarIcon, ExternalLink, X, ShoppingCart } from "lucide-react"
+import { Package, Wrench, Calendar as CalendarIcon, ExternalLink, X, ShoppingCart, DollarSign } from "lucide-react"
 import type { CalendarEvent } from "@/src/lib/api/dashboard"
 import type { EventClickArg, EventDropArg, EventHoveringArg } from '@fullcalendar/core'
 import { toast } from "sonner"
@@ -15,7 +15,7 @@ import { toast } from "sonner"
 interface CalendarProps {
   events?: CalendarEvent[];
   isLoading?: boolean;
-  onEventDateChange?: (eventId: string, type: 'po' | 'repair' | 'co', newDate: string) => void;
+  onEventDateChange?: (eventId: string, type: 'po' | 'repair' | 'co' | 'po-payment', newDate: string) => void;
 }
 
 interface SelectedEvent {
@@ -23,7 +23,7 @@ interface SelectedEvent {
   title: string;
   eventNumber: string;
   date: string;
-  type: 'po' | 'repair' | 'co';
+  type: 'po' | 'repair' | 'co' | 'po-payment';
   status: string;
   position: { x: number; y: number };
 }
@@ -32,7 +32,7 @@ interface HoveredEvent {
   title: string;
   eventNumber: string;
   date: string;
-  type: 'po' | 'repair' | 'co';
+  type: 'po' | 'repair' | 'co' | 'po-payment';
   status: string;
   position: { x: number; y: number };
 }
@@ -82,13 +82,13 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
 
   const handleEventDrop = (dropInfo: EventDropArg) => {
     const newDate = dropInfo.event.startStr;
-    const eventType = dropInfo.event.extendedProps.type as 'po' | 'repair' | 'co';
+    const eventType = dropInfo.event.extendedProps.type as 'po' | 'repair' | 'co' | 'po-payment';
     const eventId = String(dropInfo.event.extendedProps.id);
     
     if (onEventDateChange) {
       onEventDateChange(eventId, eventType, newDate);
     } else {
-      toast.info(`${eventType === 'po' ? 'PO' : eventType === 'co' ? 'Order' : 'Repair'} rescheduled to ${newDate}`);
+      toast.info(`${eventType === 'po' ? 'PO' : eventType === 'co' ? 'Order' : eventType === 'po-payment' ? 'Payment' : 'Repair'} rescheduled to ${newDate}`);
     }
   };
 
@@ -114,27 +114,29 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
 
   const closePopover = () => setSelectedEvent(null);
 
-  const getEventIcon = (type: 'po' | 'repair' | 'co') => {
+  const getEventIcon = (type: 'po' | 'repair' | 'co' | 'po-payment') => {
     if (type === 'po') return <Package className="h-4 w-4 text-blue-600" />;
     if (type === 'co') return <ShoppingCart className="h-4 w-4 text-purple-600" />;
+    if (type === 'po-payment') return <DollarSign className="h-4 w-4 text-amber-600" />;
     return <Wrench className="h-4 w-4 text-orange-600" />;
   };
 
-  const getStatusBadge = (status: string, type: 'po' | 'repair' | 'co') => {
+  const getStatusBadge = (status: string, type: 'po' | 'repair' | 'co' | 'po-payment') => {
     const statusLower = status.toLowerCase();
     if (statusLower === 'completed' || statusLower === 'received' || statusLower === 'fulfilled') {
       return <Badge className="bg-emerald-100 text-emerald-700">Completed</Badge>;
     }
     if (statusLower === 'in_progress' || statusLower === 'shipped') {
-      return <Badge className="bg-blue-100 text-blue-700">{type === 'po' ? 'Shipped' : type === 'co' ? 'In Progress' : 'In Progress'}</Badge>;
+      return <Badge className="bg-blue-100 text-blue-700">{type === 'po' ? 'Shipped' : type === 'co' ? 'In Progress' : type === 'po-payment' ? 'Due' : 'In Progress'}</Badge>;
     }
     return <Badge className="bg-amber-100 text-amber-700">Pending</Badge>;
   };
 
-  const getViewLink = (type: 'po' | 'repair' | 'co') => {
-    if (type === 'po') return `/purchase-orders`;
-    if (type === 'co') return `/customer-orders`;
-    return `/repairs`;
+  const getViewLink = (type: 'po' | 'repair' | 'co' | 'po-payment', id: string) => {
+    if (type === 'po') return `/purchase-orders?search=${id}`;
+    if (type === 'co') return `/customer-orders?search=${id}`;
+    if (type === 'po-payment') return `/purchase-orders?search=${id.replace('Payment Due: ', '')}`;
+    return `/repairs?search=${id}`;
   };
 
   return (
@@ -154,6 +156,10 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
             <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
               <Wrench className="h-3 w-3 mr-1" />
               Repairs Due
+            </Badge>
+            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+              <DollarSign className="h-3 w-3 mr-1" />
+              Payables Due
             </Badge>
             <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">
               Completed
@@ -287,7 +293,7 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
                   variant="outline"
                   className="flex-1"
                   onClick={() => {
-                    window.location.href = getViewLink(selectedEvent.type);
+                    window.location.href = getViewLink(selectedEvent.type, selectedEvent.eventNumber);
                     closePopover();
                   }}
                 >

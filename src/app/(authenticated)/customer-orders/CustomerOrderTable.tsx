@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react'
+import { formatCurrency } from '@/src/lib/format-currency'
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
@@ -17,6 +18,7 @@ import { DateRange } from 'react-day-picker'
 
 interface CustomerOrderTableProps {
   customerOrders: CustomerOrder[];
+  initialSearchQuery?: string;
   onEdit?: (order: CustomerOrder) => void;
   onDelete?: (order: CustomerOrder) => void;
   onFulfill?: (order: CustomerOrder) => void;
@@ -31,6 +33,7 @@ interface CustomerOrderTableProps {
 
 const CustomerOrderTable = ({
   customerOrders,
+  initialSearchQuery = "",
   onEdit,
   onDelete,
   onFulfill,
@@ -42,7 +45,7 @@ const CustomerOrderTable = ({
   dateRange,
   onDateRangeChange,
 }: CustomerOrderTableProps) => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("all-orders")
@@ -150,7 +153,7 @@ const CustomerOrderTable = ({
               {selectedOrders.size > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-md">
                   <span className="text-sm font-medium">
-                    {selectedOrders.size} selected • Total: ₱{selectedTotal.toFixed(2)}
+                    {selectedOrders.size} selected • Total: ₱{formatCurrency(selectedTotal)}
                   </span>
                   <Button
                     variant="outline"
@@ -283,7 +286,7 @@ const CustomerOrderTable = ({
                         <TableCell>{order.date}</TableCell>
                         <TableCell>{order.customer}</TableCell>
                         <TableCell className="text-right">{order.items}</TableCell>
-                        <TableCell className="text-right font-medium">₱{order.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">₱{formatCurrency(order.total)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"

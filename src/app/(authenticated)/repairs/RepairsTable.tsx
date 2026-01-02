@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { formatCurrency } from '@/src/lib/format-currency'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, FileText, Calendar, Download, Printer, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Trash2, CheckCircle, Wrench, Clock, Download, Printer, Smartphone, Laptop, Watch, Headphones, Eye } from 'lucide-react'
 import { Badge } from '@/src/components/ui/badge'
 import { Repair } from '@/src/types/repair'
 import { DateRangePicker } from '@/src/components/date-range-picker'
@@ -21,6 +22,7 @@ interface RepairsTableProps {
   onPrint?: (repair: Repair) => void;
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange | undefined) => void;
+  initialSearchQuery?: string;
 }
 
 const RepairsTable = ({
@@ -32,10 +34,11 @@ const RepairsTable = ({
   onUpdateStatus,
   onPrint,
   dateRange,
-  onDateRangeChange
+  onDateRangeChange,
+  initialSearchQuery = ""
 }: RepairsTableProps) => {
   // 1. React state for search + filters + active tab
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [statusFilter, setStatusFilter] = useState("all");
   const [deviceFilter, setDeviceFilter] = useState("all");
   const [technicianFilter, setTechnicianFilter] = useState("all");
@@ -288,7 +291,7 @@ const RepairsTable = ({
 
                   {/* Cost */}
                   <TableCell className="text-right">
-                    {repair.cost > 0 ? `₱${repair.cost.toFixed(2)}` : "Pending"}
+                    {repair.cost > 0 ? `₱${formatCurrency(repair.cost)}` : "Pending"}
                   </TableCell>
 
                   {/* Technician */}

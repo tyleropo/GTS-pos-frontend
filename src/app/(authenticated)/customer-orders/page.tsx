@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { OrderPrint } from "@/src/components/print/OrderPrint";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardDescription,
@@ -38,6 +39,9 @@ import { DateRange } from 'react-day-picker';
 // check if the custom price affects the inventory
 // how to resolve if there is a customer order but we dont have the product in the inventory and it is needed to be ordered 
 function CustomerOrdersPage() {
+  const searchParams = useSearchParams();
+  const searchParam = searchParams.get('search');
+
   const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
   const [apiCustomerOrders, setApiCustomerOrders] = useState<APICustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,6 +263,7 @@ function CustomerOrdersPage() {
           <CardContent>
             <CustomerOrderTable
               customerOrders={filteredCustomerOrders}
+              initialSearchQuery={searchParam || ""}
               onEdit={handleEditCustomerOrder}
               onDelete={handleDeleteCustomerOrder}
               onFulfill={handleFulfillCustomerOrder}

@@ -32,6 +32,7 @@ import { DateRange } from 'react-day-picker';
 
 function PurchaseOrdersPage() {
   const searchParams = useSearchParams();
+  const searchParam = searchParams.get('search');
   const supplierParam = searchParams.get('supplier');
 
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -258,7 +259,7 @@ function PurchaseOrdersPage() {
               onDownloadPDF={handleDownloadPDF}
               onAddPayment={handleAddPayment}
               onBulkPayment={handleBulkPayment}
-              initialSearchQuery={supplierParam || ""}
+              initialSearchQuery={searchParam || supplierParam || ""}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
               onPrint={handlePrint}
