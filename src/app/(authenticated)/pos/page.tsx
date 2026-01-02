@@ -13,7 +13,7 @@ import { CartPanel, CartLineItem } from "@/src/components/cart-panel";
 import { BarcodeInput } from "@/src/components/barcode-input";
 import { SiteHeader } from "@/src/components/site-header";
 import { fetchProductByBarcode, type Product } from "@/src/lib/api/products";
-import { createTransaction } from "@/src/lib/api/transactions";
+import { createTransaction, type Transaction } from "@/src/lib/api/transactions";
 import type { Customer } from "@/src/lib/api/customers";
 import { Input } from "@/src/components/ui/input";
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -142,23 +142,12 @@ export default function POSPage() {
     [addProductToCart]
   );
 
-  const cartTotals = useMemo(() => {
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    const taxRate = 0.12;
-    const tax = subtotal * taxRate;
-    return {
-      subtotal,
-      tax,
-      total: subtotal + tax,
-    };
-  }, [cartItems]);
+  // Note: VAT is inclusive in prices, so cart total is just the sum
+  // VAT breakdown is calculated in CartPanel and passed via meta
 
   const hasCartItems = cartItems.length > 0;
 
-  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   const handleCheckout = useCallback(
@@ -182,6 +171,21 @@ export default function POSPage() {
           "online_wallet": "gcash"
         };
         
+        // Calculate totals based on VAT-inclusive pricing
+        // If meta has vat info, use it; otherwise calculate with 12% inclusive VAT
+        const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const discountedSubtotal = meta?.discount_amount 
+          ? subtotal - (meta.discount_amount as number)
+          : subtotal;
+        
+        const vatAmount = meta?.vat_amount as number | undefined;
+        const netOfVat = meta?.net_of_vat as number | undefined;
+        
+        // If VAT info not in meta, calculate with 12% inclusive
+        const total = discountedSubtotal;
+        const tax = vatAmount ?? (total - (total / 1.12));
+        const net = netOfVat ?? (total / 1.12);
+        
         const payload = {
           customer_id: customer?.id ? String(customer.id) : undefined,
           items: cartItems.map((item) => ({
@@ -192,10 +196,10 @@ export default function POSPage() {
             line_total: item.price * item.quantity,
           })),
           payment_method: paymentMethodMap[method],
-          subtotal: cartTotals.subtotal,
-          tax: cartTotals.tax,
-          total: cartTotals.total,
-          meta: meta, // Pass meta data (tender, change)
+          subtotal: net, // Net of VAT is the real subtotal
+          tax: tax,
+          total: total,
+          meta: meta, // Pass meta data (tender, change, vat info, etc.)
         };
 
         const response = await createTransaction(payload);
@@ -217,7 +221,7 @@ export default function POSPage() {
         );
       }
     },
-    [cartItems, cartTotals]
+    [cartItems]
   );
 
   const handleClearCart = useCallback(() => {

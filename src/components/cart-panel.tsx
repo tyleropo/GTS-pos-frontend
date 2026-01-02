@@ -168,6 +168,9 @@ export function CartPanel({ items, onClear, onCheckout, onUpdateQuantity, onRemo
         discount_amount: discountAmount > 0 ? discountAmount : undefined,
         reference_number: referenceNumber || undefined,
         bank_name: selectedPaymentMethod !== "cash" ? bankName : undefined,
+        vat_percentage: vatPercentage,
+        vat_amount: tax,
+        net_of_vat: netOfVat,
       });
       setIsConfirmModalOpen(false);
       setSelectedPaymentMethod(null);

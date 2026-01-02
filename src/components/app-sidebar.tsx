@@ -41,7 +41,7 @@ const data = {
         { title: "POS", url: "/pos" },
         { title: "Inventory", url: "/inventory" },
         { title: "Transactions", url: "/transactions" },
-        { title: "Repairs", url: "/repairs" },
+        { title: "Repairs and Services", url: "/repairs" },
       ],
     },
     {

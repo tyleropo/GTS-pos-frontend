@@ -105,8 +105,15 @@ export function TransactionSuccessModal({
                 </div>
                 <div className="border-t pt-2 mt-2">
                     {(() => {
-                        const computedSubtotal = total / 1.12;
-                        const computedTax = total - computedSubtotal;
+                        interface TransactionMeta {
+                          vat_percentage?: number;
+                          vat_amount?: number;
+                          net_of_vat?: number;
+                        }
+                        const transactionMeta = (transaction.meta ?? {}) as TransactionMeta;
+                        const vatPercentage = transactionMeta.vat_percentage ?? 12;
+                        const vatAmount = transactionMeta.vat_amount ?? (total - (total / (1 + vatPercentage / 100)));
+                        const netOfVat = transactionMeta.net_of_vat ?? (total / (1 + vatPercentage / 100));
                         return (
                             <>
                                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
@@ -114,12 +121,12 @@ export function TransactionSuccessModal({
                                     <span>{currency.format(total)}</span>
                                 </div>
                                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                    <span>Less: VAT 12%</span>
-                                    <span>{currency.format(computedTax)}</span>
+                                    <span>Less: VAT {vatPercentage}%</span>
+                                    <span>{currency.format(vatAmount)}</span>
                                 </div>
                                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                                     <span>Net of VAT</span>
-                                    <span>{currency.format(computedSubtotal)}</span>
+                                    <span>{currency.format(netOfVat)}</span>
                                 </div>
                             </>
                         );

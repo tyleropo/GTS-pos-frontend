@@ -478,7 +478,7 @@ export function ProductFormModal({
                     )}
                 />
 
-                 <FormField
+                 {/* <FormField
                     control={form.control}
                     name="sku"
                     render={({ field }) => (
@@ -492,7 +492,7 @@ export function ProductFormModal({
                         <FormMessage />
                     </FormItem>
                     )}
-                />
+                /> */}
 
                 <FormField
                     control={form.control}
@@ -640,7 +640,7 @@ export function ProductFormModal({
                     )}
                 />
 
-                <FormField
+                {/* <FormField
                     control={form.control}
                     name="markup_percentage"
                     render={({ field }) => (
@@ -678,7 +678,7 @@ export function ProductFormModal({
                         <FormMessage />
                     </FormItem>
                     )}
-                />
+                /> */}
 
                  <FormField
                     control={form.control}

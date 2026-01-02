@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import { Transaction } from "@/src/types/transactions";
 import { ReceiptSettings } from "@/src/components/modals/receipt-settings-modal";
-import { format } from "date-fns";
 
 interface PosPrintProps {
   transaction: Transaction;
@@ -81,10 +80,19 @@ export const PosPrint = forwardRef<HTMLDivElement, PosPrintProps>(
 
         {/* -- Totals -- */}
         <div className="border-t border-dashed border-black pt-2 mb-4">
-            {/* Reverse calculate tax since it's added on top (12%) */}
+            {/* Use VAT info from meta if available, otherwise calculate with 12% inclusive */}
             {(() => {
-                const computedSubtotal = transaction.total / 1.12;
-                const computedTax = transaction.total - computedSubtotal;
+                interface TransactionMeta {
+                  vat_percentage?: number;
+                  vat_amount?: number;
+                  net_of_vat?: number;
+                  amount_tendered?: number;
+                  change?: number;
+                }
+                const meta = (transaction.meta ?? {}) as TransactionMeta;
+                const vatPercentage = meta.vat_percentage ?? 12;
+                const vatAmount = meta.vat_amount ?? (transaction.total - (transaction.total / (1 + vatPercentage / 100)));
+                const netOfVat = meta.net_of_vat ?? (transaction.total / (1 + vatPercentage / 100));
                 
                 return (
                     <>
@@ -93,12 +101,12 @@ export const PosPrint = forwardRef<HTMLDivElement, PosPrintProps>(
                             <span>₱{transaction.total.toFixed(2)}</span>
                         </div>
                          <div className="flex justify-between text-[10px] text-gray-600 mb-1">
-                            <span>Less: VAT 12%</span>
-                            <span>₱{computedTax.toFixed(2)}</span>
+                            <span>Less: VAT {vatPercentage}%</span>
+                            <span>₱{vatAmount.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-[10px] text-gray-600 mb-1 border-b border-gray-300 pb-1">
                             <span>Net of VAT</span>
-                            <span>₱{computedSubtotal.toFixed(2)}</span>
+                            <span>₱{netOfVat.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between font-bold text-sm">
                             <span>TOTAL</span>
@@ -107,20 +115,27 @@ export const PosPrint = forwardRef<HTMLDivElement, PosPrintProps>(
                     </>
                 );
             })()}
-            {/* If we had tax info here we would show it, but Transaction interface normally has total only, assuming inclusive */}
             
             <div className="mt-2 border-t border-dotted border-gray-400 pt-1">
                  <div className="flex justify-between mt-1 text-[11px]">
                     <span className="capitalize">Payment ({transaction.paymentMethod}):</span>
                     {/* Access meta if available, otherwise just show total */}
-                    <span>₱{(transaction.meta as any)?.amount_tendered ? Number((transaction.meta as any).amount_tendered).toFixed(2) : transaction.total.toFixed(2)}</span>
+                    <span>₱{(() => {
+                      interface TransactionMeta { amount_tendered?: number; }
+                      const meta = (transaction.meta ?? {}) as TransactionMeta;
+                      return meta.amount_tendered ? Number(meta.amount_tendered).toFixed(2) : transaction.total.toFixed(2);
+                    })()}</span>
                 </div>
-                {(transaction.meta as any)?.change !== undefined && (
+                {(() => {
+                  interface TransactionMeta { change?: number; }
+                  const meta = (transaction.meta ?? {}) as TransactionMeta;
+                  return meta.change !== undefined ? (
                     <div className="flex justify-between mt-1 text-[11px]">
                         <span>Change:</span>
-                        <span>₱{Number((transaction.meta as any).change).toFixed(2)}</span>
+                        <span>₱{Number(meta.change).toFixed(2)}</span>
                     </div>
-                )}
+                  ) : null;
+                })()}
             </div>
         </div>
 
