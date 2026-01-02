@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { updateProduct, deleteProduct, archiveProduct, type Product, type Category, type Supplier } from "@/src/lib/api/products";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { ProductFormModal } from "./ProductFormModal";
 import { AdjustStockModal } from "./AdjustStockModal";
 import type { InventoryItem } from "@/src/types/inventory";
@@ -375,10 +376,10 @@ export function InventoryTable({
                       </TableCell>
                       <TableCell>{item.category?.name ?? "—"}</TableCell>
                       <TableCell className="text-right">
-                        ₱{item.cost_price.toFixed(2)}
+                        ₱{formatCurrency(item.cost_price)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₱{item.selling_price.toFixed(2)}
+                        ₱{formatCurrency(item.selling_price)}
                       </TableCell>
                       <TableCell className="text-right">
                         {item.stock_quantity}

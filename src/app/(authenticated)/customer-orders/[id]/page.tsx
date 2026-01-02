@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchCustomerOrder, convertLineToCash, revertLineToCash } from "@/src/lib/api/customer-orders";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
@@ -275,10 +276,10 @@ export default function CustomerOrderDetailPage({
                         {item.quantity_fulfilled || 0}
                       </TableCell>
                       <TableCell className={`text-right ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
-                        ₱{item.unit_cost.toFixed(2)}
+                        ₱{formatCurrency(item.unit_cost)}
                       </TableCell>
                       <TableCell className={`text-right font-medium ${item.is_voided ? 'line-through text-muted-foreground' : ''}`}>
-                        ₱{item.line_total.toFixed(2)}
+                        ₱{formatCurrency(item.line_total)}
                       </TableCell>
                       <TableCell className="text-right">
                         {!item.is_voided && customerOrder.status !== "fulfilled" && customerOrder.status !== "cancelled" && (
@@ -329,7 +330,7 @@ export default function CustomerOrderDetailPage({
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-medium">
-              ₱{customerOrder.subtotal.toFixed(2)}
+              ₱{formatCurrency(customerOrder.subtotal)}
             </span>
           </div>
           {customerOrder.adjustments && customerOrder.adjustments.length > 0 && (
@@ -340,19 +341,19 @@ export default function CustomerOrderDetailPage({
                     <Banknote className="h-3 w-3" />
                     {adj.description || adj.type}
                   </span>
-                  <span>₱{adj.amount.toFixed(2)}</span>
+                  <span>₱{formatCurrency(adj.amount)}</span>
                 </div>
               ))}
             </div>
           )}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Tax:</span>
-            <span className="font-medium">₱{customerOrder.tax.toFixed(2)}</span>
+            <span className="font-medium">₱{formatCurrency(customerOrder.tax)}</span>
           </div>
           <Separator />
           <div className="flex justify-between text-base font-bold">
             <span>Total:</span>
-            <span>₱{customerOrder.total.toFixed(2)}</span>
+            <span>₱{formatCurrency(customerOrder.total)}</span>
           </div>
         </div>
 
@@ -368,7 +369,7 @@ export default function CustomerOrderDetailPage({
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Order Total:</span>
               <span className="font-medium">
-                ₱{customerOrder.total.toFixed(2)}
+                ₱{formatCurrency(customerOrder.total)}
               </span>
             </div>
             
@@ -377,7 +378,7 @@ export default function CustomerOrderDetailPage({
                 <span className="text-xs border rounded px-1 border-green-200 bg-green-50">-</span> Less: Total Paid
               </span>
               <span>
-                (₱{(customerOrder.total_paid || 0).toFixed(2)})
+                (₱{formatCurrency(customerOrder.total_paid || 0)})
               </span>
             </div>
 
@@ -388,7 +389,7 @@ export default function CustomerOrderDetailPage({
               <span className={cn(
                 (customerOrder.outstanding_balance || 0) > 0 ? "text-amber-600" : "text-green-600"
               )}>
-                ₱{(customerOrder.outstanding_balance || 0).toFixed(2)}
+                ₱{formatCurrency(customerOrder.outstanding_balance || 0)}
               </span>
             </div>
           </div>
@@ -439,7 +440,7 @@ export default function CustomerOrderDetailPage({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">
-                              ₱{payment.amount.toFixed(2)}
+                              ₱{formatCurrency(payment.amount)}
                             </p>
                             {payment.status && (
                               <Badge 

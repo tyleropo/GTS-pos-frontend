@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatCurrency } from "@/src/lib/format-currency";
 import {
   Dialog,
   DialogContent,
@@ -276,9 +277,9 @@ export function PaymentFormModal({
                         ? (purchaseOrders.find(po => String(po.id) === form.payable_id)?.supplier?.company_name || "Unknown")
                         : (customerOrders.find(co => String(co.id) === form.payable_id)?.customer?.name || "Unknown")) +
                       " (₱" +
-                      currentOrders
-                        .find((o) => String(o.id) === form.payable_id)
-                        ?.total.toFixed(2) +
+                      formatCurrency(
+                        currentOrders.find((o) => String(o.id) === form.payable_id)?.total || 0
+                      ) +
                       ")"
                     : "Select order"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -320,7 +321,7 @@ export function PaymentFormModal({
                                 ? (order.supplier?.company_name || order.supplier?.contact_person) 
                                 : (order.customer?.name || order.customer?.company)
                           } (₱
-                          {order.total.toFixed(2)})
+                          {formatCurrency(order.total)})
                         </CommandItem>
                       ))}
                     </CommandGroup>

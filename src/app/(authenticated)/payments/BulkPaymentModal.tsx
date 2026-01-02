@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -168,7 +169,7 @@ export function BulkPaymentModal({
                         {'po_number' in order ? order.po_number : (order as any).order_number}
                       </TableCell>
                       <TableCell>{order.date}</TableCell>
-                      <TableCell className="text-right">₱{order.total.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₱{formatCurrency(order.total)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -180,7 +181,7 @@ export function BulkPaymentModal({
           <div className="p-4 bg-muted rounded-md">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold">Total Amount:</span>
-              <span className="text-2xl font-bold text-emerald-600">₱{totalAmount.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-emerald-600">₱{formatCurrency(totalAmount)}</span>
             </div>
           </div>
 

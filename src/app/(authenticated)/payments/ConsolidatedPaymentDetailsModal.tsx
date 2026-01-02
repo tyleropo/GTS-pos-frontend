@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrency } from '@/src/lib/format-currency';
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,7 @@ export function ConsolidatedPaymentDetailsModal({
           <DialogDescription>
             Payment #{payment.payment_number || String(payment.id).substring(0, 8)} • 
             {totalOrders} {totalOrders === 1 ? 'Order' : 'Orders'} • 
-            Total: ₱{payment.amount.toFixed(2)}
+            Total: ₱{formatCurrency(payment.amount)}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,7 +124,7 @@ export function ConsolidatedPaymentDetailsModal({
                           {order.supplier || order.customer || order.entity || 'N/A'}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          ₱{(order.amount || 0).toFixed(2)}
+                          ₱{formatCurrency(order.amount || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           <Link

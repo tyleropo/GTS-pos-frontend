@@ -373,7 +373,7 @@ export function CustomerOrderFormModal({
         if (product) {
             form.setValue(`items.${index}.product_id`, productId);
             form.setValue(`items.${index}.product_name`, product.name);
-            form.setValue(`items.${index}.unit_cost`, product.cost_price);
+            form.setValue(`items.${index}.unit_cost`, product.selling_price);
         }
     };
 
@@ -662,11 +662,13 @@ export function CustomerOrderFormModal({
                                                                         !field.value && "text-muted-foreground"
                                                                     )}
                                                                 >
-                                                                    {field.value
-                                                                        ? products.find(
-                                                                            (product) => String(product.id) === String(field.value)
-                                                                        )?.name || "Selected Product"
-                                                                        : "Select product"}
+                                                                    <span className="truncate">
+                                                                        {field.value
+                                                                            ? products.find(
+                                                                                (product) => String(product.id) === String(field.value)
+                                                                            )?.name || "Selected Product"
+                                                                            : "Select product"}
+                                                                    </span>
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
@@ -724,19 +726,36 @@ export function CustomerOrderFormModal({
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.quantity_ordered`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Quantity</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            min="1"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
+                                            render={({ field }) => {
+                                                const productId = form.watch(`items.${index}.product_id`);
+                                                const product = products.find(p => String(p.id) === String(productId));
+                                                const maxStock = product?.stock_quantity || 999999;
+                                                
+                                                return (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs">Quantity</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                min="1"
+                                                                max={maxStock}
+                                                                {...field}
+                                                                onChange={(e) => {
+                                                                    const value = parseInt(e.target.value);
+                                                                    if (value > maxStock) {
+                                                                        toast.error(`Cannot exceed available stock: ${maxStock}`);
+                                                                        field.onChange(maxStock);
+                                                                    } else {
+                                                                        field.onChange(e.target.value);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        {product && <p className="text-xs text-muted-foreground mt-1">Stock: {product.stock_quantity}</p>}
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                );
+                                            }}
                                         />
                                     </div>
 
