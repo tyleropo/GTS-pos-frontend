@@ -33,7 +33,10 @@ export default function AuthenticatedLayout({
         !pathname.startsWith("/dashboard") &&
         !pathname.startsWith("/pos") &&
         !pathname.startsWith("/transactions") &&
-        !pathname.startsWith("/repairs")
+        !pathname.startsWith("/repairs") &&
+        !pathname.startsWith("/customer-orders") &&
+        !pathname.startsWith("/billing") &&
+        !pathname.startsWith("/customers")
       ) {
         router.replace("/dashboard");
       } else if (

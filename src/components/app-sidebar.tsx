@@ -121,12 +121,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 !user?.roles?.includes("manager")
               ? data.navMain
                   .filter((item) =>
-                    ["Dashboard", "Operations"].includes(item.title)
+                    ["Dashboard", "Operations", "Contacts", "Orders & Billing"].includes(item.title)
                   )
                   .map((item) => ({
                     ...item,
                     items: item.items?.filter((subItem) =>
-                      ["POS", "Transactions", "Repairs"].includes(subItem.title)
+                      ["POS", "Transactions", "Repairs and Services", "Customers", "Customer Orders", "Billing"].includes(subItem.title)
                     ),
                   }))
               : data.navMain
