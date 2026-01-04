@@ -87,6 +87,7 @@ const DEVICE_TYPES = [
     "Smartwatch",
     "Headphones",
     "Desktop",
+    "Printer",
     "Other",
 ];
 

@@ -25,6 +25,7 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { Button } from "@/src/components/ui/button";
 import { Loader2, Plus, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { formatCurrency } from "@/src/lib/format-currency";
 import { updateProduct, createProduct, uploadProductImage, createCategory, createSupplier, approveProduct, type Product, type Category, type Supplier } from "@/src/lib/api/products";
 import { useState } from "react";
 import { ImageUpload } from "@/src/components/image-upload";
@@ -603,13 +604,31 @@ export function ProductFormModal({
                         Cost Price <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            {...field}
-                        />
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₱</span>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="pl-7"
+                                {...field}
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    const costPrice = parseFloat(e.target.value) || 0;
+                                    // Automatically suggest selling price with 30% markup
+                                    if (costPrice > 0) {
+                                        const suggestedPrice = costPrice * 1.30;
+                                        form.setValue("selling_price", Number(suggestedPrice.toFixed(2)));
+                                    }
+                                }}
+                            />
+                        </div>
                         </FormControl>
+                        {field.value > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                                ₱{formatCurrency(Number(field.value))}
+                            </p>
+                        )}
                         <FormMessage />
                     </FormItem>
                     )}
@@ -627,14 +646,22 @@ export function ProductFormModal({
                         </p>
                         </FormLabel>
                         <FormControl>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            {...field}
-                        />
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₱</span>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="pl-7"
+                                {...field}
+                            />
+                        </div>
                         </FormControl>
-                        
+                        {field.value > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                                ₱{formatCurrency(Number(field.value))}
+                            </p>
+                        )}
                         <FormMessage />
                     </FormItem>
                     )}

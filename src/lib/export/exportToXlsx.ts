@@ -13,18 +13,29 @@ export async function exportToXlsx(
 
   // 1. Header Information
   worksheet.addRow([settings.companyName.toUpperCase()]);
+  if (settings.headerText) {
+    worksheet.addRow([settings.headerText]);
+  }
   worksheet.addRow(["Billing Statement"]);
   worksheet.addRow([]);
 
   // Merge header cells
-  worksheet.mergeCells("A1:E1");
-  worksheet.mergeCells("A2:E2");
+  const billStatementRow = settings.headerText ? 3 : 2;
+  worksheet.mergeCells("A1:G1");
+  if (settings.headerText) {
+    worksheet.mergeCells("A2:G2");
+  }
+  worksheet.mergeCells(`A${billStatementRow}:G${billStatementRow}`);
 
   // Style header
   worksheet.getCell("A1").font = { bold: true, size: 16 };
-  worksheet.getCell("A2").font = { bold: true, size: 14 };
   worksheet.getCell("A1").alignment = { horizontal: "center" };
-  worksheet.getCell("A2").alignment = { horizontal: "center" };
+  if (settings.headerText) {
+    worksheet.getCell("A2").font = { italic: true, size: 11 };
+    worksheet.getCell("A2").alignment = { horizontal: "center" };
+  }
+  worksheet.getCell(`A${billStatementRow}`).font = { bold: true, size: 14 };
+  worksheet.getCell(`A${billStatementRow}`).alignment = { horizontal: "center" };
 
   // 2. Customer Info
   worksheet.addRow(["Bill To:"]);
