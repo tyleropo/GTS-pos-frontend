@@ -105,8 +105,8 @@ export function CustomerOrderFormModal({
     // Search states
     const [customerQuery, setCustomerQuery] = useState("");
     const debouncedCustomerQuery = useDebounce(customerQuery, 300);
-    const [productQuery, setProductQuery] = useState("");
-    const debouncedProductQuery = useDebounce(productQuery, 300);
+    const [productQueries, setProductQueries] = useState<Record<number, string>>({});
+
 
     // Tax & Discount States
     const [taxRate, setTaxRate] = useState<number>(12);
@@ -162,17 +162,11 @@ export function CustomerOrderFormModal({
         loadCustomers();
     }, [debouncedCustomerQuery, customerOrder]);
 
-    // Load products on search
+    // Load products on initial mount
     useEffect(() => {
         const loadProducts = async () => {
-             if (debouncedProductQuery.length < 2 && !customerOrder) {
-                 setProducts([]);
-                 return;
-            }
-
             try {
                 const productsRes = await fetchProducts({ 
-                    search: debouncedProductQuery,
                     per_page: 50 
                 });
                 setProducts(productsRes.data);
@@ -180,8 +174,10 @@ export function CustomerOrderFormModal({
                 console.error("Error loading products:", error);
             }
         };
-        loadProducts();
-    }, [debouncedProductQuery, customerOrder]);
+        if (open) {
+            loadProducts();
+        }
+    }, [open]);
     
     // Initial load for editing
      useEffect(() => {
@@ -678,19 +674,25 @@ export function CustomerOrderFormModal({
                                                                 <CommandInput 
                                                                     placeholder="Search product (min 2 chars)..." 
                                                                     autoFocus 
-                                                                    value={productQuery}
-                                                                    onValueChange={setProductQuery}
+                                                                    value={productQueries[index] || ""}
+                                                                    onValueChange={(value) => setProductQueries(prev => ({...prev, [index]: value}))}
                                                                 />
                                                                 <CommandList>
-                                                                    {products.length === 0 && (
+                                                                    {products.filter(p => {
+                                                                        const query = productQueries[index]?.toLowerCase() || "";
+                                                                        if (!query) return true;
+                                                                        return p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query);
+                                                                    }).length === 0 && (
                                                                         <div className="py-6 text-center text-sm text-muted-foreground">
-                                                                            {debouncedProductQuery.length < 2 
-                                                                                ? "Type at least 2 characters..." 
-                                                                                : "No product found."}
+                                                                            No product found.
                                                                         </div>
                                                                     )}
                                                                     <CommandGroup>
-                                                                        {products.map((product) => (
+                                                                        {products.filter(p => {
+                                                                            const query = productQueries[index]?.toLowerCase() || "";
+                                                                            if (!query) return true;
+                                                                            return p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query);
+                                                                        }).map((product) => (
                                                                             <CommandItem
                                                                                 value={product.name + " " + product.sku}
                                                                                 key={product.id}
