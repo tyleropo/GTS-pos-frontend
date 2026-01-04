@@ -608,11 +608,13 @@ export function PurchaseOrderFormModal({
                                                                                     !field.value && "text-muted-foreground"
                                                                                 )}
                                                                             >
-                                                                                {field.value
-                                                                                    ? products.find(
-                                                                                        (product) => String(product.id) === String(field.value)
-                                                                                    )?.name || "Selected Product"
-                                                                                    : "Select product"}
+                                                                                <span className="truncate">
+                                                                                    {field.value
+                                                                                        ? products.find(
+                                                                                            (product) => String(product.id) === String(field.value)
+                                                                                        )?.name || "Selected Product"
+                                                                                        : "Select product"}
+                                                                                </span>
                                                                                 <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                                                                             </Button>
                                                                         </FormControl>
@@ -703,14 +705,22 @@ export function PurchaseOrderFormModal({
                                                         <FormItem>
                                                             <FormLabel className="text-xs">Product Cost</FormLabel>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    min="0"
-                                                                    className="h-9"
-                                                                    {...field}
-                                                                />
+                                                                <div className="relative">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₱</span>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        min="0"
+                                                                        className="h-9 pl-7"
+                                                                        {...field}
+                                                                    />
+                                                                </div>
                                                             </FormControl>
+                                                            {field.value > 0 && (
+                                                                <p className="text-xs text-muted-foreground mt-1">
+                                                                    ₱{formatCurrency(Number(field.value))}
+                                                                </p>
+                                                            )}
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}

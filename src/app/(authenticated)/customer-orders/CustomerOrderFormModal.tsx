@@ -53,6 +53,7 @@ import {
 } from "@/src/components/ui/popover";
 
 import { toast } from "sonner";
+import { formatCurrency } from "@/src/lib/format-currency";
 import {
     createCustomerOrder,
     updateCustomerOrder,
@@ -62,6 +63,7 @@ import {
 import { fetchProducts, type Product } from "@/src/lib/api/products";
 import { fetchCustomers, type Customer } from "@/src/lib/api/customers";
 import { useDebounce } from "@/src/hooks/use-debounce";
+
 
 const customerOrderItemSchema = z.object({
     product_id: z.union([z.string(), z.number()]).refine((val) => val !== "", {
@@ -770,13 +772,22 @@ export function CustomerOrderFormModal({
                                                 <FormItem>
                                                     <FormLabel className="text-xs">Unit Cost</FormLabel>
                                                     <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            min="0"
-                                                            {...field}
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₱</span>
+                                                            <Input
+                                                                type="number"
+                                                                step="0.01"
+                                                                min="0"
+                                                                className="pl-7"
+                                                                {...field}
+                                                            />
+                                                        </div>
                                                     </FormControl>
+                                                    {field.value > 0 && (
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            ₱{formatCurrency(Number(field.value))}
+                                                        </p>
+                                                    )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
