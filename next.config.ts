@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-//disable this for development only skipped temporarily for deployment
+//disable the lint and type check for development only skipped temporarily for deployment
 const nextConfig: NextConfig = {
   eslint: {
     // Skip ESLint during builds
@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "http",
         hostname: "localhost",
+      },
+      {
+        protocol: "http",
+        hostname: "192.168.254.107",
       },
     ],
   },
