@@ -25,7 +25,7 @@ import {
   Package,
   User,
   FileText,
-  DollarSign,
+  PhilippinePesoIcon,
   CheckCircle2,
   Clock,
   Plus,
@@ -362,7 +362,7 @@ export default function CustomerOrderDetailPage({
         {/* Payment Summary */}
         <div className="space-y-3">
           <h3 className="font-semibold flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <PhilippinePesoIcon className="h-4 w-4" />
             Payment Status
           </h3>
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -426,7 +426,7 @@ export default function CustomerOrderDetailPage({
               <AccordionItem value="payments">
                 <AccordionTrigger>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
+                    <PhilippinePesoIcon className="h-4 w-4" />
                     <span>Payments ({customerOrder.payments.length})</span>
                   </div>
                 </AccordionTrigger>

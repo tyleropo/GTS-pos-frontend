@@ -32,7 +32,7 @@ import {
   Filter,
   MoreHorizontal,
   CreditCard,
-  DollarSign,
+  PhilippinePesoIcon,
   Eye,
   Printer,
   FileText,
@@ -231,7 +231,7 @@ const TransactionsTable = ({
                         {transaction.paymentMethod === "Credit Card" ? (
                           <CreditCard className="h-4 w-4 mr-2 text-muted-foreground" />
                         ) : (
-                          <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <PhilippinePesoIcon className="h-4 w-4 mr-2 text-muted-foreground" />
                         )}
                         {transaction.paymentMethod}
                         {transaction.meta?.reference_number && (

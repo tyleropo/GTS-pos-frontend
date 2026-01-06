@@ -4,7 +4,7 @@ import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/src/components/ui/dropdown-menu'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/src/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2, CreditCard, DollarSign } from 'lucide-react'
+import { Search, Filter, AlertCircle, MoreHorizontal, Edit, Download, FileText, CheckCircle, XCircle, Clock, Trash2, CreditCard, PhilippinePesoIcon } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/components/ui/table'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -168,7 +168,7 @@ const PurchaseOrderTable = ({
                     onClick={handleBulkPayment}
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <DollarSign className="h-4 w-4 mr-1" />
+                    <PhilippinePesoIcon className="h-4 w-4 mr-1" />
                     Create Bulk Payment
                   </Button>
                   <Button

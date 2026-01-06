@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
-import { Package, Wrench, Calendar as CalendarIcon, ExternalLink, X, ShoppingCart, DollarSign } from "lucide-react"
+import { Package, Wrench, Calendar as CalendarIcon, ExternalLink, X, ShoppingCart, PhilippinePesoIcon } from "lucide-react"
 import type { CalendarEvent } from "@/src/lib/api/dashboard"
 import type { EventClickArg, EventDropArg, EventHoveringArg } from '@fullcalendar/core'
 import { toast } from "sonner"
@@ -117,7 +117,7 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
   const getEventIcon = (type: 'po' | 'repair' | 'co' | 'po-payment') => {
     if (type === 'po') return <Package className="h-4 w-4 text-blue-600" />;
     if (type === 'co') return <ShoppingCart className="h-4 w-4 text-purple-600" />;
-    if (type === 'po-payment') return <DollarSign className="h-4 w-4 text-amber-600" />;
+    if (type === 'po-payment') return <PhilippinePesoIcon className="h-4 w-4 text-amber-600" />;
     return <Wrench className="h-4 w-4 text-orange-600" />;
   };
 
@@ -158,7 +158,7 @@ export default function Calendar({ events = [], isLoading = false, onEventDateCh
               Repairs Due
             </Badge>
             <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
-              <DollarSign className="h-3 w-3 mr-1" />
+              <PhilippinePesoIcon className="h-3 w-3 mr-1" />
               Payables Due
             </Badge>
             <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">

@@ -19,7 +19,7 @@ import {
     Tablet,
     User,
     Calendar,
-    DollarSign,
+    PhilippinePesoIcon,
     Wrench,
     FileText,
     Clock,
@@ -225,7 +225,7 @@ export function ViewRepairModal({
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <span className="text-muted-foreground flex items-center gap-1">
-                                    <DollarSign className="h-3 w-3" />
+                                    <PhilippinePesoIcon className="h-3 w-3" />
                                     Estimated Cost:
                                 </span>
                                 <p className="font-medium">

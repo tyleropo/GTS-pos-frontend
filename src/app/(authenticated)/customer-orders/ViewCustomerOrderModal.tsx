@@ -24,7 +24,7 @@ import {
     TableHeader, 
     TableRow 
 } from "@/src/components/ui/table";
-import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus, Banknote, AlertTriangle, RotateCcw } from "lucide-react";
+import { Calendar, Package, User, FileText, Download, PhilippinePesoIcon, CheckCircle2, Clock, Plus, Banknote, AlertTriangle, RotateCcw } from "lucide-react";
 import { CustomerOrder as APICustomerOrder, convertLineToCash, revertLineToCash } from "@/src/lib/api/customer-orders";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { useState } from "react";
@@ -318,7 +318,7 @@ export function ViewCustomerOrderModal({
                                 <AccordionItem value="payments">
                                     <AccordionTrigger>
                                         <div className="flex items-center gap-2">
-                                            <DollarSign className="h-4 w-4" />
+                                            <PhilippinePesoIcon className="h-4 w-4" />
                                             <span>Payments ({customerOrder.payments.length})</span>
                                         </div>
                                     </AccordionTrigger>

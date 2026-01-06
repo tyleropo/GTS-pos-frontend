@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
-import { DollarSign, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { PhilippinePesoIcon, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 
 interface PaymentStatsProps {
   payments: Payment[];
@@ -42,7 +42,7 @@ export default function PaymentStats({ payments }: PaymentStatsProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Payments</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <PhilippinePesoIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.totalPayments}</div>

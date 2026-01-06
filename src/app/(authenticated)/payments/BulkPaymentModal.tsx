@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/src/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { Badge } from "@/src/components/ui/badge";
-import { Loader2, DollarSign } from "lucide-react";
+import { Loader2, PhilippinePesoIcon } from "lucide-react";
 import { toast } from "sonner";
 import { createPayment } from "@/src/lib/api/payments";
 import type { PurchaseOrder } from "@/src/types/purchaseOrder";
@@ -141,7 +141,7 @@ export function BulkPaymentModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <PhilippinePesoIcon className="h-5 w-5" />
             Create Consolidated Payment
           </DialogTitle>
           <DialogDescription>

@@ -11,7 +11,7 @@ import {
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
-  DollarSign, 
+  PhilippinePesoIcon, 
   Package, 
   AlertTriangle, 
   Wrench,
@@ -31,7 +31,7 @@ type CardMetricProps = {
 };
 
 const iconMap = {
-  revenue: DollarSign,
+  revenue: PhilippinePesoIcon,
   products: Package,
   "low-stock": AlertTriangle,
   repairs: Wrench,

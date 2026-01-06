@@ -25,7 +25,7 @@ import {
     TableHeader, 
     TableRow 
 } from "@/src/components/ui/table";
-import { Calendar, Package, User, FileText, Download, DollarSign, CheckCircle2, Clock, Plus } from "lucide-react";
+import { Calendar, Package, User, FileText, Download, PhilippinePesoIcon, CheckCircle2, Clock, Plus } from "lucide-react";
 import { PurchaseOrder as APIPurchaseOrder } from "@/src/lib/api/purchase-orders";
 import { PaymentFormModal } from "@/src/app/(authenticated)/payments/PaymentFormModal";
 import { useState } from "react";
@@ -233,7 +233,7 @@ export function ViewPurchaseOrderModal({
                                 <AccordionItem value="payments">
                                     <AccordionTrigger>
                                         <div className="flex items-center gap-2">
-                                            <DollarSign className="h-4 w-4" />
+                                            <PhilippinePesoIcon className="h-4 w-4" />
                                             <span>Payments ({purchaseOrder.payments.length})</span>
                                         </div>
                                     </AccordionTrigger>

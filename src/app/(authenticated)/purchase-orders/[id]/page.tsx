@@ -25,7 +25,7 @@ import {
   Package,
   User,
   FileText,
-  DollarSign,
+  PhilippinePesoIcon,
   CheckCircle2,
   Clock,
   Plus,
@@ -161,7 +161,7 @@ export default function PurchaseOrderDetailPage({
 
           <div className="space-y-1">
             <div className="flex items-center text-sm text-muted-foreground">
-              <DollarSign className="h-4 w-4 mr-2" />
+              <PhilippinePesoIcon className="h-4 w-4 mr-2" />
               Payment Due Date
             </div>
             <p className={`font-medium ${purchaseOrder.payment_due_date && new Date(purchaseOrder.payment_due_date) < new Date() && purchaseOrder.payment_status !== 'paid' ? 'text-red-600' : ''}`}>
@@ -317,7 +317,7 @@ export default function PurchaseOrderDetailPage({
               <AccordionItem value="payments">
                 <AccordionTrigger>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
+                    <PhilippinePesoIcon className="h-4 w-4" />
                     <span>Payments ({purchaseOrder.payments.length})</span>
                   </div>
                 </AccordionTrigger>

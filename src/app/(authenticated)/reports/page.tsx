@@ -27,7 +27,7 @@ import {
   type PaymentReport,
 } from "@/src/lib/api/reports";
 import { toast } from "sonner";
-import { Download, BarChart3, Package, Users, BadgeDollarSign } from "lucide-react";
+import { Download, BarChart3, Package, Users, BadgePhilippinePesoIcon } from "lucide-react";
 import { subDays, subMonths, subQuarters, subYears, startOfDay, endOfDay, format } from "date-fns";
 import { SiteHeader } from "@/src/components/site-header";
 import { formatCurrency } from "@/src/lib/format-currency";
@@ -290,7 +290,7 @@ export default function ReportsPage() {
             Government
           </TabsTrigger> */}
           <TabsTrigger value="payment">
-            <BadgeDollarSign className="mr-2 h-4 w-4" />
+            <BadgePhilippinePesoIcon className="mr-2 h-4 w-4" />
             Payments
           </TabsTrigger>
         </TabsList>
